@@ -11,16 +11,16 @@ NL_PATH = "data/processed/step2/kg_triples_nl.txt"
 OUTPUT_HTML = "data/processed/step2/kg_graph.html"
 
 RELATION_COLORS = {
-    "communicated_with":    "#4CAF50",
-    "established_backdoor": "#9C27B0",
-    "launched_ddos":        "#F44336",
-    "launched_dos":         "#FF5722",
-    "performed_injection":  "#FF9800",
-    "intercepted_traffic":  "#00BCD4",
-    "attempted_brute_force":"#3F51B5",
-    "deployed_ransomware":  "#E91E63",
-    "initiated_scan":       "#FFC107",
-    "executed_xss":         "#009688",
+    "Benign":      "#4CAF50",
+    "backdoor":    "#9C27B0",
+    "ddos":        "#F44336",
+    "dos":         "#FF5722",
+    "injection":   "#FF9800",
+    "mitm":        "#00BCD4",
+    "password":    "#3F51B5",
+    "ransomware":  "#E91E63",
+    "scanning":    "#FFC107",
+    "xss":         "#009688",
 }
 
 LEVEL_WIDTH = {"low": 1, "medium": 3, "high": 5}
