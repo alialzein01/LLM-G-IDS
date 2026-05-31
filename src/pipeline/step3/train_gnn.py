@@ -10,21 +10,21 @@ from sklearn.metrics import f1_score, precision_recall_fscore_support
 from torch_geometric.data import Data
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.gnn_classifier import GATEdgeClassifier
 import torch.nn as nn
 
-from src.splits import (
+from src.pipeline.common.splits import (
     NUM_CLASSES,
     create_edge_splits,
     get_class_weights,
 )
 
 
-DATA_PATH = "data/processed/step1/pyg_data.pt"
-SPLITS_PATH = "data/processed/splits/folds.pt"
-OUTPUT_DIR = "data/processed/step3_gnn"
+DATA_PATH = "data/ton_iot/processed/step1/pyg_data.pt"
+SPLITS_PATH = "data/ton_iot/processed/splits/folds.pt"
+OUTPUT_DIR = "data/ton_iot/processed/step3_gnn"
 
 IN_DIM = 10
 HIDDEN_DIM = 64
@@ -221,7 +221,7 @@ def _train_final_model(data: Data) -> GATEdgeClassifier:
 
 
 def _per_class_metrics(
-    preds: np.ndarray, targets: np.ndarray
+    preds: np.ndarray, targets: np.ndarray, label_names: list[str]
 ) -> list[dict[str, object]]:
     precision, recall, f1, support = precision_recall_fscore_support(
         targets,
@@ -232,7 +232,7 @@ def _per_class_metrics(
     return [
         {
             "class_id": cls,
-            "class_name": LABEL_NAMES[cls],
+            "class_name": label_names[cls],
             "precision": float(precision[cls]),
             "recall": float(recall[cls]),
             "f1": float(f1[cls]),
@@ -242,7 +242,7 @@ def _per_class_metrics(
     ]
 
 
-def _print_class_report(preds: np.ndarray, targets: np.ndarray) -> None:
+def _print_class_report(preds: np.ndarray, targets: np.ndarray, label_names: list[str]) -> None:
     """Print a per-class results table sorted by sample count (most common first)."""
     precision, recall, f1, support = precision_recall_fscore_support(
         targets, preds, labels=list(range(NUM_CLASSES)), zero_division=0
@@ -252,24 +252,33 @@ def _print_class_report(preds: np.ndarray, targets: np.ndarray) -> None:
     order = np.argsort(-support)
     for cls in order:
         print(
-            f"  {LABEL_NAMES[cls]:<12} {int(support[cls]):>8d} "
+            f"  {label_names[cls]:<12} {int(support[cls]):>8d} "
             f"{precision[cls]:>10.4f} {recall[cls]:>8.4f} {f1[cls]:>8.4f}"
         )
 
 
-def main() -> None:
-    output_path = Path(OUTPUT_DIR)
+def main(
+    data_path: str = DATA_PATH,
+    splits_path: str = SPLITS_PATH,
+    output_dir: str = OUTPUT_DIR,
+) -> None:
+    output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    print(f"Loading graph data from {DATA_PATH}")
-    data: Data = torch.load(DATA_PATH, weights_only=False)
+    print(f"Loading graph data from {data_path}")
+    data: Data = torch.load(data_path, weights_only=False)
 
-    splits_file = Path(SPLITS_PATH)
+    # Derive label names from the mapping stored in the Data object
+    inv_mapping = {v: k for k, v in data.label_mapping.items()}
+    label_names = [inv_mapping.get(i, str(i)) for i in range(NUM_CLASSES)]
+
+    splits_file = Path(splits_path)
     if splits_file.exists():
-        print(f"Loading splits from {SPLITS_PATH}")
-        folds = torch.load(SPLITS_PATH, weights_only=False)
+        print(f"Loading splits from {splits_path}")
+        folds = torch.load(splits_path, weights_only=False)
     else:
-        print(f"Splits not found — creating new splits at {SPLITS_PATH}")
+        print(f"Splits not found — creating new splits at {splits_path}")
+        splits_file.parent.mkdir(parents=True, exist_ok=True)
         folds = create_edge_splits(data)
 
     fold_results: list[dict[str, object]] = []
@@ -314,13 +323,13 @@ def main() -> None:
         f1_score(targets, preds, average="weighted", labels=list(range(NUM_CLASSES)), zero_division=0)
     )
     overall_accuracy = float((preds == targets).mean())
-    per_class = _per_class_metrics(preds, targets)
+    per_class = _per_class_metrics(preds, targets, label_names)
 
     print(f"\nFinal model results:")
     print(f"  Accuracy:    {overall_accuracy:.4f}")
     print(f"  Macro-F1:    {overall_macro_f1:.4f}   ← primary metric")
     print(f"  Weighted-F1: {overall_weighted_f1:.4f}")
-    _print_class_report(preds, targets)
+    _print_class_report(preds, targets, label_names)
 
     metrics_payload = {
         "overall_accuracy": overall_accuracy,
@@ -332,7 +341,7 @@ def main() -> None:
     with open(output_path / "metrics.json", "w") as f:
         json.dump(metrics_payload, f, indent=2)
 
-    print(f"\nSaved model, embeddings, and metrics to {OUTPUT_DIR}")
+    print(f"\nSaved model, embeddings, and metrics to {output_dir}")
 
 
 if __name__ == "__main__":

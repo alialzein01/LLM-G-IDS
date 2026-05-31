@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **LLM-G-IDS** — a Graph Neural Network-based Intrusion Detection System for IoT network traffic. The goal is to classify network flows as benign or one of 9 attack types using graph representations of IP-to-IP communication patterns.
 
-Dataset: `data/raw/NF-ToN-IoT.csv` (532 MB, not in git). Processed artifacts live in `data/processed/step1/`.
+Dataset: `data/ton_iot/raw/NF-ToN-IoT.csv` (532 MB, not in git). Processed artifacts live in `data/ton_iot/processed/step1/`. The parallel dataset NF-UNSW-NB15 lives under `data/unsw_nb15/` (raw parquet at `data/unsw_nb15/raw/`, processed outputs will go to `data/unsw_nb15/processed/`).
 
 ## Environment Setup
 
@@ -23,18 +23,19 @@ Python 3.14.3 is used. The `.venv/` directory is local and not committed.
 There is no CLI entry point yet. Run `run_step1` directly from a script or REPL:
 
 ```python
-from src.graph_construction import run_step1
-data, edge_df = run_step1("data/raw/NF-ToN-IoT.csv", "data/processed/step1")
+from src.pipeline.step1 import run_step1
+data, edge_df = run_step1("data/ton_iot/raw/NF-ToN-IoT.csv", "data/ton_iot/processed/step1")
 ```
 
 This reads the raw CSV, aggregates flows, builds a PyTorch Geometric `Data` object, and writes two files:
-- `data/processed/step1/pyg_data.pt` — serialized graph
-- `data/processed/step1/aggregated_edges.csv` — aggregated edge table
+
+- `data/ton_iot/processed/step1/pyg_data.pt` — serialized graph
+- `data/ton_iot/processed/step1/aggregated_edges.csv` — aggregated edge table
 
 Loading a saved graph:
 ```python
 import torch
-data = torch.load("data/processed/step1/pyg_data.pt")
+data = torch.load("data/ton_iot/processed/step1/pyg_data.pt")
 ```
 
 ## Architecture
@@ -48,7 +49,7 @@ The network is modeled as a **directed multigraph** where:
 
 This means **classification is on edges, not nodes**. Any GNN model built on top must use edge-level prediction heads.
 
-### Key Constants (src/graph_construction.py)
+### Key Constants (src/pipeline/step1/graph_construction.py)
 
 | Constant | Purpose |
 |---|---|
@@ -69,6 +70,16 @@ NF-ToN-IoT.csv
 
 Normalization stats (`data.edge_attr_mean`, `data.edge_attr_std`) are stored on the `Data` object so they can be reused at inference time.
 
-### Planned but Not Yet Implemented
+### Source Layout
 
-Based on `requirements/todo.pdf`, upcoming steps include GNN model definition, training loop, and evaluation. The `networkx`, `scikit-learn`, `matplotlib`, and `tqdm` dependencies in `requirements.txt` are not yet used in code — they are placeholders for future steps.
+```text
+src/
+  models/              # neural network modules
+  pipeline/
+    common/            # shared utilities (splits, loss, oversampling)
+    step1/             # graph construction from CSV
+    step2/             # knowledge graph + visualization
+    step3/             # GNN training, LLM encoding, diagnostics
+```
+
+Run scripts from the repo root, e.g. `python -m src.pipeline.step3.train_gnn`.

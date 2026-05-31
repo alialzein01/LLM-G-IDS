@@ -102,7 +102,9 @@ def _build_node_features(
 
 
 def _build_edge_tensors(
-    edge_df: pd.DataFrame, node_to_idx: dict[str, int]
+    edge_df: pd.DataFrame,
+    node_to_idx: dict[str, int],
+    label_mapping: dict[str, int],
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     edge_index_array = pd.concat(
         [edge_df[SRC_COL].map(node_to_idx), edge_df[DST_COL].map(node_to_idx)], axis=1
@@ -111,7 +113,7 @@ def _build_edge_tensors(
 
     edge_attr = torch.tensor(edge_df[EDGE_ATTR_COLUMNS].to_numpy(), dtype=torch.float)
 
-    mapped_labels = edge_df[ATTACK_COL].map(LABEL_MAPPING)
+    mapped_labels = edge_df[ATTACK_COL].map(label_mapping)
     if mapped_labels.isna().any():
         unknown_labels = sorted(edge_df.loc[mapped_labels.isna(), ATTACK_COL].unique())
         raise ValueError(f"Unknown attack labels found: {unknown_labels}")
@@ -133,7 +135,14 @@ def _print_edge_attr_stats(edge_attr: torch.Tensor) -> None:
     print(stats.to_string(index=False))
 
 
-def run_step1(csv_path: str, output_dir: str) -> tuple[Data, pd.DataFrame]:
+def run_step1(
+    csv_path: str,
+    output_dir: str,
+    label_mapping: dict[str, int] | None = None,
+) -> tuple[Data, pd.DataFrame]:
+    if label_mapping is None:
+        label_mapping = LABEL_MAPPING
+
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -164,12 +173,12 @@ def run_step1(csv_path: str, output_dir: str) -> tuple[Data, pd.DataFrame]:
     print(f"Unique IP count: {num_nodes}")
 
     x = _build_node_features(edge_df, node_to_idx, num_nodes)
-    edge_index, edge_attr, edge_label = _build_edge_tensors(edge_df, node_to_idx)
+    edge_index, edge_attr, edge_label = _build_edge_tensors(edge_df, node_to_idx, label_mapping)
 
     data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, edge_label=edge_label)
     data.node_to_idx = node_to_idx
     data.idx_to_node = idx_to_node
-    data.label_mapping = LABEL_MAPPING.copy()
+    data.label_mapping = label_mapping.copy()
 
     normalization_slice = data.edge_attr[:, :3]
     data.edge_attr_mean = normalization_slice.mean(dim=0)

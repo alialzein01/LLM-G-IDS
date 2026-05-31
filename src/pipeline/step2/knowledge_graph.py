@@ -5,8 +5,8 @@ from pathlib import Path
 import pandas as pd
 
 
-CSV_PATH = "data/processed/step1/aggregated_edges.csv"
-OUTPUT_DIR = "data/processed/step2"
+CSV_PATH = "data/ton_iot/processed/step1/aggregated_edges.csv"
+OUTPUT_DIR = "data/ton_iot/processed/step2"
 
 TRIPLE_COLS = [
     "IPV4_SRC_ADDR",
@@ -20,19 +20,6 @@ TRIPLE_COLS = [
 ]
 
 PROTOCOL_NAMES = {1: "ICMP", 2: "IGMP", 6: "TCP", 17: "UDP"}
-
-KNOWN_ATTACK_TYPES = {
-    "Benign",
-    "backdoor",
-    "ddos",
-    "dos",
-    "injection",
-    "mitm",
-    "password",
-    "ransomware",
-    "scanning",
-    "xss",
-}
 
 # Attributes to discretize; each is binned per attack type independently
 DISCRETIZE_COLS = ["avg_bytes", "flow_count", "avg_duration"]
@@ -74,9 +61,6 @@ def discretize(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_relation_names(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    unknown = set(df["Attack"].unique()) - KNOWN_ATTACK_TYPES
-    if unknown:
-        raise ValueError(f"Unknown attack types: {sorted(unknown)}")
     df["relation_name"] = df["Attack"]
     return df
 
@@ -146,13 +130,13 @@ def build_nl_triples(df: pd.DataFrame) -> list[str]:
     return sentences
 
 
-def assert_label_free(sentences: list[str]) -> None:
+def assert_label_free(sentences: list[str], attack_types: set[str]) -> None:
     """Raise if any attack type label appears in NL text."""
-    leakage_terms = {t.lower() for t in KNOWN_ATTACK_TYPES}
+    leakage_terms = {t.lower() for t in attack_types}
     for i, sentence in enumerate(sentences):
         lower = sentence.lower()
         for term in leakage_terms:
-            if term.lower() in lower:
+            if term in lower:
                 raise ValueError(
                     f"Label leakage in sentence {i}: found '{term}' in: {sentence[:120]}..."
                 )
@@ -177,7 +161,7 @@ def run_step2(csv_path: str = CSV_PATH, output_dir: str = OUTPUT_DIR) -> pd.Data
 
     # --- Save label-free natural language triples ---
     sentences = build_nl_triples(df)
-    assert_label_free(sentences)
+    assert_label_free(sentences, set(df["Attack"].unique()))
     (out / "kg_triples_nl.txt").write_text("\n".join(sentences) + "\n")
     print(f"Saved kg_triples_nl.txt ({len(sentences)} label-free sentences)")
 

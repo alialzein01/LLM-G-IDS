@@ -10,7 +10,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch_geometric.data import Data
 
 
-SPLITS_OUTPUT_DIR = "data/processed/splits"
+SPLITS_OUTPUT_DIR = "data/ton_iot/processed/splits"
 SPLITS_OUTPUT_FILE = "folds.pt"
 
 NUM_CLASSES = 10

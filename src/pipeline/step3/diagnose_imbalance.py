@@ -10,12 +10,12 @@ from sklearn.metrics import f1_score
 from torch_geometric.data import Data
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.splits import NUM_CLASSES
+from src.pipeline.common.splits import NUM_CLASSES
 
-DATA_PATH = "data/processed/step1/pyg_data.pt"
-METRICS_PATH = "data/processed/step3_gnn/metrics.json"
+DATA_PATH = "data/ton_iot/processed/step1/pyg_data.pt"
+METRICS_PATH = "data/ton_iot/processed/step3_gnn/metrics.json"
 
 LABEL_NAMES = [
     "Benign", "backdoor", "ddos", "dos", "injection",

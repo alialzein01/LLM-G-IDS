@@ -10,22 +10,22 @@ from sklearn.metrics import f1_score, precision_recall_fscore_support
 from torch_geometric.data import Data
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.gnn_classifier import GATEdgeClassifier
 import torch.nn as nn
 
-from src.splits import (
+from src.pipeline.common.splits import (
     NUM_CLASSES,
     get_class_weights,
 )
 
 
-DATA_PATH = "data/processed/step1/pyg_data.pt"
-SPLITS_PATH = "data/processed/splits/folds.pt"
-MODEL_PATH = "data/processed/step3_gnn/model.pt"
-EMBEDDINGS_PATH = "data/processed/step3_gnn/edge_embeddings.pt"
-HISTORY_PATH = "data/processed/step3_gnn/training_history.json"
+DATA_PATH = "data/ton_iot/processed/step1/pyg_data.pt"
+SPLITS_PATH = "data/ton_iot/processed/splits/folds.pt"
+MODEL_PATH = "data/ton_iot/processed/step3_gnn/model.pt"
+EMBEDDINGS_PATH = "data/ton_iot/processed/step3_gnn/edge_embeddings.pt"
+HISTORY_PATH = "data/ton_iot/processed/step3_gnn/training_history.json"
 
 IN_DIM = 10
 HIDDEN_DIM = 64
