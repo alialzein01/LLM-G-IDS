@@ -5,32 +5,32 @@ from pathlib import Path
 import pandas as pd
 from pyvis.network import Network
 
+CSV_PATH = "data/ton_iot/processed/step1/aggregated_edges.csv"
+OUTPUT_HTML = "data/ton_iot/processed/step1/graph.html"
 
-CSV_PATH = "data/processed/step2/kg_triples.csv"
-NL_PATH = "data/processed/step2/kg_triples_nl.txt"
-OUTPUT_HTML = "data/processed/step2/kg_graph.html"
-
-RELATION_COLORS = {
-    "Benign":      "#4CAF50",
-    "backdoor":    "#9C27B0",
-    "ddos":        "#F44336",
-    "dos":         "#FF5722",
-    "injection":   "#FF9800",
-    "mitm":        "#00BCD4",
-    "password":    "#3F51B5",
-    "ransomware":  "#E91E63",
-    "scanning":    "#FFC107",
-    "xss":         "#009688",
+# One distinct color per attack type (edge color = attack on that flow)
+ATTACK_COLORS = {
+    "Benign":     "#4CAF50",  # green
+    "backdoor":   "#9C27B0",  # purple
+    "ddos":       "#F44336",  # red
+    "dos":        "#FF5722",  # deep orange
+    "injection":  "#FF9800",  # orange
+    "mitm":       "#00BCD4",  # cyan
+    "password":   "#3F51B5",  # indigo
+    "ransomware": "#E91E63",  # pink
+    "scanning":   "#FFC107",  # amber
+    "xss":        "#009688",  # teal
 }
 
-LEVEL_WIDTH = {"low": 1, "medium": 3, "high": 5}
+DEFAULT_EDGE_COLOR = "#888888"
 
 
 def _node_size(degree: int) -> int:
+    """Scale node size by degree, clamped to a readable range."""
     return max(8, min(40, 8 + degree * 2))
 
 
-def build_kg_graph(df: pd.DataFrame, nl_sentences: list[str]) -> Network:
+def build_graph(df: pd.DataFrame) -> Network:
     net = Network(
         height="100vh",
         width="100%",
@@ -47,10 +47,12 @@ def build_kg_graph(df: pd.DataFrame, nl_sentences: list[str]) -> Network:
         damping=0.09,
     )
 
+    # Compute degree for node sizing
     src_deg = df["IPV4_SRC_ADDR"].value_counts()
     dst_deg = df["IPV4_DST_ADDR"].value_counts()
     degree = src_deg.add(dst_deg, fill_value=0).astype(int)
 
+    # Add nodes
     unique_ips = pd.concat([df["IPV4_SRC_ADDR"], df["IPV4_DST_ADDR"]]).unique()
     for ip in unique_ips:
         deg = int(degree.get(ip, 1))
@@ -63,16 +65,24 @@ def build_kg_graph(df: pd.DataFrame, nl_sentences: list[str]) -> Network:
             font={"size": 10},
         )
 
-    for (_, row), nl in zip(df.iterrows(), nl_sentences):
-        relation = row["relation_name"]
-        color = RELATION_COLORS.get(relation, "#888888")
-        width = LEVEL_WIDTH.get(row["flow_count_level"], 1)
+    # Add edges
+    for _, row in df.iterrows():
+        attack = row["Attack"]
+        color = ATTACK_COLORS.get(attack, DEFAULT_EDGE_COLOR)
+        title = (
+            f"Src: {row['IPV4_SRC_ADDR']}\n"
+            f"Dst: {row['IPV4_DST_ADDR']}\n"
+            f"Attack: {attack}\n"
+            f"Flows: {int(row['flow_count'])}\n"
+            f"Bytes: {int(row['total_bytes'])}\n"
+            f"Avg duration: {row['avg_duration']:.1f} ms"
+        )
         net.add_edge(
             row["IPV4_SRC_ADDR"],
             row["IPV4_DST_ADDR"],
             color=color,
-            title=nl,
-            width=width,
+            title=title,
+            width=max(1, min(6, row["flow_count"] / df["flow_count"].max() * 6)),
             arrows="to",
         )
 
@@ -95,24 +105,22 @@ def _freeze_after_stabilization(html_path: Path) -> None:
 
 def main() -> None:
     df = pd.read_csv(CSV_PATH)
-    nl_sentences = Path(NL_PATH).read_text().splitlines()
+    df["Attack"] = df["Attack"].str.strip()
 
-    assert len(df) == len(nl_sentences), "Row count mismatch between CSV and NL file"
+    print(f"Loaded {len(df)} edges, {pd.concat([df['IPV4_SRC_ADDR'], df['IPV4_DST_ADDR']]).nunique()} unique nodes")
 
-    unique_nodes = pd.concat([df["IPV4_SRC_ADDR"], df["IPV4_DST_ADDR"]]).nunique()
-    print(f"Loaded {len(df)} triples, {unique_nodes} unique nodes")
-
-    net = build_kg_graph(df, nl_sentences)
+    net = build_graph(df)
 
     output_path = Path(OUTPUT_HTML)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
     net.save_graph(str(output_path))
     _freeze_after_stabilization(output_path)
-
-    print(f"KG graph saved → {output_path.resolve()}")
-    print("\nLegend (edge color = relation):")
-    for relation, color in RELATION_COLORS.items():
-        print(f"  {color}  {relation}")
+    print(f"Graph saved → {output_path.resolve()}")
+    print("Open the HTML file in your browser to explore the graph.")
+    print("\nLegend:")
+    for attack, color in ATTACK_COLORS.items():
+        print(f"  {color}  {attack}")
 
 
 if __name__ == "__main__":

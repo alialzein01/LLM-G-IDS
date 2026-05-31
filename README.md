@@ -27,7 +27,7 @@ The project uses Python 3.14. All scripts are run from the repository root.
 Collapses raw flow records into a directed communication graph.
 
 ```python
-from src.graph_construction import run_step1
+from src.pipeline.step1 import run_step1
 data, edge_df = run_step1("data/raw/NF-ToN-IoT.csv", "data/processed/step1")
 ```
 
@@ -41,7 +41,7 @@ data, edge_df = run_step1("data/raw/NF-ToN-IoT.csv", "data/processed/step1")
 Visualize:
 
 ```bash
-python -m src.visualize_graph
+python -m src.pipeline.step1.visualize_graph
 # opens: data/processed/step1/graph.html
 ```
 
@@ -52,7 +52,7 @@ python -m src.visualize_graph
 Transforms the aggregated edges into a semantically enriched Knowledge Graph for LLM reasoning.
 
 ```python
-from src.knowledge_graph import run_step2
+from src.pipeline.step2 import run_step2
 df = run_step2("data/processed/step1/aggregated_edges.csv", "data/processed/step2")
 ```
 
@@ -72,23 +72,51 @@ Numerical attributes (flow count, avg bytes, avg duration) are binned into `low 
 Visualize:
 
 ```bash
-python -m src.visualize_kg
+python -m src.pipeline.step2.visualize_kg
 # opens: data/processed/step2/kg_graph.html
+```
+
+### Step 3 — GNN baseline
+
+Train and verify the GAT edge classifier:
+
+```bash
+python -m src.pipeline.step3.train_gnn
+python -m src.pipeline.step3.verify_gnn_baseline
+```
+
+Encode KG sentences with CySecBERT (LLM path):
+
+```bash
+python -m src.pipeline.step3.encode_kg
 ```
 
 ## Project Structure
 
 ```text
 src/
-  graph_construction.py   # Step 1: raw CSV → PyG graph
-  knowledge_graph.py      # Step 2: aggregated edges → KG triples
-  visualize_graph.py      # Interactive HTML visualization for Step 1
-  visualize_kg.py         # Interactive HTML visualization for Step 2
+  models/
+    gnn_classifier.py       # GAT edge classifier
+  pipeline/
+    common/
+      splits.py             # stratified k-fold splits, class weights, focal loss
+    step1/
+      graph_construction.py # raw CSV → PyG graph
+      visualize_graph.py
+    step2/
+      knowledge_graph.py    # aggregated edges → KG triples
+      visualize_kg.py
+    step3/
+      encode_kg.py          # NL triples → BERT embeddings
+      train_gnn.py
+      verify_gnn_baseline.py
+      diagnose_imbalance.py
 data/
-  raw/                    # Place NF-ToN-IoT.csv here (not in git)
+  raw/                      # Place NF-ToN-IoT.csv here (not in git)
   processed/
-    step1/                # PyG data object + aggregated edges
-    step2/                # KG triples (CSV + natural language)
+    step1/                  # PyG data object + aggregated edges
+    step2/                  # KG triples (CSV + natural language)
+    step3_gnn/              # trained GNN artifacts
 requirements/
-  todo.pdf                # Project task specification
+  todo.pdf                  # Project task specification
 ```

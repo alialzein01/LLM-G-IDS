@@ -11,8 +11,8 @@ from transformers import AutoModel, AutoTokenizer
 load_dotenv()
 
 MODEL_ID = "markusbayer/CySecBERT"
-NL_TRIPLES_PATH = "data/processed/step2/kg_triples_nl.txt"
-OUTPUT_DIR = "data/processed/step3_llm"
+NL_TRIPLES_PATH = "data/ton_iot/processed/step2/kg_triples_nl.txt"
+OUTPUT_DIR = "data/ton_iot/processed/step3_llm"
 BATCH_SIZE = 32
 
 
