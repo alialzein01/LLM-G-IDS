@@ -4,3 +4,15 @@ __pycache__/
 .DS_Store
 .cursor/
 .env
+NOTES_INDEX.md
+todo.md
+.venv/
+.vscode/
+.idea/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+PROJECT_NOTES.md
