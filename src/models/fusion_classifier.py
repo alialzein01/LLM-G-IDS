@@ -78,6 +78,71 @@ class FusionEdgeClassifier(nn.Module):
         return logits, edge_emb, attn
 
 
+class AGAFFusionEdgeClassifier(nn.Module):
+    """
+    AGAF: Adaptive Gated Attention Fusion.
+
+    Projects structural and semantic edge embeddings into a shared space,
+    combines them with a feature-wise gate, then applies feature-wise attention
+    before classification.
+    """
+
+    def __init__(
+        self,
+        gnn_dim: int = DEFAULT_GNN_DIM,
+        llm_dim: int = DEFAULT_LLM_DIM,
+        proj_dim: int = DEFAULT_PROJ_DIM,
+        hidden_dim: int = DEFAULT_HIDDEN_DIM,
+        num_classes: int = DEFAULT_NUM_CLASSES,
+        dropout: float = DEFAULT_DROPOUT,
+    ) -> None:
+        super().__init__()
+        self.gnn_proj = ModalityProjector(gnn_dim, proj_dim)
+        self.llm_proj = ModalityProjector(llm_dim, proj_dim)
+        self.gate = nn.Linear(4 * proj_dim, proj_dim)
+        self.feature_attention = nn.Linear(proj_dim, proj_dim)
+
+        self.mlp_hidden = nn.Linear(proj_dim, hidden_dim)
+        self.mlp_out = nn.Linear(hidden_dim, num_classes)
+        self.dropout = dropout
+
+    def fuse(
+        self, h_proj: torch.Tensor, s_proj: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        gate_input = torch.cat(
+            [h_proj, s_proj, torch.abs(h_proj - s_proj), h_proj * s_proj], dim=1
+        )
+        gate = torch.sigmoid(self.gate(gate_input))
+        fused = gate * h_proj + (1.0 - gate) * s_proj
+        return fused, gate
+
+    def forward(
+        self, gnn_emb: torch.Tensor, llm_emb: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
+        h = self.gnn_proj(gnn_emb)
+        s = self.llm_proj(llm_emb)
+        fused, gate = self.fuse(h, s)
+
+        feature_attention = F.softmax(self.feature_attention(fused), dim=1)
+        attended = feature_attention * fused
+
+        edge_emb = self.mlp_hidden(attended)
+        edge_emb = F.relu(edge_emb)
+        edge_emb = F.dropout(edge_emb, p=self.dropout, training=self.training)
+        logits = self.mlp_out(edge_emb)
+
+        diagnostics = {
+            "gate": gate,
+            "feature_attention": feature_attention,
+            "gate_gnn_mean": gate.mean(dim=1),
+            "gate_llm_mean": 1.0 - gate.mean(dim=1),
+            "feature_attention_entropy": -(
+                feature_attention * (feature_attention + 1e-12).log()
+            ).sum(dim=1),
+        }
+        return logits, edge_emb, diagnostics
+
+
 class UnimodalEdgeClassifier(nn.Module):
     """
     MLP classifier for one frozen embedding modality.

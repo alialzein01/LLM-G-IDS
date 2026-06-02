@@ -24,6 +24,29 @@ PROTOCOL_NAMES = {1: "ICMP", 2: "IGMP", 6: "TCP", 17: "UDP"}
 # Attributes to discretize; each is binned per attack type independently
 DISCRETIZE_COLS = ["avg_bytes", "flow_count", "avg_duration"]
 
+SEMANTIC_RELATIONS = {
+    "Benign": "communicated with",
+    "backdoor": "opened backdoor connection to",
+    "ddos": "launched ddos against",
+    "dos": "launched denial of service against",
+    "injection": "attempted injection against",
+    "mitm": "intercepted traffic to",
+    "password": "attempted password attack against",
+    "ransomware": "delivered ransomware traffic to",
+    "scanning": "initiated scan against",
+    "xss": "attempted cross site scripting against",
+    "Normal": "communicated with",
+    "Analysis": "performed analysis traffic against",
+    "Backdoors": "opened backdoor connection to",
+    "DoS": "launched denial of service against",
+    "Exploits": "attempted exploit against",
+    "Fuzzers": "sent fuzzing traffic to",
+    "Generic": "launched generic attack against",
+    "Reconnaissance": "initiated reconnaissance against",
+    "Shellcode": "delivered shellcode traffic to",
+    "Worms": "propagated worm traffic to",
+}
+
 
 def load_triples(csv_path: str) -> pd.DataFrame:
     df = pd.read_csv(csv_path, usecols=TRIPLE_COLS)
@@ -37,8 +60,22 @@ def _discretize_per_attack(df: pd.DataFrame, col: str) -> pd.Series:
     """Bin a numerical column into low/medium/high within each attack type."""
     result = pd.Series("", index=df.index, dtype=str)
     for _, group in df.groupby("Attack", sort=False):
+        if group[col].nunique(dropna=False) <= 1:
+            result.loc[group.index] = "medium"
+            continue
+
         p33 = group[col].quantile(1 / 3)
         p66 = group[col].quantile(2 / 3)
+        if p33 >= p66:
+            ranks = group[col].rank(method="first", pct=True)
+            result.loc[group.index] = pd.cut(
+                ranks,
+                bins=[0.0, 1 / 3, 2 / 3, 1.0],
+                labels=["low", "medium", "high"],
+                include_lowest=True,
+            ).astype(str)
+            continue
+
         bins = [-float("inf"), p33, p66, float("inf")]
         labels = pd.cut(group[col], bins=bins, labels=["low", "medium", "high"])
         result.loc[group.index] = labels.astype(str)
@@ -61,7 +98,10 @@ def discretize(df: pd.DataFrame) -> pd.DataFrame:
 
 def add_relation_names(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["relation_name"] = df["Attack"]
+    df["relation_name"] = df["Attack"].map(SEMANTIC_RELATIONS)
+    if df["relation_name"].isna().any():
+        missing = sorted(df.loc[df["relation_name"].isna(), "Attack"].unique())
+        raise ValueError(f"Missing semantic relation mapping for attacks: {missing}")
     return df
 
 

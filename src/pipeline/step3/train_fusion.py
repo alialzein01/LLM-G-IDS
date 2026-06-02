@@ -14,11 +14,11 @@ from sklearn.preprocessing import StandardScaler
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.models.fusion_classifier import FusionEdgeClassifier
+from src.models.fusion_classifier import AGAFFusionEdgeClassifier
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.metrics import (
-    attention_summary,
     classification_metrics,
+    fusion_diagnostics_summary,
     print_attention_summary,
     print_class_report,
     write_benchmark_summary,
@@ -42,8 +42,8 @@ LLM_DIM = 768
 PROJ_DIM = 128
 HIDDEN_DIM = 128
 DROPOUT = 0.2
-GATE_TEMPERATURE = 1.5
-GATE_ENTROPY_LAMBDA = 0.1
+GATE_ENTROPY_LAMBDA = 0.01
+FEATURE_ATTENTION_ENTROPY_LAMBDA = 0.0
 
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 5e-4
@@ -60,15 +60,14 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
-def _build_model() -> FusionEdgeClassifier:
-    return FusionEdgeClassifier(
+def _build_model() -> AGAFFusionEdgeClassifier:
+    return AGAFFusionEdgeClassifier(
         gnn_dim=GNN_DIM,
         llm_dim=LLM_DIM,
         proj_dim=PROJ_DIM,
         hidden_dim=HIDDEN_DIM,
         num_classes=NUM_CLASSES,
         dropout=DROPOUT,
-        gate_temperature=GATE_TEMPERATURE,
     )
 
 
@@ -103,26 +102,36 @@ def _macro_f1(
 
 
 def _train_step(
-    model: FusionEdgeClassifier,
+    model: AGAFFusionEdgeClassifier,
     gnn_t: torch.Tensor,
     llm_t: torch.Tensor,
     labels: torch.Tensor,
     train_mask: torch.Tensor,
     criterion: nn.Module,
     gate_entropy_lambda: float = GATE_ENTROPY_LAMBDA,
+    feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     model.train()
-    logits, _, attn = model(gnn_t, llm_t)
+    logits, _, diagnostics = model(gnn_t, llm_t)
     cls_loss = criterion(logits[train_mask], labels[train_mask])
-    train_attn = attn[train_mask]
-    entropy = -(train_attn * (train_attn + 1e-12).log()).sum(dim=1).mean()
-    loss = cls_loss - gate_entropy_lambda * entropy
-    return loss, cls_loss.detach(), entropy.detach()
+    train_gate = diagnostics["gate"][train_mask]
+    gate_entropy = -(
+        train_gate * (train_gate + 1e-12).log()
+        + (1.0 - train_gate) * (1.0 - train_gate + 1e-12).log()
+    ).mean()
+    feature_entropy = diagnostics["feature_attention_entropy"][train_mask].mean()
+    loss = (
+        cls_loss
+        - gate_entropy_lambda * gate_entropy
+        - feature_attention_entropy_lambda * feature_entropy
+    )
+    return loss, cls_loss.detach(), gate_entropy.detach()
 
 
-def _attn_means(attn: torch.Tensor, mask: torch.Tensor) -> tuple[float, float]:
-    masked = attn[mask]
-    return float(masked[:, 0].mean().item()), float(masked[:, 1].mean().item())
+def _gate_means(diagnostics: dict[str, torch.Tensor], mask: torch.Tensor) -> tuple[float, float]:
+    gate_gnn = diagnostics["gate_gnn_mean"][mask]
+    gate_llm = diagnostics["gate_llm_mean"][mask]
+    return float(gate_gnn.mean().item()), float(gate_llm.mean().item())
 
 
 def _train_one_fold(
@@ -131,6 +140,8 @@ def _train_one_fold(
     labels: torch.Tensor,
     fold: dict[str, torch.Tensor],
     fold_idx: int,
+    gate_entropy_lambda: float,
+    feature_attention_entropy_lambda: float,
 ) -> dict[str, object]:
     _set_seed(SEED + fold_idx)
 
@@ -158,7 +169,14 @@ def _train_one_fold(
     for epoch in range(1, MAX_EPOCHS + 1):
         optimizer.zero_grad()
         loss, cls_loss, gate_entropy = _train_step(
-            model, gnn_t, llm_t, labels, train_mask, criterion
+            model,
+            gnn_t,
+            llm_t,
+            labels,
+            train_mask,
+            criterion,
+            gate_entropy_lambda=gate_entropy_lambda,
+            feature_attention_entropy_lambda=feature_attention_entropy_lambda,
         )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
@@ -166,10 +184,10 @@ def _train_one_fold(
 
         model.eval()
         with torch.no_grad():
-            eval_logits, _, eval_attn = model(gnn_t, llm_t)
+            eval_logits, _, eval_diagnostics = model(gnn_t, llm_t)
             val_f1 = _macro_f1(eval_logits, labels, val_mask)
-            train_attn_gnn, train_attn_llm = _attn_means(eval_attn, train_mask)
-            val_attn_gnn, val_attn_llm = _attn_means(eval_attn, val_mask)
+            train_gate_gnn, train_gate_llm = _gate_means(eval_diagnostics, train_mask)
+            val_gate_gnn, val_gate_llm = _gate_means(eval_diagnostics, val_mask)
 
         history.append(
             {
@@ -178,10 +196,10 @@ def _train_one_fold(
                 "classification_loss": float(cls_loss.item()),
                 "gate_entropy": float(gate_entropy.item()),
                 "val_macro_f1": val_f1,
-                "train_attn_mean_gnn": train_attn_gnn,
-                "train_attn_mean_llm": train_attn_llm,
-                "val_attn_mean_gnn": val_attn_gnn,
-                "val_attn_mean_llm": val_attn_llm,
+                "train_gate_mean_gnn": train_gate_gnn,
+                "train_gate_mean_llm": train_gate_llm,
+                "val_gate_mean_gnn": val_gate_gnn,
+                "val_gate_mean_llm": val_gate_llm,
             }
         )
 
@@ -190,8 +208,8 @@ def _train_one_fold(
                 f"  fold {fold_idx} | epoch {epoch:3d} | "
                 f"train_loss={loss.item():.4f} | cls_loss={cls_loss.item():.4f} | "
                 f"gate_entropy={gate_entropy.item():.4f} | val_macro_f1={val_f1:.4f} | "
-                f"attn_train=({train_attn_gnn:.3f},{train_attn_llm:.3f}) | "
-                f"attn_val=({val_attn_gnn:.3f},{val_attn_llm:.3f})"
+                f"gate_train=({train_gate_gnn:.3f},{train_gate_llm:.3f}) | "
+                f"gate_val=({val_gate_gnn:.3f},{val_gate_llm:.3f})"
             )
 
         if val_f1 > best_val_f1:
@@ -213,18 +231,19 @@ def _train_one_fold(
 
     model.eval()
     with torch.no_grad():
-        eval_logits, _, attn = model(gnn_t, llm_t)
+        eval_logits, _, diagnostics = model(gnn_t, llm_t)
         test_f1 = _macro_f1(eval_logits, labels, test_mask)
         test_indices = test_mask.nonzero(as_tuple=True)[0].cpu().numpy()
         test_predictions = eval_logits[test_mask].argmax(dim=1).cpu().numpy()
-        test_attn = attn[test_mask]
-        attn_test_mean_gnn = float(test_attn[:, 0].mean().item())
-        attn_test_mean_llm = float(test_attn[:, 1].mean().item())
+        test_gate = diagnostics["gate"][test_mask]
+        test_feature_attention = diagnostics["feature_attention"][test_mask]
+        gate_test_mean_gnn = float(diagnostics["gate_gnn_mean"][test_mask].mean().item())
+        gate_test_mean_llm = float(diagnostics["gate_llm_mean"][test_mask].mean().item())
 
     print(
         f"  fold {fold_idx} | best epoch={best_epoch} | "
         f"best val_macro_f1={best_val_f1:.4f} | test_macro_f1={test_f1:.4f} | "
-        f"attn(gnn,llm)=({attn_test_mean_gnn:.3f}, {attn_test_mean_llm:.3f})"
+        f"gate(gnn,llm)=({gate_test_mean_gnn:.3f}, {gate_test_mean_llm:.3f})"
     )
 
     return {
@@ -233,17 +252,22 @@ def _train_one_fold(
         "best_epoch": best_epoch,
         "best_val_macro_f1": best_val_f1,
         "test_macro_f1": test_f1,
-        "attn_test_mean_gnn": attn_test_mean_gnn,
-        "attn_test_mean_llm": attn_test_mean_llm,
+        "gate_test_mean_gnn": gate_test_mean_gnn,
+        "gate_test_mean_llm": gate_test_mean_llm,
         "test_indices": test_indices.tolist(),
         "test_predictions": test_predictions.tolist(),
-        "test_attention": test_attn.detach().cpu().tolist(),
+        "test_gate": test_gate.detach().cpu().tolist(),
+        "test_feature_attention": test_feature_attention.detach().cpu().tolist(),
     }
 
 
 def _train_final_model(
-    gnn_emb: torch.Tensor, llm_emb: torch.Tensor, labels: torch.Tensor
-) -> tuple[FusionEdgeClassifier, StandardScaler, StandardScaler]:
+    gnn_emb: torch.Tensor,
+    llm_emb: torch.Tensor,
+    labels: torch.Tensor,
+    gate_entropy_lambda: float,
+    feature_attention_entropy_lambda: float,
+) -> tuple[AGAFFusionEdgeClassifier, StandardScaler, StandardScaler]:
     _set_seed(SEED)
     full_mask = torch.ones(labels.shape[0], dtype=torch.bool)
 
@@ -262,7 +286,14 @@ def _train_final_model(
     for epoch in range(1, MAX_EPOCHS + 1):
         optimizer.zero_grad()
         loss, cls_loss, gate_entropy = _train_step(
-            model, gnn_t, llm_t, labels, full_mask, criterion
+            model,
+            gnn_t,
+            llm_t,
+            labels,
+            full_mask,
+            criterion,
+            gate_entropy_lambda=gate_entropy_lambda,
+            feature_attention_entropy_lambda=feature_attention_entropy_lambda,
         )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
@@ -284,6 +315,8 @@ def main(
     splits_path: str = SPLITS_PATH,
     output_dir: str = OUTPUT_DIR,
     dataset: str = "ton_iot",
+    gate_entropy_lambda: float = GATE_ENTROPY_LAMBDA,
+    feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
 ) -> None:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -325,29 +358,47 @@ def main(
     fold_results: list[dict[str, object]] = []
     targets = labels.cpu().numpy()
     pooled_preds = np.full(n_edges, fill_value=-1, dtype=np.int64)
-    pooled_attn = np.full((n_edges, 2), fill_value=np.nan, dtype=np.float32)
+    pooled_gate = np.full((n_edges, PROJ_DIM), fill_value=np.nan, dtype=np.float32)
+    pooled_feature_attention = np.full((n_edges, PROJ_DIM), fill_value=np.nan, dtype=np.float32)
     for fold_idx, fold in enumerate(folds):
         print(f"\n=== Fold {fold_idx} ===")
-        result = _train_one_fold(gnn_emb, llm_emb, labels, fold, fold_idx)
+        result = _train_one_fold(
+            gnn_emb,
+            llm_emb,
+            labels,
+            fold,
+            fold_idx,
+            gate_entropy_lambda,
+            feature_attention_entropy_lambda,
+        )
         fold_results.append(result)
         test_indices = np.array(result["test_indices"], dtype=np.int64)
         pooled_preds[test_indices] = np.array(result["test_predictions"], dtype=np.int64)
-        pooled_attn[test_indices] = np.array(result["test_attention"], dtype=np.float32)
+        pooled_gate[test_indices] = np.array(result["test_gate"], dtype=np.float32)
+        pooled_feature_attention[test_indices] = np.array(
+            result["test_feature_attention"], dtype=np.float32
+        )
 
-    if (pooled_preds < 0).any() or np.isnan(pooled_attn).any():
+    if (
+        (pooled_preds < 0).any()
+        or np.isnan(pooled_gate).any()
+        or np.isnan(pooled_feature_attention).any()
+    ):
         raise RuntimeError("Some edges were not covered by out-of-fold predictions.")
 
     val_f1s = np.array([r["best_val_macro_f1"] for r in fold_results])
     test_f1s = np.array([r["test_macro_f1"] for r in fold_results])
     pooled_metrics = classification_metrics(pooled_preds, targets, label_names)
-    pooled_attention_summary = attention_summary(pooled_attn, targets, label_names)
+    pooled_diagnostics_summary = fusion_diagnostics_summary(
+        pooled_gate, pooled_feature_attention, targets, label_names
+    )
     print("\n=== Cross-validation summary ===")
     print(f"val_macro_f1:  {val_f1s.mean():.4f} ± {val_f1s.std():.4f}")
     print(f"test_macro_f1: {test_f1s.mean():.4f} ± {test_f1s.std():.4f}")
     print(f"pooled_test_macro_f1: {pooled_metrics['overall_macro_f1']:.4f}")
     print_class_report(pooled_preds, targets, label_names)
-    print("\n=== Pooled out-of-fold attention summary ===")
-    print_attention_summary(pooled_attention_summary)
+    print("\n=== Pooled out-of-fold AGAF diagnostics ===")
+    print_attention_summary(pooled_diagnostics_summary)
 
     history_payload = {
         "folds": fold_results,
@@ -355,12 +406,20 @@ def main(
         "val_macro_f1_std": float(val_f1s.std()),
         "test_macro_f1_mean": float(test_f1s.mean()),
         "test_macro_f1_std": float(test_f1s.std()),
+        "gate_entropy_lambda": gate_entropy_lambda,
+        "feature_attention_entropy_lambda": feature_attention_entropy_lambda,
     }
     with open(output_path / "training_history.json", "w") as f:
         json.dump(history_payload, f, indent=2)
 
     print("\n=== Final model ===")
-    final_model, gnn_scaler, llm_scaler = _train_final_model(gnn_emb, llm_emb, labels)
+    final_model, gnn_scaler, llm_scaler = _train_final_model(
+        gnn_emb,
+        llm_emb,
+        labels,
+        gate_entropy_lambda,
+        feature_attention_entropy_lambda,
+    )
 
     torch.save(final_model.state_dict(), output_path / "model.pt")
     torch.save({"gnn": gnn_scaler, "llm": llm_scaler}, output_path / "scalers.pt")
@@ -368,33 +427,41 @@ def main(
     final_model.eval()
     gnn_t, llm_t = _apply_scalers(gnn_emb, llm_emb, gnn_scaler, llm_scaler)
     with torch.no_grad():
-        logits, edge_emb, attn = final_model(gnn_t, llm_t)
+        logits, edge_emb, diagnostics = final_model(gnn_t, llm_t)
         preds = logits.argmax(dim=1).cpu().numpy()
 
     torch.save(edge_emb.detach().cpu(), output_path / "edge_embeddings.pt")
-    torch.save(attn.detach().cpu(), output_path / "attention_weights.pt")
+    torch.save(diagnostics["gate"].detach().cpu(), output_path / "gate_weights.pt")
+    torch.save(
+        diagnostics["feature_attention"].detach().cpu(),
+        output_path / "feature_attention_weights.pt",
+    )
 
-    attn_np = attn.detach().cpu().numpy()
+    gate_np = diagnostics["gate"].detach().cpu().numpy()
+    feature_attention_np = diagnostics["feature_attention"].detach().cpu().numpy()
 
     final_model_train_metrics = classification_metrics(preds, targets, label_names)
-    final_model_train_attention_summary = attention_summary(attn_np, targets, label_names)
+    final_model_train_diagnostics_summary = fusion_diagnostics_summary(
+        gate_np, feature_attention_np, targets, label_names
+    )
 
     print("\nFinal model fit-on-all-edges results (not benchmark performance):")
     print(f"  Accuracy:    {final_model_train_metrics['overall_accuracy']:.4f}")
     print(f"  Macro-F1:    {final_model_train_metrics['overall_macro_f1']:.4f}")
     print(f"  Weighted-F1: {final_model_train_metrics['overall_weighted_f1']:.4f}")
 
-    print("\n=== Final model attention summary (fit-on-all-edges artifact) ===")
-    print_attention_summary(final_model_train_attention_summary)
+    print("\n=== Final model AGAF diagnostics (fit-on-all-edges artifact) ===")
+    print_attention_summary(final_model_train_diagnostics_summary)
 
     metrics_payload = {
         **pooled_metrics,
         "metric_source": "pooled_out_of_fold_test_predictions",
-        "attention_summary": pooled_attention_summary,
+        "fusion_diagnostics_summary": pooled_diagnostics_summary,
         "predictions": pooled_preds.tolist(),
-        "attention_weights": pooled_attn.tolist(),
+        "gate_weights": pooled_gate.tolist(),
+        "feature_attention_weights": pooled_feature_attention.tolist(),
         "final_model_train_metrics": final_model_train_metrics,
-        "final_model_train_attention_summary": final_model_train_attention_summary,
+        "final_model_train_diagnostics_summary": final_model_train_diagnostics_summary,
     }
     with open(output_path / "metrics.json", "w") as f:
         json.dump(metrics_payload, f, indent=2)
@@ -402,19 +469,20 @@ def main(
     write_benchmark_summary(
         output_path,
         dataset=dataset,
-        model_name="entropy_regularized_fusion",
+        model_name="agaf_fusion",
         history_payload=history_payload,
         pooled_metrics=pooled_metrics,
         artifact_paths={
             "model": str(output_path / "model.pt"),
             "scalers": str(output_path / "scalers.pt"),
             "edge_embeddings": str(output_path / "edge_embeddings.pt"),
-            "attention_weights": str(output_path / "attention_weights.pt"),
+            "gate_weights": str(output_path / "gate_weights.pt"),
+            "feature_attention_weights": str(output_path / "feature_attention_weights.pt"),
             "metrics": str(output_path / "metrics.json"),
         },
     )
 
-    print(f"\nSaved model, scalers, embeddings, attention, and metrics to {output_dir}")
+    print(f"\nSaved model, scalers, embeddings, AGAF diagnostics, and metrics to {output_dir}")
 
 
 if __name__ == "__main__":
@@ -425,6 +493,12 @@ if __name__ == "__main__":
     parser.add_argument("--llm-emb-path")
     parser.add_argument("--splits-path")
     parser.add_argument("--output-dir")
+    parser.add_argument("--gate-entropy-lambda", type=float, default=GATE_ENTROPY_LAMBDA)
+    parser.add_argument(
+        "--feature-attention-entropy-lambda",
+        type=float,
+        default=FEATURE_ATTENTION_ENTROPY_LAMBDA,
+    )
     args = parser.parse_args()
 
     config = get_dataset_config(args.dataset)
@@ -435,4 +509,6 @@ if __name__ == "__main__":
         splits_path=args.splits_path or config.splits_path,
         output_dir=args.output_dir or config.fusion_output_dir,
         dataset=args.dataset,
+        gate_entropy_lambda=args.gate_entropy_lambda,
+        feature_attention_entropy_lambda=args.feature_attention_entropy_lambda,
     )
