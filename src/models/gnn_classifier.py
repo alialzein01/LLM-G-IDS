@@ -92,17 +92,25 @@ class GATEdgeClassifier(nn.Module):
         self.mlp_out = nn.Linear(hidden_dim, num_classes)
         self.dropout = dropout
 
-    def forward(
+    def encode_edges(
         self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor:
+        """Return pre-MLP edge representations [E, hidden*2 + edge_attr_dim].
+        Used by GraphSMOTE to oversample at the representation level."""
         h_v = self.encoder(x, edge_index, edge_attr)
-
         src, dst = edge_index[0], edge_index[1]
-        edge_repr = torch.cat([h_v[src], h_v[dst], edge_attr], dim=1)
+        return torch.cat([h_v[src], h_v[dst], edge_attr], dim=1)
 
+    def classify_repr(self, edge_repr: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """MLP head only — takes pre-built edge representations, returns (logits, edge_emb)."""
         edge_emb = self.mlp_hidden(edge_repr)
         edge_emb = F.relu(edge_emb)
         edge_emb = F.dropout(edge_emb, p=self.dropout, training=self.training)
-
         logits = self.mlp_out(edge_emb)
         return logits, edge_emb
+
+    def forward(
+        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        edge_repr = self.encode_edges(x, edge_index, edge_attr)
+        return self.classify_repr(edge_repr)

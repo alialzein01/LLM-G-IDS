@@ -38,7 +38,11 @@ def _print_split_distribution(
 
 
 def create_edge_splits(
-    data: Data, k: int = DEFAULT_K, seed: int = DEFAULT_SEED
+    data: Data,
+    k: int = DEFAULT_K,
+    seed: int = DEFAULT_SEED,
+    output_path: str | Path | None = None,
+    output_dir: str | Path | None = None,
 ) -> list[dict[str, torch.Tensor]]:
     edge_label = data.edge_label
     num_edges = edge_label.shape[0]
@@ -70,9 +74,16 @@ def create_edge_splits(
 
         _print_split_distribution(edge_label, train_mask, val_mask, test_mask, fold_idx)
 
-    output_path = Path(SPLITS_OUTPUT_DIR)
-    output_path.mkdir(parents=True, exist_ok=True)
-    torch.save(folds, output_path / SPLITS_OUTPUT_FILE)
+    if output_path is not None and output_dir is not None:
+        raise ValueError("Pass either output_path or output_dir, not both.")
+
+    if output_path is None:
+        output_path = Path(output_dir or SPLITS_OUTPUT_DIR) / SPLITS_OUTPUT_FILE
+    else:
+        output_path = Path(output_path)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(folds, output_path)
 
     return folds
 

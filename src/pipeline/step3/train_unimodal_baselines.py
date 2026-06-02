@@ -1,22 +1,21 @@
 from __future__ import annotations
 
+import argparse
 import json
 import sys
-import argparse
 from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn as nn
 from sklearn.metrics import f1_score
-from torch_geometric.data import Data
+from sklearn.preprocessing import StandardScaler
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.models.gnn_classifier import GATEdgeClassifier
-import torch.nn as nn
-
-from src.pipeline.common.datasets import DATASETS, get_dataset_config
+from src.models.fusion_classifier import UnimodalEdgeClassifier
+from src.pipeline.common.datasets import DATASETS, DatasetConfig, get_dataset_config
 from src.pipeline.common.metrics import (
     classification_metrics,
     print_class_report,
@@ -30,14 +29,8 @@ from src.pipeline.common.splits import (
 )
 
 
-DATA_PATH = "data/ton_iot/processed/step1/pyg_data.pt"
-SPLITS_PATH = "data/ton_iot/processed/splits/folds.pt"
-OUTPUT_DIR = "data/ton_iot/processed/step3_gnn"
-
-IN_DIM = 10
-HIDDEN_DIM = 64
-EDGE_ATTR_DIM = 5
-HEADS = 4
+PROJ_DIM = 128
+HIDDEN_DIM = 128
 DROPOUT = 0.2
 
 LEARNING_RATE = 1e-3
@@ -49,18 +42,7 @@ LOG_EVERY = 20
 SEED = 42
 FOCAL_GAMMA = 2.0
 
-LABEL_NAMES = [
-    "Benign",
-    "backdoor",
-    "ddos",
-    "dos",
-    "injection",
-    "mitm",
-    "password",
-    "ransomware",
-    "scanning",
-    "xss",
-]
+MODALITIES = ("gnn", "llm", "both")
 
 
 def _set_seed(seed: int) -> None:
@@ -68,20 +50,25 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
-def _build_model() -> GATEdgeClassifier:
-    return GATEdgeClassifier(
-        in_dim=IN_DIM,
+def _build_model(in_dim: int) -> UnimodalEdgeClassifier:
+    return UnimodalEdgeClassifier(
+        in_dim=in_dim,
+        proj_dim=PROJ_DIM,
         hidden_dim=HIDDEN_DIM,
-        edge_attr_dim=EDGE_ATTR_DIM,
         num_classes=NUM_CLASSES,
-        heads=HEADS,
         dropout=DROPOUT,
     )
 
 
-def _macro_f1(
-    logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor
-) -> float:
+def _fit_scaler(emb: torch.Tensor, train_mask: torch.Tensor) -> StandardScaler:
+    return StandardScaler().fit(emb.numpy()[train_mask.numpy()])
+
+
+def _apply_scaler(emb: torch.Tensor, scaler: StandardScaler) -> torch.Tensor:
+    return torch.from_numpy(scaler.transform(emb.numpy())).float()
+
+
+def _macro_f1(logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor) -> float:
     preds = logits[mask].argmax(dim=1).cpu().numpy()
     targets = labels[mask].cpu().numpy()
     return float(
@@ -90,31 +77,38 @@ def _macro_f1(
 
 
 def _train_step(
-    model: GATEdgeClassifier,
-    data: Data,
+    model: UnimodalEdgeClassifier,
+    emb_t: torch.Tensor,
+    labels: torch.Tensor,
     train_mask: torch.Tensor,
     criterion: nn.Module,
 ) -> torch.Tensor:
     model.train()
-    logits, _ = model(data.x, data.edge_index, data.edge_attr)
-    return criterion(logits[train_mask], data.edge_label[train_mask])
+    logits, _ = model(emb_t)
+    return criterion(logits[train_mask], labels[train_mask])
 
 
 def _train_one_fold(
-    data: Data,
+    emb: torch.Tensor,
+    labels: torch.Tensor,
     fold: dict[str, torch.Tensor],
     fold_idx: int,
+    in_dim: int,
 ) -> dict[str, object]:
     _set_seed(SEED + fold_idx)
-    model = _build_model()
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
-    )
 
     train_mask = fold["train_mask"]
     val_mask = fold["val_mask"]
+    test_mask = fold["test_mask"]
 
-    class_weights = get_class_weights(data.edge_label, train_mask)
+    scaler = _fit_scaler(emb, train_mask)
+    emb_t = _apply_scaler(emb, scaler)
+
+    model = _build_model(in_dim)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
+    )
+    class_weights = get_class_weights(labels, train_mask)
     criterion = FocalLoss(alpha=class_weights, gamma=FOCAL_GAMMA)
 
     history: list[dict[str, float]] = []
@@ -125,15 +119,15 @@ def _train_one_fold(
 
     for epoch in range(1, MAX_EPOCHS + 1):
         optimizer.zero_grad()
-        loss = _train_step(model, data, train_mask, criterion)
+        loss = _train_step(model, emb_t, labels, train_mask, criterion)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         optimizer.step()
 
         model.eval()
         with torch.no_grad():
-            eval_logits, _ = model(data.x, data.edge_index, data.edge_attr)
-            val_f1 = _macro_f1(eval_logits, data.edge_label, val_mask)
+            eval_logits, _ = model(emb_t)
+            val_f1 = _macro_f1(eval_logits, labels, val_mask)
 
         history.append(
             {"epoch": epoch, "train_loss": float(loss.item()), "val_macro_f1": val_f1}
@@ -164,9 +158,8 @@ def _train_one_fold(
 
     model.eval()
     with torch.no_grad():
-        eval_logits, _ = model(data.x, data.edge_index, data.edge_attr)
-        test_mask = fold["test_mask"]
-        test_f1 = _macro_f1(eval_logits, data.edge_label, test_mask)
+        eval_logits, _ = model(emb_t)
+        test_f1 = _macro_f1(eval_logits, labels, test_mask)
         test_indices = test_mask.nonzero(as_tuple=True)[0].cpu().numpy()
         test_predictions = eval_logits[test_mask].argmax(dim=1).cpu().numpy()
 
@@ -186,21 +179,25 @@ def _train_one_fold(
     }
 
 
-def _train_final_model(data: Data) -> GATEdgeClassifier:
+def _train_final_model(
+    emb: torch.Tensor, labels: torch.Tensor, in_dim: int
+) -> tuple[UnimodalEdgeClassifier, StandardScaler]:
     _set_seed(SEED)
-    model = _build_model()
+    full_mask = torch.ones(labels.shape[0], dtype=torch.bool)
+    scaler = _fit_scaler(emb, full_mask)
+    emb_t = _apply_scaler(emb, scaler)
+
+    model = _build_model(in_dim)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
-
-    full_mask = torch.ones(data.edge_label.shape[0], dtype=torch.bool)
-    class_weights = get_class_weights(data.edge_label, full_mask)
+    class_weights = get_class_weights(labels, full_mask)
     criterion = FocalLoss(alpha=class_weights, gamma=FOCAL_GAMMA)
 
     print("Training final model on all edges:")
     for epoch in range(1, MAX_EPOCHS + 1):
         optimizer.zero_grad()
-        loss = _train_step(model, data, full_mask, criterion)
+        loss = _train_step(model, emb_t, labels, full_mask, criterion)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         optimizer.step()
@@ -208,48 +205,61 @@ def _train_final_model(data: Data) -> GATEdgeClassifier:
         if epoch % LOG_EVERY == 0 or epoch == 1:
             print(f"  final | epoch {epoch:3d} | train_loss={loss.item():.4f}")
 
-    return model
+    return model, scaler
 
 
-def main(
-    data_path: str = DATA_PATH,
-    splits_path: str = SPLITS_PATH,
-    output_dir: str = OUTPUT_DIR,
-    dataset: str = "ton_iot",
-) -> None:
-    output_path = Path(output_dir)
+def _load_embeddings(config: DatasetConfig, modality: str) -> tuple[torch.Tensor, int, str]:
+    if modality == "gnn":
+        path = config.gnn_embedding_path
+        in_dim = config.gnn_dim
+    elif modality == "llm":
+        path = config.llm_embedding_path
+        in_dim = config.llm_dim
+    else:
+        raise ValueError(f"Unsupported single modality: {modality}")
+
+    print(f"Loading {modality.upper()} embeddings from {path}")
+    emb = torch.load(path, weights_only=True)
+    return emb, in_dim, path
+
+
+def _train_modality(dataset: str, modality: str) -> None:
+    config = get_dataset_config(dataset)
+    output_path = Path(config.baseline_output_dir) / f"{modality}_embedding"
     output_path.mkdir(parents=True, exist_ok=True)
 
-    print(f"Loading graph data from {data_path}")
-    data: Data = torch.load(data_path, weights_only=False)
-    config = get_dataset_config(dataset)
-
-    # Derive label names from the mapping stored in the Data object
+    print(f"Loading graph data from {config.graph_path}")
+    data = torch.load(config.graph_path, weights_only=False)
+    labels = data.edge_label
+    n_edges = labels.shape[0]
     inv_mapping = {v: k for k, v in data.label_mapping.items()}
     label_names = [inv_mapping.get(i, config.label_names[i]) for i in range(NUM_CLASSES)]
 
-    splits_file = Path(splits_path)
+    emb, in_dim, emb_path = _load_embeddings(config, modality)
+    assert emb.shape == (n_edges, in_dim), (
+        f"{modality} embeddings shape mismatch: {tuple(emb.shape)} vs ({n_edges}, {in_dim})"
+    )
+
+    splits_file = Path(config.splits_path)
     if splits_file.exists():
-        print(f"Loading splits from {splits_path}")
-        folds = torch.load(splits_path, weights_only=False)
-        n_edges = data.edge_label.shape[0]
-        split_size = folds[0]["train_mask"].shape[0]
-        if split_size != n_edges:
-            raise ValueError(
-                f"Stale splits detected: splits have {split_size} edges but "
-                f"graph has {n_edges}. Delete {splits_path} and re-run to regenerate."
-            )
+        print(f"Loading splits from {config.splits_path}")
+        folds = torch.load(config.splits_path, weights_only=False)
     else:
-        print(f"Splits not found — creating new splits at {splits_path}")
-        splits_file.parent.mkdir(parents=True, exist_ok=True)
-        folds = create_edge_splits(data, output_path=splits_path)
+        print(f"Splits not found — creating new splits at {config.splits_path}")
+        folds = create_edge_splits(data, output_path=config.splits_path)
+
+    split_size = folds[0]["train_mask"].shape[0]
+    if split_size != n_edges:
+        raise ValueError(
+            f"Stale splits detected: splits have {split_size} edges but graph has {n_edges}."
+        )
 
     fold_results: list[dict[str, object]] = []
-    targets = data.edge_label.cpu().numpy()
-    pooled_preds = np.full(data.edge_label.shape[0], fill_value=-1, dtype=np.int64)
+    targets = labels.cpu().numpy()
+    pooled_preds = np.full(n_edges, fill_value=-1, dtype=np.int64)
     for fold_idx, fold in enumerate(folds):
-        print(f"\n=== Fold {fold_idx} ===")
-        result = _train_one_fold(data, fold, fold_idx)
+        print(f"\n=== {modality.upper()} fold {fold_idx} ===")
+        result = _train_one_fold(emb, labels, fold, fold_idx, in_dim)
         fold_results.append(result)
         pooled_preds[np.array(result["test_indices"], dtype=np.int64)] = np.array(
             result["test_predictions"], dtype=np.int64
@@ -261,9 +271,10 @@ def main(
     val_f1s = np.array([r["best_val_macro_f1"] for r in fold_results])
     test_f1s = np.array([r["test_macro_f1"] for r in fold_results])
     pooled_metrics = classification_metrics(pooled_preds, targets, label_names)
+
     print("\n=== Cross-validation summary ===")
-    print(f"val_macro_f1:  {val_f1s.mean():.4f} ± {val_f1s.std():.4f}")
-    print(f"test_macro_f1: {test_f1s.mean():.4f} ± {test_f1s.std():.4f}")
+    print(f"val_macro_f1:  {val_f1s.mean():.4f} +/- {val_f1s.std():.4f}")
+    print(f"test_macro_f1: {test_f1s.mean():.4f} +/- {test_f1s.std():.4f}")
     print(f"pooled_test_macro_f1: {pooled_metrics['overall_macro_f1']:.4f}")
     print_class_report(pooled_preds, targets, label_names)
 
@@ -278,23 +289,18 @@ def main(
         json.dump(history_payload, f, indent=2)
 
     print("\n=== Final model ===")
-    final_model = _train_final_model(data)
-
+    final_model, scaler = _train_final_model(emb, labels, in_dim)
     torch.save(final_model.state_dict(), output_path / "model.pt")
+    torch.save(scaler, output_path / "scaler.pt")
 
     final_model.eval()
+    emb_t = _apply_scaler(emb, scaler)
     with torch.no_grad():
-        logits, edge_emb = final_model(data.x, data.edge_index, data.edge_attr)
-        preds = logits.argmax(dim=1).cpu().numpy()
-
+        logits, edge_emb = final_model(emb_t)
+        final_preds = logits.argmax(dim=1).cpu().numpy()
     torch.save(edge_emb.detach().cpu(), output_path / "edge_embeddings.pt")
 
-    final_model_train_metrics = classification_metrics(preds, targets, label_names)
-
-    print(f"\nFinal model fit-on-all-edges results (not benchmark performance):")
-    print(f"  Accuracy:    {final_model_train_metrics['overall_accuracy']:.4f}")
-    print(f"  Macro-F1:    {final_model_train_metrics['overall_macro_f1']:.4f}")
-    print(f"  Weighted-F1: {final_model_train_metrics['overall_weighted_f1']:.4f}")
+    final_model_train_metrics = classification_metrics(final_preds, targets, label_names)
 
     metrics_payload = {
         **pooled_metrics,
@@ -308,31 +314,34 @@ def main(
     write_benchmark_summary(
         output_path,
         dataset=dataset,
-        model_name="end_to_end_gnn",
+        model_name=f"frozen_{modality}_embedding_mlp",
         history_payload=history_payload,
         pooled_metrics=pooled_metrics,
         artifact_paths={
+            "source_embeddings": emb_path,
             "model": str(output_path / "model.pt"),
+            "scaler": str(output_path / "scaler.pt"),
             "edge_embeddings": str(output_path / "edge_embeddings.pt"),
             "metrics": str(output_path / "metrics.json"),
         },
     )
 
-    print(f"\nSaved model, embeddings, and metrics to {output_dir}")
+    print(f"\nSaved {modality.upper()} baseline artifacts to {output_path}")
+
+
+def main(dataset: str = "ton_iot", modality: str = "both") -> None:
+    modalities = ("gnn", "llm") if modality == "both" else (modality,)
+    for selected in modalities:
+        _train_modality(dataset, selected)
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Train frozen-embedding baselines.")
+    parser.add_argument("--dataset", choices=sorted(DATASETS), default="ton_iot")
+    parser.add_argument("--modality", choices=MODALITIES, default="both")
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train the GNN edge classifier.")
-    parser.add_argument("--dataset", choices=sorted(DATASETS), default="ton_iot")
-    parser.add_argument("--data-path")
-    parser.add_argument("--splits-path")
-    parser.add_argument("--output-dir")
-    args = parser.parse_args()
-
-    config = get_dataset_config(args.dataset)
-    main(
-        data_path=args.data_path or config.graph_path,
-        splits_path=args.splits_path or config.splits_path,
-        output_dir=args.output_dir or config.gnn_output_dir,
-        dataset=args.dataset,
-    )
+    args = _parse_args()
+    main(dataset=args.dataset, modality=args.modality)

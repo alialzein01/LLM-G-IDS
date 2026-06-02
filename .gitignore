@@ -4,3 +4,15 @@ __pycache__/
 .DS_Store
 .cursor/
 .env
+AGENTS.md
+todo.md
+.venv/
+.vscode/
+.idea/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+CLAUDE.md
