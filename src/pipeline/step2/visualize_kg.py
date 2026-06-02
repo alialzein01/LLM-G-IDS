@@ -11,16 +11,23 @@ NL_PATH = "data/ton_iot/processed/step2/kg_triples_nl.txt"
 OUTPUT_HTML = "data/ton_iot/processed/step2/kg_graph.html"
 
 RELATION_COLORS = {
-    "Benign":      "#4CAF50",
-    "backdoor":    "#9C27B0",
-    "ddos":        "#F44336",
-    "dos":         "#FF5722",
-    "injection":   "#FF9800",
-    "mitm":        "#00BCD4",
-    "password":    "#3F51B5",
-    "ransomware":  "#E91E63",
-    "scanning":    "#FFC107",
-    "xss":         "#009688",
+    "communicated with": "#4CAF50",
+    "opened backdoor connection to": "#9C27B0",
+    "launched ddos against": "#F44336",
+    "launched denial of service against": "#FF5722",
+    "attempted injection against": "#FF9800",
+    "intercepted traffic to": "#00BCD4",
+    "attempted password attack against": "#3F51B5",
+    "delivered ransomware traffic to": "#E91E63",
+    "initiated scan against": "#FFC107",
+    "attempted cross site scripting against": "#009688",
+    "performed analysis traffic against": "#607D8B",
+    "attempted exploit against": "#795548",
+    "sent fuzzing traffic to": "#CDDC39",
+    "launched generic attack against": "#673AB7",
+    "initiated reconnaissance against": "#FFC107",
+    "delivered shellcode traffic to": "#E91E63",
+    "propagated worm traffic to": "#F44336",
 }
 
 LEVEL_WIDTH = {"low": 1, "medium": 3, "high": 5}

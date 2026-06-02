@@ -30,7 +30,7 @@ def main(dataset: str = "ton_iot") -> None:
             "frozen_llm_embedding_mlp",
             Path(config.baseline_output_dir) / "llm_embedding" / "benchmark_summary.json",
         ),
-        ("entropy_regularized_fusion", Path(config.fusion_output_dir) / "benchmark_summary.json"),
+        ("agaf_fusion", Path(config.fusion_output_dir) / "benchmark_summary.json"),
     ]
 
     print(f"=== Benchmark comparison: {config.display_name} ===")

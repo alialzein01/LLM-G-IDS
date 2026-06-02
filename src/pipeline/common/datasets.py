@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class DatasetConfig:
     key: str
     display_name: str
+    phase1_input_path: str
     graph_path: str
     aggregated_edges_path: str
     kg_csv_path: str
@@ -27,6 +28,7 @@ DATASETS: dict[str, DatasetConfig] = {
     "ton_iot": DatasetConfig(
         key="ton_iot",
         display_name="NF-ToN-IoT",
+        phase1_input_path="data/ton_iot/raw/NF-ToN-IoT.csv",
         graph_path="data/ton_iot/processed/step1/pyg_data.pt",
         aggregated_edges_path="data/ton_iot/processed/step1/aggregated_edges.csv",
         kg_csv_path="data/ton_iot/processed/step2/kg_triples.csv",
@@ -53,6 +55,7 @@ DATASETS: dict[str, DatasetConfig] = {
     "unsw_nb15": DatasetConfig(
         key="unsw_nb15",
         display_name="NF-UNSW-NB15",
+        phase1_input_path="data/unsw_nb15/processed/step0/NF-UNSW-NB15-normalized.csv",
         graph_path="data/unsw_nb15/processed/step1/pyg_data.pt",
         aggregated_edges_path="data/unsw_nb15/processed/step1/aggregated_edges.csv",
         kg_csv_path="data/unsw_nb15/processed/step2/kg_triples.csv",

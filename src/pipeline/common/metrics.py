@@ -71,6 +71,48 @@ def attention_summary(
     return summary
 
 
+def fusion_diagnostics_summary(
+    gate: np.ndarray,
+    feature_attention: np.ndarray,
+    targets: np.ndarray,
+    label_names: list[str] | tuple[str, ...],
+) -> list[dict[str, Any]]:
+    feature_entropy = -(
+        feature_attention * np.log(feature_attention + 1e-12)
+    ).sum(axis=1)
+    gate_gnn = gate.mean(axis=1)
+    gate_llm = 1.0 - gate_gnn
+
+    summary: list[dict[str, Any]] = []
+    for cls, class_name in enumerate(label_names):
+        cls_mask = targets == cls
+        support = int(cls_mask.sum())
+        if support == 0:
+            summary.append(
+                {
+                    "class_id": cls,
+                    "class_name": class_name,
+                    "support": 0,
+                    "gate_gnn_mean": float("nan"),
+                    "gate_llm_mean": float("nan"),
+                    "feature_attention_entropy_mean": float("nan"),
+                }
+            )
+            continue
+
+        summary.append(
+            {
+                "class_id": cls,
+                "class_name": class_name,
+                "support": support,
+                "gate_gnn_mean": float(gate_gnn[cls_mask].mean()),
+                "gate_llm_mean": float(gate_llm[cls_mask].mean()),
+                "feature_attention_entropy_mean": float(feature_entropy[cls_mask].mean()),
+            }
+        )
+    return summary
+
+
 def print_class_report(
     preds: np.ndarray,
     targets: np.ndarray,
@@ -89,16 +131,33 @@ def print_class_report(
 
 
 def print_attention_summary(rows: list[dict[str, Any]]) -> None:
-    print(f"\n  {'Class':<16} {'Support':>8} {'attn(GNN)':>10} {'attn(LLM)':>10}")
-    print(f"  {'-'*48}")
+    has_gate = bool(rows) and "gate_gnn_mean" in rows[0]
+    if has_gate:
+        print(
+            f"\n  {'Class':<16} {'Support':>8} {'gate(GNN)':>10} "
+            f"{'gate(LLM)':>10} {'feat H':>10}"
+        )
+        print(f"  {'-'*60}")
+    else:
+        print(f"\n  {'Class':<16} {'Support':>8} {'attn(GNN)':>10} {'attn(LLM)':>10}")
+        print(f"  {'-'*48}")
+
     for row in sorted(rows, key=lambda r: -int(r["support"])):
         if int(row["support"]) == 0:
             continue
-        print(
-            f"  {row['class_name']:<16} {int(row['support']):>8d} "
-            f"{float(row['attn_gnn_mean']):>10.4f} "
-            f"{float(row['attn_llm_mean']):>10.4f}"
-        )
+        if has_gate:
+            print(
+                f"  {row['class_name']:<16} {int(row['support']):>8d} "
+                f"{float(row['gate_gnn_mean']):>10.4f} "
+                f"{float(row['gate_llm_mean']):>10.4f} "
+                f"{float(row['feature_attention_entropy_mean']):>10.4f}"
+            )
+        else:
+            print(
+                f"  {row['class_name']:<16} {int(row['support']):>8d} "
+                f"{float(row['attn_gnn_mean']):>10.4f} "
+                f"{float(row['attn_llm_mean']):>10.4f}"
+            )
 
 
 def write_benchmark_summary(

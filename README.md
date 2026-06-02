@@ -119,18 +119,67 @@ python -m src.pipeline.step3.train_unimodal_baselines --dataset ton_iot
 python -m src.pipeline.step3.train_unimodal_baselines --dataset unsw_nb15
 ```
 
-Train entropy-regularized fusion:
+Train AGAF fusion:
 
 ```bash
 python -m src.pipeline.step3.train_fusion --dataset ton_iot
 python -m src.pipeline.step3.train_fusion --dataset unsw_nb15
 ```
 
+### AGAF Fusion
+
+AGAF, Adaptive Gated Attention Fusion, is the Phase 1 fusion module. It combines
+edge-level structural and semantic representations:
+
+```text
+h_e = structural edge embedding from the GNN path
+s_e = semantic edge embedding from the label-free KG sentence encoder
+```
+
+Both embeddings are projected to the same dimension. AGAF then computes a
+feature-wise gate from `[h_e; s_e; |h_e - s_e|; h_e * s_e]`, fuses the two
+modalities dimension by dimension, and applies feature-wise attention before
+classification. The gate summaries show how the model used structural versus
+semantic evidence, but those summaries are diagnostic rather than causal proof.
+
 Compare results:
 
 ```bash
 python -m src.pipeline.step3.compare_results --dataset ton_iot
 python -m src.pipeline.step3.compare_results --dataset unsw_nb15
+```
+
+### Phase Validation and Dashboard
+
+Each phase has a dataset-aware validator that writes JSON, Markdown, and approval
+manifest files under `data/<dataset>/processed/reports/phase<N>/`.
+
+```bash
+python -m src.pipeline.phase1_validate --dataset ton_iot
+python -m src.pipeline.phase1_validate --dataset unsw_nb15
+python -m src.pipeline.phase2_validate --dataset ton_iot
+python -m src.pipeline.phase2_validate --dataset unsw_nb15
+python -m src.pipeline.phase3_validate --dataset ton_iot
+python -m src.pipeline.phase3_validate --dataset unsw_nb15
+python -m src.pipeline.phase4_validate --dataset ton_iot
+python -m src.pipeline.phase4_validate --dataset unsw_nb15
+```
+
+Phase 4 is intentionally strict: fusion is approved only when pooled macro-F1
+beats both the GATv2 and CySecBERT baselines on the same dataset. If the stored
+metrics do not satisfy that condition, the validator writes a failed approval
+manifest instead of approving the phase.
+
+Generate the local dashboard:
+
+```bash
+python -m src.pipeline.dashboard
+```
+
+This writes `data/dashboard/index.html`. To serve it locally:
+
+```bash
+python -m src.pipeline.dashboard --serve --port 8765
 ```
 
 ## Reading Results
