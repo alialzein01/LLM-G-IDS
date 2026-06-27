@@ -12,7 +12,7 @@ from torch_geometric.data import Data
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.models.gnn_classifier import GATEdgeClassifier
+from src.models.gnn_classifier import GATEdgeClassifier, VARIANT_NAMES
 import torch.nn as nn
 
 from src.pipeline.common.splits import (
@@ -30,11 +30,12 @@ HISTORY_PATH = "data/ton_iot/processed/step3_gnn/training_history.json"
 IN_DIM = 10
 HIDDEN_DIM = 64
 EDGE_ATTR_DIM = 5
-HEADS = 4
+HEADS = 8
 DROPOUT = 0.2
 MAX_EPOCHS = 300
 GRAD_CLIP = 1.0
 SEED = 42
+AUXILIARY_DETECTOR_LOSS_WEIGHT = 0.30
 
 LABEL_NAMES = [
     "Benign",
@@ -87,8 +88,13 @@ def _train_fold_for_eval(
     for epoch in range(1, max_epochs + 1):
         model.train()
         optimizer.zero_grad()
-        logits, _ = model(data.x, data.edge_index, data.edge_attr)
-        loss = criterion(logits[train_mask], data.edge_label[train_mask])
+        logits, _, aux_logits = model.forward_with_aux(data.x, data.edge_index, data.edge_attr)
+        labels = data.edge_label[train_mask]
+        loss = criterion(logits[train_mask], labels)
+        aux_loss = torch.stack(
+            [criterion(aux_logits[name][train_mask], labels) for name in VARIANT_NAMES]
+        ).mean()
+        loss = loss + AUXILIARY_DETECTOR_LOSS_WEIGHT * aux_loss
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         optimizer.step()
