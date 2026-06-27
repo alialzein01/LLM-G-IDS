@@ -13,7 +13,7 @@ from torch_geometric.data import Data
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.models.gnn_classifier import GATEdgeClassifier
+from src.models.gnn_classifier import GATEdgeClassifier, VARIANT_NAMES
 import torch.nn as nn
 
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
@@ -37,8 +37,9 @@ OUTPUT_DIR = "data/ton_iot/processed/step3_gnn"
 IN_DIM = 10
 HIDDEN_DIM = 64
 EDGE_ATTR_DIM = 5
-HEADS = 4
+HEADS = 8
 DROPOUT = 0.2
+AUXILIARY_DETECTOR_LOSS_WEIGHT = 0.30
 
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 5e-4
@@ -96,8 +97,13 @@ def _train_step(
     criterion: nn.Module,
 ) -> torch.Tensor:
     model.train()
-    logits, _ = model(data.x, data.edge_index, data.edge_attr)
-    return criterion(logits[train_mask], data.edge_label[train_mask])
+    logits, _, aux_logits = model.forward_with_aux(data.x, data.edge_index, data.edge_attr)
+    labels = data.edge_label[train_mask]
+    loss = criterion(logits[train_mask], labels)
+    aux_loss = torch.stack(
+        [criterion(aux_logits[name][train_mask], labels) for name in VARIANT_NAMES]
+    ).mean()
+    return loss + AUXILIARY_DETECTOR_LOSS_WEIGHT * aux_loss
 
 
 def _train_one_fold(

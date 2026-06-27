@@ -19,6 +19,10 @@ class DatasetConfig:
     fusion_output_dir: str
     baseline_output_dir: str
     label_names: tuple[str, ...]
+    feedback_output_dir: str = ""
+    prototypes_path: str = ""
+    feedback_embedding_path: str = ""
+    strong_modality: str = ""
     num_classes: int = 10
     gnn_dim: int = 64
     llm_dim: int = 768
@@ -39,6 +43,10 @@ DATASETS: dict[str, DatasetConfig] = {
         llm_embedding_path="data/ton_iot/processed/step3_llm/edge_embeddings.pt",
         fusion_output_dir="data/ton_iot/processed/step3_fusion",
         baseline_output_dir="data/ton_iot/processed/step3_baselines",
+        feedback_output_dir="data/ton_iot/processed/step4_feedback",
+        prototypes_path="data/ton_iot/processed/step4_feedback/prototypes.pt",
+        feedback_embedding_path="data/ton_iot/processed/step4_feedback/feedback_weights.pt",
+        strong_modality="llm",
         label_names=(
             "Benign",
             "backdoor",
@@ -66,6 +74,10 @@ DATASETS: dict[str, DatasetConfig] = {
         llm_embedding_path="data/unsw_nb15/processed/step3_llm/edge_embeddings.pt",
         fusion_output_dir="data/unsw_nb15/processed/step3_fusion",
         baseline_output_dir="data/unsw_nb15/processed/step3_baselines",
+        feedback_output_dir="data/unsw_nb15/processed/step4_feedback",
+        prototypes_path="data/unsw_nb15/processed/step4_feedback/prototypes.pt",
+        feedback_embedding_path="data/unsw_nb15/processed/step4_feedback/feedback_weights.pt",
+        strong_modality="gnn",
         label_names=(
             "Normal",
             "Analysis",
