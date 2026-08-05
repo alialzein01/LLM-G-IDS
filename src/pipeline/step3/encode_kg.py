@@ -17,6 +17,10 @@ BATCH_SIZE = 32
 
 
 def _select_device() -> torch.device:
+    # Set IDS_FORCE_CPU=1 to pin encoding to CPU. MPS and CPU give slightly
+    # different embeddings, which changes every downstream number.
+    if os.environ.get("IDS_FORCE_CPU") == "1":
+        return torch.device("cpu")
     if torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")

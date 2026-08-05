@@ -9,3 +9,10 @@ tqdm>=4.65
 pyvis>=0.3
 transformers>=4.40
 python-dotenv>=1.0
+
+# Needed to run notebooks/unsw_nb15_pipeline_walkthrough.ipynb.
+# jinja2 is what pandas' .style.format() renders through (last cell).
+jupyterlab>=4.0
+ipykernel>=6.29
+ipywidgets>=8.1
+jinja2>=3.1

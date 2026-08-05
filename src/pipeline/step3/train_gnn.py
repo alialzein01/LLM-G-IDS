@@ -228,6 +228,8 @@ def main(
 
     print(f"Loading graph data from {data_path}")
     data: Data = torch.load(data_path, weights_only=False)
+    global IN_DIM
+    IN_DIM = data.x.shape[1]  # derive from graph (supports pruned node features)
     config = get_dataset_config(dataset)
 
     # Derive label names from the mapping stored in the Data object

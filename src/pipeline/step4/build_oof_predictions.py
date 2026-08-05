@@ -176,6 +176,8 @@ def _train_fold_capture_logits(
 def build_oof_logits(dataset: str) -> Path:
     config = get_dataset_config(dataset)
     data: Data = torch.load(config.graph_path, weights_only=False)
+    global IN_DIM
+    IN_DIM = data.x.shape[1]  # derive from graph (supports pruned node features)
     folds = torch.load(config.splits_path, weights_only=False)
 
     num_edges = data.edge_label.shape[0]

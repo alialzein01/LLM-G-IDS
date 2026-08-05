@@ -95,6 +95,7 @@ class AGAFFusionEdgeClassifier(nn.Module):
         hidden_dim: int = DEFAULT_HIDDEN_DIM,
         num_classes: int = DEFAULT_NUM_CLASSES,
         dropout: float = DEFAULT_DROPOUT,
+        head_fusion: bool = False,
     ) -> None:
         super().__init__()
         self.gnn_proj = ModalityProjector(gnn_dim, proj_dim)
@@ -105,6 +106,25 @@ class AGAFFusionEdgeClassifier(nn.Module):
         self.mlp_hidden = nn.Linear(proj_dim, hidden_dim)
         self.mlp_out = nn.Linear(hidden_dim, num_classes)
         self.dropout = dropout
+
+        # M3: confidence-gated late fusion of the trained LLM head logits. When
+        # enabled, the semantic modality is fed as the LLM head's per-fold OOF
+        # logits (llm_dim == num_classes) and those logits are re-injected at the
+        # output through a learned per-edge gate, so the fusion's floor is the
+        # LLM head itself and the GNN branch only has to add lift. Mirrors the
+        # output fusion the feedback loop already uses.
+        self.head_fusion = head_fusion
+        self.num_classes = num_classes
+        if head_fusion:
+            # Per-class, per-example gate over the two views of an edge: the fused
+            # GNN+semantic correction and the LLM head's own verdict. Its inputs
+            # are the fused edge embedding and the head logits, matching what
+            # forward() passes in.
+            self.head_gate = nn.Linear(hidden_dim + num_classes, num_classes)
+            # Init so the gate starts ~0.95 on the LLM head (its floor) and only
+            # shifts mass to the fused view where that reduces loss.
+            nn.init.zeros_(self.head_gate.weight)
+            nn.init.constant_(self.head_gate.bias, 3.0)
 
     def fuse(
         self, h_proj: torch.Tensor, s_proj: torch.Tensor
@@ -117,7 +137,10 @@ class AGAFFusionEdgeClassifier(nn.Module):
         return fused, gate
 
     def forward(
-        self, gnn_emb: torch.Tensor, llm_emb: torch.Tensor
+        self,
+        gnn_emb: torch.Tensor,
+        llm_emb: torch.Tensor,
+        head_logits: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         h = self.gnn_proj(gnn_emb)
         s = self.llm_proj(llm_emb)
@@ -140,6 +163,15 @@ class AGAFFusionEdgeClassifier(nn.Module):
                 feature_attention * (feature_attention + 1e-12).log()
             ).sum(dim=1),
         }
+
+        # M3 late fusion: blend the GNN-informed logits with the LLM head's own
+        # verdict via a learned per-edge gate g in [0, 1]. g -> 1 recovers the
+        # LLM head exactly (the floor); g -> 0 trusts the fused GNN+semantic head.
+        if self.head_fusion and head_logits is not None:
+            g = torch.sigmoid(self.head_gate(torch.cat([edge_emb, head_logits], dim=1)))
+            logits = (1.0 - g) * logits + g * head_logits
+            diagnostics["head_gate_mean"] = g.mean(dim=1)
+
         return logits, edge_emb, diagnostics
 
 

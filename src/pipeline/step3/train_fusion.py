@@ -60,14 +60,21 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
+# M3: when True, AGAF's semantic modality is the trained LLM head's per-fold OOF
+# logits (dim == NUM_CLASSES) and those logits are re-injected at the output via a
+# learned gate (see AGAFFusionEdgeClassifier.head_fusion). Set in main().
+USE_HEAD_LOGITS = False
+
+
 def _build_model() -> AGAFFusionEdgeClassifier:
     return AGAFFusionEdgeClassifier(
         gnn_dim=GNN_DIM,
-        llm_dim=LLM_DIM,
+        llm_dim=NUM_CLASSES if USE_HEAD_LOGITS else LLM_DIM,
         proj_dim=PROJ_DIM,
         hidden_dim=HIDDEN_DIM,
         num_classes=NUM_CLASSES,
         dropout=DROPOUT,
+        head_fusion=USE_HEAD_LOGITS,
     )
 
 
@@ -91,13 +98,18 @@ def _apply_scalers(
     return gnn_t, llm_t
 
 
+# Classes used for in-fold model selection (early stopping). Set to the dataset's
+# eval_classes in main() so we select epochs on the metric we actually report.
+EVAL_CLASSES: tuple[int, ...] = tuple(range(NUM_CLASSES))
+
+
 def _macro_f1(
     logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor
 ) -> float:
     preds = logits[mask].argmax(dim=1).cpu().numpy()
     targets = labels[mask].cpu().numpy()
     return float(
-        f1_score(targets, preds, average="macro", labels=list(range(NUM_CLASSES)), zero_division=0)
+        f1_score(targets, preds, average="macro", labels=list(EVAL_CLASSES), zero_division=0)
     )
 
 
@@ -110,9 +122,10 @@ def _train_step(
     criterion: nn.Module,
     gate_entropy_lambda: float = GATE_ENTROPY_LAMBDA,
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
+    head_raw: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     model.train()
-    logits, _, diagnostics = model(gnn_t, llm_t)
+    logits, _, diagnostics = model(gnn_t, llm_t, head_logits=head_raw)
     cls_loss = criterion(logits[train_mask], labels[train_mask])
     train_gate = diagnostics["gate"][train_mask]
     gate_entropy = -(
@@ -142,12 +155,20 @@ def _train_one_fold(
     fold_idx: int,
     gate_entropy_lambda: float,
     feature_attention_entropy_lambda: float,
+    head_all: torch.Tensor | None = None,
 ) -> dict[str, object]:
     _set_seed(SEED + fold_idx)
 
     train_mask = fold["train_mask"]
     val_mask = fold["val_mask"]
     test_mask = fold["test_mask"]
+
+    # M3: in head-fusion mode the semantic modality is this fold's leak-safe OOF
+    # head logits (used both as the scaled branch input and the raw residual).
+    head_raw: torch.Tensor | None = None
+    if head_all is not None:
+        head_raw = head_all[fold_idx]
+        llm_emb = head_raw
 
     gnn_scaler, llm_scaler = _fit_scalers(gnn_emb, llm_emb, train_mask)
     gnn_t, llm_t = _apply_scalers(gnn_emb, llm_emb, gnn_scaler, llm_scaler)
@@ -177,6 +198,7 @@ def _train_one_fold(
             criterion,
             gate_entropy_lambda=gate_entropy_lambda,
             feature_attention_entropy_lambda=feature_attention_entropy_lambda,
+            head_raw=head_raw,
         )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
@@ -184,7 +206,7 @@ def _train_one_fold(
 
         model.eval()
         with torch.no_grad():
-            eval_logits, _, eval_diagnostics = model(gnn_t, llm_t)
+            eval_logits, _, eval_diagnostics = model(gnn_t, llm_t, head_logits=head_raw)
             val_f1 = _macro_f1(eval_logits, labels, val_mask)
             train_gate_gnn, train_gate_llm = _gate_means(eval_diagnostics, train_mask)
             val_gate_gnn, val_gate_llm = _gate_means(eval_diagnostics, val_mask)
@@ -231,7 +253,7 @@ def _train_one_fold(
 
     model.eval()
     with torch.no_grad():
-        eval_logits, _, diagnostics = model(gnn_t, llm_t)
+        eval_logits, _, diagnostics = model(gnn_t, llm_t, head_logits=head_raw)
         test_f1 = _macro_f1(eval_logits, labels, test_mask)
         test_indices = test_mask.nonzero(as_tuple=True)[0].cpu().numpy()
         test_predictions = eval_logits[test_mask].argmax(dim=1).cpu().numpy()
@@ -267,9 +289,17 @@ def _train_final_model(
     labels: torch.Tensor,
     gate_entropy_lambda: float,
     feature_attention_entropy_lambda: float,
+    head_all: torch.Tensor | None = None,
 ) -> tuple[AGAFFusionEdgeClassifier, StandardScaler, StandardScaler]:
     _set_seed(SEED)
     full_mask = torch.ones(labels.shape[0], dtype=torch.bool)
+
+    # M3: the fit-on-all-edges artifact has no single OOF head, so use the mean
+    # of the per-fold head logits (this artifact is not the benchmark metric).
+    head_raw: torch.Tensor | None = None
+    if head_all is not None:
+        head_raw = head_all.mean(dim=0)
+        llm_emb = head_raw
 
     gnn_scaler, llm_scaler = _fit_scalers(gnn_emb, llm_emb, full_mask)
     gnn_t, llm_t = _apply_scalers(gnn_emb, llm_emb, gnn_scaler, llm_scaler)
@@ -294,6 +324,7 @@ def _train_final_model(
             criterion,
             gate_entropy_lambda=gate_entropy_lambda,
             feature_attention_entropy_lambda=feature_attention_entropy_lambda,
+            head_raw=head_raw,
         )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
@@ -317,7 +348,12 @@ def main(
     dataset: str = "ton_iot",
     gate_entropy_lambda: float = GATE_ENTROPY_LAMBDA,
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
+    use_head_logits: bool = False,
+    head_logits_path: str | None = None,
 ) -> None:
+    global USE_HEAD_LOGITS, EVAL_CLASSES
+    USE_HEAD_LOGITS = use_head_logits
+    EVAL_CLASSES = get_dataset_config(dataset).eval_classes
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -355,6 +391,17 @@ def main(
             f"graph has {n_edges}. Delete {splits_path} and re-run to regenerate."
         )
 
+    head_all: torch.Tensor | None = None
+    if use_head_logits:
+        hp = head_logits_path or f"data/{dataset}/processed/step4_feedback/llm_head_logits.pt"
+        print(f"[M3] Loading trained LLM head logits from {hp}")
+        head_all = torch.load(hp, weights_only=True).float()
+        assert head_all.shape == (len(folds), n_edges, NUM_CLASSES), (
+            f"head logits shape {tuple(head_all.shape)} != "
+            f"({len(folds)}, {n_edges}, {NUM_CLASSES})"
+        )
+        print("[M3] AGAF semantic modality = LLM head logits + gated output fusion")
+
     fold_results: list[dict[str, object]] = []
     targets = labels.cpu().numpy()
     pooled_preds = np.full(n_edges, fill_value=-1, dtype=np.int64)
@@ -370,6 +417,7 @@ def main(
             fold_idx,
             gate_entropy_lambda,
             feature_attention_entropy_lambda,
+            head_all=head_all,
         )
         fold_results.append(result)
         test_indices = np.array(result["test_indices"], dtype=np.int64)
@@ -419,15 +467,18 @@ def main(
         labels,
         gate_entropy_lambda,
         feature_attention_entropy_lambda,
+        head_all=head_all,
     )
 
     torch.save(final_model.state_dict(), output_path / "model.pt")
     torch.save({"gnn": gnn_scaler, "llm": llm_scaler}, output_path / "scalers.pt")
 
     final_model.eval()
-    gnn_t, llm_t = _apply_scalers(gnn_emb, llm_emb, gnn_scaler, llm_scaler)
+    final_head_raw = head_all.mean(dim=0) if head_all is not None else None
+    final_llm_emb = final_head_raw if head_all is not None else llm_emb
+    gnn_t, llm_t = _apply_scalers(gnn_emb, final_llm_emb, gnn_scaler, llm_scaler)
     with torch.no_grad():
-        logits, edge_emb, diagnostics = final_model(gnn_t, llm_t)
+        logits, edge_emb, diagnostics = final_model(gnn_t, llm_t, head_logits=final_head_raw)
         preds = logits.argmax(dim=1).cpu().numpy()
 
     torch.save(edge_emb.detach().cpu(), output_path / "edge_embeddings.pt")
@@ -499,6 +550,13 @@ if __name__ == "__main__":
         type=float,
         default=FEATURE_ATTENTION_ENTROPY_LAMBDA,
     )
+    parser.add_argument(
+        "--use-head-logits",
+        action="store_true",
+        help="M3: feed AGAF the trained LLM head's OOF logits as the semantic "
+        "modality + gated output fusion (instead of raw 768-d embeddings).",
+    )
+    parser.add_argument("--head-logits-path")
     args = parser.parse_args()
 
     config = get_dataset_config(args.dataset)
@@ -511,4 +569,6 @@ if __name__ == "__main__":
         dataset=args.dataset,
         gate_entropy_lambda=args.gate_entropy_lambda,
         feature_attention_entropy_lambda=args.feature_attention_entropy_lambda,
+        use_head_logits=args.use_head_logits,
+        head_logits_path=args.head_logits_path,
     )

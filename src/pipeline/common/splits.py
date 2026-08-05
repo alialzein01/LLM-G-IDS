@@ -88,6 +88,34 @@ def create_edge_splits(
     return folds
 
 
+def mask_dropped_logits(
+    logits: torch.Tensor, dropped_classes: tuple[int, ...] | list[int]
+) -> torch.Tensor:
+    """Set the logit columns of dropped classes to -inf so argmax can never emit
+    them. Used for the 8-class ToN protocol where 2 ultra-rare classes are
+    excluded from evaluation (see DatasetConfig.dropped_classes)."""
+    if not dropped_classes:
+        return logits
+    out = logits.clone()
+    out[:, list(dropped_classes)] = float("-inf")
+    return out
+
+
+def eval_macro_f1(
+    labels, preds, eval_classes: tuple[int, ...] | list[int] | None = None
+) -> float:
+    """Macro-F1 restricted to `eval_classes` (defaults to all NUM_CLASSES).
+    `labels`/`preds` may be tensors or numpy arrays."""
+    from sklearn.metrics import f1_score
+
+    labs = list(eval_classes) if eval_classes is not None else list(range(NUM_CLASSES))
+    y_true = labels.cpu().numpy() if hasattr(labels, "cpu") else np.asarray(labels)
+    y_pred = preds.cpu().numpy() if hasattr(preds, "cpu") else np.asarray(preds)
+    return float(
+        f1_score(y_true, y_pred, average="macro", labels=labs, zero_division=0)
+    )
+
+
 def get_class_weights(
     edge_label: torch.Tensor, train_mask: torch.Tensor
 ) -> torch.Tensor:
