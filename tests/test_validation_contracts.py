@@ -5,6 +5,7 @@ import unittest
 import pandas as pd
 
 from src.pipeline.step2.knowledge_graph import (
+    GLOBAL_LEVELS,
     SEMANTIC_RELATIONS,
     add_relation_names,
     assert_label_free,
@@ -33,10 +34,10 @@ class KnowledgeGraphContractsTest(unittest.TestCase):
         self.assertEqual(df.loc[0, "relation_name"], SEMANTIC_RELATIONS["Benign"])
         self.assertEqual(df.loc[1, "relation_name"], SEMANTIC_RELATIONS["ddos"])
 
-    def test_discretization_is_per_attack_class(self) -> None:
+    def test_discretization_uses_global_five_level_vocabulary(self) -> None:
         df = discretize(self._sample())
         for col in ("avg_bytes_level", "flow_count_level", "avg_duration_level"):
-            self.assertTrue(set(df[col]).issubset({"low", "medium", "high"}))
+            self.assertTrue(set(df[col]).issubset(set(GLOBAL_LEVELS)))
             self.assertFalse(df[col].isna().any())
 
     def test_natural_language_triples_are_label_free(self) -> None:

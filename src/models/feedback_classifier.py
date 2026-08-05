@@ -38,10 +38,10 @@ class UncertaintySelector(nn.Module):
     Parameters
     ----------
     top_k_percent : float in (0, 100)
-        Fraction of edges to flag. Default 30.
+        Fraction of edges to flag. Default 16.
     """
 
-    def __init__(self, top_k_percent: float = 30.0) -> None:
+    def __init__(self, top_k_percent: float = 16.0) -> None:
         super().__init__()
         if not 0.0 < top_k_percent < 100.0:
             raise ValueError(
@@ -566,7 +566,7 @@ class FeedbackLoopClassifier(nn.Module):
         heads: int = 8,
         dropout: float = 0.2,
         embed_dim: int = CYSECBERT_EMBED_DIM,
-        top_k_percent: float = 30.0,
+        top_k_percent: float = 16.0,
         max_iterations: int = 3,
         churn_tol: float = 0.01,
         bias_dim: int = 1,

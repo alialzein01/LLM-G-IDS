@@ -23,8 +23,10 @@ completion order, which moves results by ~0.01. The env settings below pin it.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+from pathlib import Path
 
 os.environ.setdefault("IDS_FORCE_CPU", "1")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -41,17 +43,37 @@ from src.pipeline.step4.train_feedback import train_feedback
 
 DATASET = "unsw_nb15"
 OOF_GNN_EMB = "data/unsw_nb15/processed/step3_gnn/edge_embeddings_oof.pt"
+RESULTS_MANIFEST = Path("results/unsw_nb15_current.json")
 
-EXPECTED = {
-    "gnn_alone": 0.5496,
-    "llm_alone": 0.7353,
-    "agaf": 0.7459,
-    "feedback_loop": 0.7436,
-}
+
+def load_expected_ladder() -> dict[str, float]:
+    """Load the committed result contract used for reproduction drift checks."""
+    payload = json.loads(RESULTS_MANIFEST.read_text())
+    results = payload["results"]
+    return {
+        "gnn_alone": float(results["gnn"]["macro_f1"]),
+        "llm_alone": float(results["llm"]["macro_f1"]),
+        "agaf": float(results["agaf"]["macro_f1"]),
+        "feedback_loop": float(results["feedback"]["macro_f1"]),
+    }
+
+
+def load_expected_accuracy() -> dict[str, float]:
+    """Load committed rung accuracies using assemble_ladder's key names."""
+    payload = json.loads(RESULTS_MANIFEST.read_text())
+    results = payload["results"]
+    return {
+        "gnn_alone": float(results["gnn"]["accuracy"]),
+        "llm_alone": float(results["llm"]["accuracy"]),
+        "agaf": float(results["agaf"]["accuracy"]),
+        "feedback_loop": float(results["feedback"]["accuracy"]),
+    }
 
 
 def main() -> None:
     config = get_dataset_config(DATASET)
+    expected = load_expected_ladder()
+    expected_accuracy = load_expected_accuracy()
 
     if not os.path.exists(OOF_GNN_EMB):
         raise SystemExit(
@@ -79,22 +101,29 @@ def main() -> None:
     print("\n=== Ladder ===")
     assemble_ladder(DATASET)
 
-    import json
-
     summary = json.loads(
         open(f"data/{DATASET}/processed/step4_feedback/ladder_summary.json").read()
     )
     drift = {
-        k: (round(v, 4), EXPECTED[k])
+        k: (round(v, 4), expected[k])
         for k, v in summary["ladder"].items()
-        if abs(v - EXPECTED[k]) > 0.0005
+        if abs(v - expected[k]) > 0.0005
     }
-    if drift:
-        print("\n!! Rungs differ from the recorded values (got, expected):")
-        for k, (got, exp) in drift.items():
-            print(f"     {k}: {got} vs {exp}")
+    accuracy_drift = {
+        k: (round(v, 4), expected_accuracy[k])
+        for k, v in summary["accuracy"].items()
+        if abs(v - expected_accuracy[k]) > 0.0005
+    }
+    if drift or accuracy_drift:
+        print("\n!! Metrics differ from the recorded values (got, expected):")
+        for metric, differences in (
+            ("macro_f1", drift),
+            ("accuracy", accuracy_drift),
+        ):
+            for key, (got, expected_value) in differences.items():
+                print(f"     {metric}.{key}: {got} vs {expected_value}")
     else:
-        print("\nAll four rungs match the recorded values.")
+        print("\nAll four rungs match the recorded macro-F1 and accuracy values.")
 
 
 if __name__ == "__main__":

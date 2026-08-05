@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -63,12 +64,22 @@ GRAD_CLIP = 1.0
 LOG_EVERY = 60
 SEED = 42
 
-TOP_K_PERCENT = 30.0
+TOP_K_PERCENT = 16.0
 MAX_ITERATIONS = 3
 CHURN_TOL = 0.01
 BIAS_CONFIDENCE_FRAC = 0.5  # only bias the top-half most-confident flagged edges
 
 BOOTSTRAP_ITERS = 2000
+
+
+@dataclass
+class FoldTrainingResult:
+    """Artifacts and selection metrics from one independently trained fold."""
+
+    logits: torch.Tensor
+    iterations: list[dict]
+    best_val_macro_f1: float
+    test_macro_f1: float
 
 
 def _set_seed(seed: int) -> None:
@@ -87,7 +98,9 @@ def _macro_f1(logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor) ->
     )
 
 
-def _build_model() -> FeedbackLoopClassifier:
+def _build_model(
+    top_k_percent: float = TOP_K_PERCENT,
+) -> FeedbackLoopClassifier:
     return FeedbackLoopClassifier(
         in_dim=IN_DIM,
         hidden_dim=HIDDEN_DIM,
@@ -95,7 +108,7 @@ def _build_model() -> FeedbackLoopClassifier:
         num_classes=NUM_CLASSES,
         heads=HEADS,
         dropout=DROPOUT,
-        top_k_percent=TOP_K_PERCENT,
+        top_k_percent=top_k_percent,
         max_iterations=MAX_ITERATIONS,
         churn_tol=CHURN_TOL,
         bias_confidence_frac=BIAS_CONFIDENCE_FRAC,
@@ -110,11 +123,12 @@ def _train_one_fold(
     fold_idx: int,
     mode: str,
     head_logits: torch.Tensor | None = None,
-) -> tuple[torch.Tensor, list[dict]]:
+    top_k_percent: float = TOP_K_PERCENT,
+) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
     _set_seed(SEED + fold_idx)
-    model = _build_model()
+    model = _build_model(top_k_percent=top_k_percent)
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"]
     )
@@ -201,7 +215,12 @@ def _train_one_fold(
         f"    [{mode}] fold {fold_idx} DONE best_val={best_val_f1:.4f} "
         f"test={test_f1:.4f} iters={len(trace)}"
     )
-    return eval_logits.detach().cpu(), iter_rows
+    return FoldTrainingResult(
+        logits=eval_logits.detach().cpu(),
+        iterations=iter_rows,
+        best_val_macro_f1=best_val_f1,
+        test_macro_f1=test_f1,
+    )
 
 
 def _per_class_f1(logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor) -> list[float]:
@@ -362,13 +381,14 @@ def train_feedback_frozen(dataset: str) -> Path:
         return float(f1_score(labels.numpy(), oof.argmax(1).numpy(), average="macro",
                               labels=list(range(NUM_CLASSES)), zero_division=0))
 
-    # Fair AGAF number: read the re-run benchmark on the current (enriched) NL,
-    # not the stale 0.6225 from the degenerate-NL era.
-    agaf_ref = 0.6225
+    # Fair AGAF number: require the re-run benchmark on the current enriched NL.
     agaf_bench = Path(f"data/{dataset}/processed/step3_fusion/benchmark_summary.json")
-    if agaf_bench.exists():
-        with open(agaf_bench) as f:
-            agaf_ref = json.load(f).get("pooled_cv_macro_f1", agaf_ref)
+    if not agaf_bench.exists():
+        raise FileNotFoundError(
+            f"Missing current AGAF benchmark: {agaf_bench}. Run Step 3 fusion first."
+        )
+    with open(agaf_bench) as f:
+        agaf_ref = float(json.load(f)["pooled_cv_macro_f1"])
 
     ladder = {
         "dataset": dataset,
@@ -390,6 +410,38 @@ def train_feedback_frozen(dataset: str) -> Path:
     r = ladder["vs_agaf_bootstrap"]
     print(f"  frozen-loop − GNN-alone: Δ={r['mean_diff']:+.4f} CI[{r['ci_low']:+.4f},{r['ci_high']:+.4f}]")
     return root / "ladder_summary.json"
+
+
+def _build_benchmark_summary(
+    dataset: str,
+    labels: torch.Tensor,
+    oof_by_mode: dict[str, torch.Tensor],
+    pooled_f1: dict[str, float],
+    target_agaf: float | None,
+    use_llm_head: bool = False,
+) -> dict:
+    """Build the canonical feedback result payload from OOF predictions."""
+    pooled_accuracy = {
+        mode: float(
+            (logits.argmax(dim=1) == labels).sum().item() / labels.numel()
+        )
+        for mode, logits in oof_by_mode.items()
+    }
+    return {
+        "dataset": dataset,
+        "pooled_cv_macro_f1": pooled_f1.get("real"),
+        "pooled_cv_accuracy": pooled_accuracy.get("real"),
+        "per_mode_pooled_macro_f1": pooled_f1,
+        "per_mode_pooled_accuracy": pooled_accuracy,
+        "top_k_percent": TOP_K_PERCENT,
+        "bias_confidence_fraction": BIAS_CONFIDENCE_FRAC,
+        "effective_feedback_percent": TOP_K_PERCENT * BIAS_CONFIDENCE_FRAC,
+        "semantic_consultant": (
+            "trained_llm_head" if use_llm_head else "whitened_prototype_scorer"
+        ),
+        "trained_llm_head": use_llm_head,
+        "target_agaf": target_agaf,
+    }
 
 
 def train_feedback(
@@ -436,12 +488,14 @@ def train_feedback(
         trace_by_fold = []
         for fold_idx, fold in enumerate(folds):
             fold_head = head_logits_all[fold_idx] if head_logits_all is not None else None
-            fold_logits, iter_rows = _train_one_fold(
+            fold_result = _train_one_fold(
                 data, emb, fold, protos["folds"][fold_idx], fold_idx, mode,
                 head_logits=fold_head,
             )
-            oof[fold["test_mask"]] = fold_logits[fold["test_mask"]]
-            trace_by_fold.append({"fold": fold_idx, "iterations": iter_rows})
+            oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
+            trace_by_fold.append(
+                {"fold": fold_idx, "iterations": fold_result.iterations}
+            )
 
         if torch.isnan(oof).any():
             raise RuntimeError(f"[{mode}] some edges uncovered by any test fold.")
@@ -460,12 +514,21 @@ def train_feedback(
 
     # --- summaries ---------------------------------------------------------
     labels_np = labels.numpy()
-    benchmark = {
-        "dataset": dataset,
-        "pooled_cv_macro_f1": pooled_f1.get("real"),
-        "per_mode_pooled_macro_f1": pooled_f1,
-        "target_agaf": 0.6225,
-    }
+    agaf_benchmark_path = Path(config.fusion_output_dir) / "benchmark_summary.json"
+    target_agaf = None
+    if agaf_benchmark_path.exists():
+        agaf_payload = json.loads(agaf_benchmark_path.read_text())
+        agaf_macro_f1 = agaf_payload.get("pooled_cv_macro_f1")
+        if agaf_macro_f1 is not None:
+            target_agaf = float(agaf_macro_f1)
+    benchmark = _build_benchmark_summary(
+        dataset=dataset,
+        labels=labels,
+        oof_by_mode=oof_by_mode,
+        pooled_f1=pooled_f1,
+        target_agaf=target_agaf,
+        use_llm_head=use_llm_head,
+    )
     with open(root / "benchmark_summary.json", "w") as f:
         json.dump(benchmark, f, indent=2)
 
