@@ -22,6 +22,12 @@ class DatasetConfig:
     num_classes: int = 10
     gnn_dim: int = 64
     llm_dim: int = 768
+    # Classes scored in the headline macro-F1. Ultra-rare classes (< 5 samples,
+    # unlearnable under 5-fold CV) are excluded from the metric so the ladder is
+    # not drowned by classes no method can learn. They remain in the graph for
+    # message passing; they are simply not counted.
+    eval_classes: tuple[int, ...] = tuple(range(10))
+    dropped_classes: tuple[int, ...] = ()
 
 
 DATASETS: dict[str, DatasetConfig] = {
@@ -51,10 +57,18 @@ DATASETS: dict[str, DatasetConfig] = {
             "scanning",
             "xss",
         ),
+        # AGGREGATED (src,dst,attack) graph — todo.md-mandated form. dos (4 edges)
+        # and ransomware (3 edges) fall below the 5-fold minimum and cannot be
+        # evaluated, so they are dropped from the headline macro-F1 (kept in the
+        # graph for message passing). The other 8 classes still span ~145:1
+        # imbalance (xss 12 ... Benign 1746). Expanded-graph config reserved in
+        # data/ton_iot/processed_expanded_reserve.tar.gz (eval_classes=range(10)).
+        eval_classes=(0, 1, 2, 4, 5, 6, 8, 9),
+        dropped_classes=(3, 7),
     ),
     "unsw_nb15": DatasetConfig(
         key="unsw_nb15",
-        display_name="NF-UNSW-NB15",
+        display_name="UNSW-NB15",
         phase1_input_path="data/unsw_nb15/processed/step0/NF-UNSW-NB15-normalized.csv",
         graph_path="data/unsw_nb15/processed/step1/pyg_data.pt",
         aggregated_edges_path="data/unsw_nb15/processed/step1/aggregated_edges.csv",

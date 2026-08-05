@@ -1269,7 +1269,7 @@ def dashboard_phase_4_4(dataset: str) -> Path:
     md_lines.append("# Phase 4.4 Dashboard — Attention-Bias Injection")
     md_lines.append("")
     md_lines.append(f"**Dataset:** {dataset}")
-    md_lines.append(f"**Injection path:** edge_attr channel (option 2), bias_dim = {DEFAULT_BIAS_DIM}")
+    md_lines.append(f"**Injection path:** additive bias on the attention logits, pre-softmax (`BiasedGATv2Conv`), bias_dim = {DEFAULT_BIAS_DIM}")
     md_lines.append("")
     md_lines.append("---")
     md_lines.append("")
@@ -1342,11 +1342,184 @@ def dashboard_phase_4_4(dataset: str) -> Path:
     return reports_dir / "phase_4_4_dashboard.md"
 
 
+def _load_feedback_artifacts(dataset: str) -> dict:
+    root = _step4_root(dataset)
+    bench_path = root / "benchmark_summary.json"
+    if not bench_path.exists():
+        raise FileNotFoundError(
+            f"Feedback results not found at {bench_path}. Run: "
+            f"python -m src.pipeline.step4.train_feedback --dataset {dataset}"
+        )
+    with open(bench_path) as f:
+        benchmark = json.load(f)
+    with open(root / "ablation_summary.json") as f:
+        ablation = json.load(f)
+    traces = {}
+    for mode in ("real", "random", "head_only"):
+        tpath = root / f"feedback_trace_{mode}.json"
+        if tpath.exists():
+            with open(tpath) as f:
+                traces[mode] = json.load(f)
+    return {"benchmark": benchmark, "ablation": ablation, "traces": traces}
+
+
+def _mean_per_iter(trace: dict, key: str) -> list[float]:
+    """Average a per-iteration scalar (e.g. test_macro_f1) across folds,
+    aligned by iteration index (folds may early-stop at different lengths)."""
+    by_iter: dict[int, list[float]] = {}
+    for fold in trace["folds"]:
+        for row in fold["iterations"]:
+            by_iter.setdefault(row["iter"], []).append(row[key])
+    return [float(np.mean(by_iter[i])) for i in sorted(by_iter)]
+
+
+def _mean_per_class_f1_last_iter(trace: dict) -> list[float]:
+    """Average the last-iteration per-class F1 across folds."""
+    acc = np.zeros(NUM_CLASSES)
+    n = 0
+    for fold in trace["folds"]:
+        if not fold["iterations"]:
+            continue
+        acc += np.array(fold["iterations"][-1]["per_class_f1"])
+        n += 1
+    return list(acc / max(n, 1))
+
+
+def dashboard_phase_4_5(dataset: str) -> Path:
+    reports_dir = _step4_root(dataset) / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    label_names = list(get_dataset_config(dataset).label_names)
+
+    art = _load_feedback_artifacts(dataset)
+    pooled = art["benchmark"]["per_mode_pooled_macro_f1"]
+    ablation = art["ablation"]
+    traces = art["traces"]
+
+    real_f1 = pooled.get("real", float("nan"))
+    target = art["benchmark"].get("target_agaf", 0.6225)
+
+    beats_random = (
+        "real_vs_random" in ablation and ablation["real_vs_random"]["ci_low"] > 0
+    )
+    beats_head = pooled.get("real", 0) > pooled.get("head_only", 1)
+    hits_target = real_f1 >= target
+    acceptance = beats_random and beats_head and hits_target
+
+    json_payload = {
+        "phase": "4.5",
+        "component": "FeedbackLoopClassifier (outer loop + convergence)",
+        "dataset": dataset,
+        "per_mode_pooled_macro_f1": pooled,
+        "ablation": ablation,
+        "acceptance": {
+            "rule": "pooled macro-F1 >= target AND real>random (bootstrap CI>0) AND real>head_only",
+            "pooled_macro_f1": real_f1,
+            "target": target,
+            "hits_target": hits_target,
+            "beats_random_ci_gt_0": beats_random,
+            "beats_head_only": beats_head,
+            "result": "PASS" if acceptance else "FAIL",
+        },
+    }
+    with open(reports_dir / "phase_4_5_dashboard.json", "w") as f:
+        json.dump(json_payload, f, indent=2)
+
+    md: list[str] = []
+    md.append("# Phase 4.5 Dashboard — Outer Loop with Convergence")
+    md.append("")
+    md.append(f"**Dataset:** {dataset}")
+    md.append("**Mechanism:** true pre-softmax attention bias (`BiasedGATv2Conv`), "
+              "3-variant fusion, OOF cross-validation.")
+    md.append("")
+    md.append("---")
+    md.append("")
+    md.append("## Acceptance test")
+    md.append("")
+    md.append("**Rule:** pooled macro-F1 ≥ target **and** real beats random "
+              "(bootstrap CI > 0) **and** real beats head-only.")
+    md.append("")
+    md.append(_md_table(
+        ["check", "value", "pass"],
+        [
+            [f"pooled macro-F1 ≥ {target}", f"{real_f1:.4f}", "PASS" if hits_target else "FAIL"],
+            ["real > random (CI low > 0)",
+             f"CI=[{ablation.get('real_vs_random', {}).get('ci_low', float('nan')):+.4f}, "
+             f"{ablation.get('real_vs_random', {}).get('ci_high', float('nan')):+.4f}]",
+             "PASS" if beats_random else "FAIL"],
+            ["real > head_only",
+             f"{pooled.get('real', float('nan')):.4f} vs {pooled.get('head_only', float('nan')):.4f}",
+             "PASS" if beats_head else "FAIL"],
+        ],
+    ))
+    md.append("")
+    md.append(f"**Overall:** **{'PASS' if acceptance else 'FAIL'}**")
+    md.append("")
+
+    md.append("## Pooled CV macro-F1 by feedback mode")
+    md.append("")
+    md.append(_md_table(
+        ["mode", "pooled CV macro-F1", "meaning"],
+        [
+            ["real", f"{pooled.get('real', float('nan')):.4f}", "LLM semantic logits drive the bias"],
+            ["random", f"{pooled.get('random', float('nan')):.4f}", "fixed per-edge noise drives the bias"],
+            ["head_only", f"{pooled.get('head_only', float('nan')):.4f}", "bias disabled (plain GNN in a loop)"],
+        ],
+    ))
+    md.append("")
+    if "real_vs_random" in ablation:
+        r = ablation["real_vs_random"]
+        md.append(f"- **real − random:** Δ={r['mean_diff']:+.4f}, "
+                  f"95% CI [{r['ci_low']:+.4f}, {r['ci_high']:+.4f}], "
+                  f"P(real>random)={r['prob_positive']:.3f}")
+    if "real_vs_head_only" in ablation:
+        r = ablation["real_vs_head_only"]
+        md.append(f"- **real − head_only:** Δ={r['mean_diff']:+.4f}, "
+                  f"95% CI [{r['ci_low']:+.4f}, {r['ci_high']:+.4f}], "
+                  f"P(real>head_only)={r['prob_positive']:.3f}")
+    md.append("")
+
+    # per-iteration convergence (real mode)
+    if "real" in traces:
+        md.append("## Per-iteration convergence (real mode, mean across folds)")
+        md.append("")
+        f1s = _mean_per_iter(traces["real"], "test_macro_f1")
+        churns = _mean_per_iter(traces["real"], "churn")
+        ents = _mean_per_iter(traces["real"], "mean_entropy")
+        md.append(_md_table(
+            ["iter", "test macro-F1", "churn", "mean entropy"],
+            [
+                [str(i + 1), f"{f1s[i]:.4f}",
+                 "—" if np.isnan(churns[i]) else f"{churns[i]:.4f}",
+                 f"{ents[i]:.4f}"]
+                for i in range(len(f1s))
+            ],
+        ))
+        md.append("")
+        md.append("## Per-class F1 at the final iteration (mean across folds)")
+        md.append("")
+        rows = []
+        real_pc = _mean_per_class_f1_last_iter(traces["real"])
+        head_pc = _mean_per_class_f1_last_iter(traces["head_only"]) if "head_only" in traces else [float("nan")] * NUM_CLASSES
+        for c in range(NUM_CLASSES):
+            rows.append([str(c), label_names[c], f"{real_pc[c]:.3f}", f"{head_pc[c]:.3f}",
+                         f"{real_pc[c] - head_pc[c]:+.3f}"])
+        md.append(_md_table(["class", "name", "real F1", "head_only F1", "Δ (real−head)"], rows))
+        md.append("")
+
+    with open(reports_dir / "phase_4_5_dashboard.md", "w") as f:
+        f.write("\n".join(md))
+    print(f"Wrote {reports_dir / 'phase_4_5_dashboard.md'}")
+    print(f"Wrote {reports_dir / 'phase_4_5_dashboard.json'}")
+    print(f"Acceptance: {'PASS' if acceptance else 'FAIL'}")
+    return reports_dir / "phase_4_5_dashboard.md"
+
+
 PHASES = {
     "1": dashboard_phase_4_1,
     "2": dashboard_phase_4_2,
     "3": dashboard_phase_4_3,
     "4": dashboard_phase_4_4,
+    "5": dashboard_phase_4_5,
 }
 
 

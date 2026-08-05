@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import json
 from pathlib import Path
 
 import networkx as nx
@@ -158,6 +159,45 @@ def _compute_centrality(df: pd.DataFrame) -> dict[str, dict]:
     }
 
 
+STEP0_SUMMARY_NAME = "step0_summary.json"
+STEP0_SAMPLE_NAME = "step0_sample.csv"
+STEP0_SAMPLE_ROWS = 200
+
+
+def write_step0_sidecar(df_out: pd.DataFrame, csv_path: str | Path) -> None:
+    """Record shape, classes and a short preview beside the normalized CSV.
+
+    The normalized CSV is ~1 GB. The sidecar lets a consumer describe Step 0's
+    output without reading it, and lets a distribution omit it entirely.
+    """
+    directory = Path(csv_path).parent
+    summary = {
+        "csv_name": Path(csv_path).name,
+        "rows": int(len(df_out)),
+        "columns": list(df_out.columns),
+        "attack_categories": sorted(df_out["Attack"].unique().tolist()),
+        "attack_distribution": {
+            str(name): int(count)
+            for name, count in df_out["Attack"].value_counts().items()
+        },
+    }
+    with open(directory / STEP0_SUMMARY_NAME, "w") as f:
+        json.dump(summary, f, indent=2)
+    df_out.head(STEP0_SAMPLE_ROWS).to_csv(directory / STEP0_SAMPLE_NAME, index=False)
+
+
+def load_step0_sidecar(csv_path: str | Path) -> tuple[dict, pd.DataFrame] | None:
+    """Read the sidecar written by `write_step0_sidecar`, or None if absent."""
+    directory = Path(csv_path).parent
+    summary_path = directory / STEP0_SUMMARY_NAME
+    sample_path = directory / STEP0_SAMPLE_NAME
+    if not (summary_path.exists() and sample_path.exists()):
+        return None
+    with open(summary_path) as f:
+        summary = json.load(f)
+    return summary, pd.read_csv(sample_path)
+
+
 def run_preprocess(raw_dir: str, output_path: str) -> pd.DataFrame:
     out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -202,6 +242,7 @@ def run_preprocess(raw_dir: str, output_path: str) -> pd.DataFrame:
     df_out = df[output_cols]
 
     df_out.to_csv(out, index=False)
+    write_step0_sidecar(df_out, out)
     print(f"Saved {len(df_out):,} rows → {out}")
     print("Attack distribution:")
     print(df_out["Attack"].value_counts().to_string())

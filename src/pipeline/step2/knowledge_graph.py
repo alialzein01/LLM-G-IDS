@@ -21,8 +21,14 @@ TRIPLE_COLS = [
 
 PROTOCOL_NAMES = {1: "ICMP", 2: "IGMP", 6: "TCP", 17: "UDP"}
 
-# Attributes to discretize; each is binned per attack type independently
+# Attributes to discretize. Binned GLOBALLY (across all edges), not per
+# attack type: per-attack binning normalised away the cross-class
+# differences (e.g. Backdoors' ~15 flows and Exploits' ~750 flows both
+# became "high" relative to their own class), which collapsed distinct
+# attacks into near-identical sentences and left the LLM no signal.
 DISCRETIZE_COLS = ["avg_bytes", "flow_count", "avg_duration"]
+
+GLOBAL_LEVELS = ["very low", "low", "moderate", "high", "very high"]
 
 SEMANTIC_RELATIONS = {
     "Benign": "communicated with",
@@ -56,39 +62,26 @@ def load_triples(csv_path: str) -> pd.DataFrame:
     return df
 
 
-def _discretize_per_attack(df: pd.DataFrame, col: str) -> pd.Series:
-    """Bin a numerical column into low/medium/high within each attack type."""
-    result = pd.Series("", index=df.index, dtype=str)
-    for _, group in df.groupby("Attack", sort=False):
-        if group[col].nunique(dropna=False) <= 1:
-            result.loc[group.index] = "medium"
-            continue
-
-        p33 = group[col].quantile(1 / 3)
-        p66 = group[col].quantile(2 / 3)
-        if p33 >= p66:
-            ranks = group[col].rank(method="first", pct=True)
-            result.loc[group.index] = pd.cut(
-                ranks,
-                bins=[0.0, 1 / 3, 2 / 3, 1.0],
-                labels=["low", "medium", "high"],
-                include_lowest=True,
-            ).astype(str)
-            continue
-
-        bins = [-float("inf"), p33, p66, float("inf")]
-        labels = pd.cut(group[col], bins=bins, labels=["low", "medium", "high"])
-        result.loc[group.index] = labels.astype(str)
-    return result
+def _discretize_global(df: pd.DataFrame, col: str) -> pd.Series:
+    """Bin a numerical column into 5 levels using GLOBAL quantiles across
+    all edges. Rank-based so ties/duplicate values distribute cleanly and
+    the five bands are always populated."""
+    ranks = df[col].rank(method="first", pct=True)
+    return pd.cut(
+        ranks,
+        bins=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+        labels=GLOBAL_LEVELS,
+        include_lowest=True,
+    ).astype(str)
 
 
 def discretize(df: pd.DataFrame) -> pd.DataFrame:
     # avg_bytes is more meaningful than total_bytes for per-flow comparison
     df = df.copy()
-    df["avg_bytes"] = df["total_bytes"] / df["flow_count"]
+    df["avg_bytes"] = df["total_bytes"] / df["flow_count"].clip(lower=1)
 
     for col in DISCRETIZE_COLS:
-        df[f"{col}_level"] = _discretize_per_attack(df, col)
+        df[f"{col}_level"] = _discretize_global(df, col)
 
     df["protocol_name"] = df["most_common_protocol"].map(PROTOCOL_NAMES).fillna(
         df["most_common_protocol"].astype(str)
@@ -105,29 +98,66 @@ def add_relation_names(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _frequency_phrase(level: str) -> str:
-    return {
-        "low": "sparse connection frequency (flow-count level low)",
-        "medium": "steady connection frequency (flow-count level medium)",
-        "high": "unusually high connection frequency (flow-count level high)",
-    }[level]
+def _flow_count_magnitude(flow_count: float) -> str:
+    """Absolute order-of-magnitude of the aggregated flow count."""
+    fc = float(flow_count)
+    if fc < 10:
+        return "a handful of flows"
+    if fc < 50:
+        return "dozens of flows"
+    if fc < 200:
+        return "a couple hundred flows"
+    if fc < 1000:
+        return "many hundreds of flows"
+    return "thousands of flows"
 
 
-def _bytes_phrase(level: str, protocol: str) -> str:
-    if level == "high" and protocol == "TCP":
-        return "transferring large TCP payloads (average-byte level high)"
-    return {
-        "low": "moving small per-flow byte volumes (average-byte level low)",
-        "medium": "moving moderate per-flow byte volumes (average-byte level medium)",
-        "high": "moving large per-flow byte volumes (average-byte level high)",
-    }[level]
+def _frequency_phrase(level: str, flow_count: float) -> str:
+    return (
+        f"{level} connection frequency (flow-count level {level}, "
+        f"{_flow_count_magnitude(flow_count)})"
+    )
+
+
+def _total_volume_phrase(total_bytes: float) -> str:
+    """Absolute order-of-magnitude of the total transferred volume — the
+    strongest cross-class discriminator (classes differ by 100-1000x here)."""
+    tb = float(total_bytes)
+    if tb < 1e4:
+        return "a few kilobytes in total"
+    if tb < 1e5:
+        return "tens of kilobytes in total"
+    if tb < 1e6:
+        return "hundreds of kilobytes in total"
+    if tb < 1e7:
+        return "several megabytes in total"
+    if tb < 1e8:
+        return "tens of megabytes in total"
+    return "hundreds of megabytes in total"
+
+
+def _per_flow_bytes_phrase(avg_bytes: float, level: str) -> str:
+    ab = float(avg_bytes)
+    if ab < 200:
+        band = "tiny payloads (well under 1 KB per flow)"
+    elif ab < 1000:
+        band = "small payloads (a few hundred bytes per flow)"
+    elif ab < 5000:
+        band = "moderate payloads (roughly 1-5 KB per flow)"
+    elif ab < 20000:
+        band = "large payloads (5-20 KB per flow)"
+    else:
+        band = "very large payloads (tens of KB per flow)"
+    return f"{band} (average-byte level {level})"
 
 
 def _duration_phrase(level: str) -> str:
     return {
+        "very low": "in extremely brief connections (duration level very low)",
         "low": "in brief, short-lived connections (duration level low)",
-        "medium": "across medium-duration connections (duration level medium)",
+        "moderate": "across medium-duration connections (duration level moderate)",
         "high": "across long-lived connections (duration level high)",
+        "very high": "across very long-lived connections (duration level very high)",
     }[level]
 
 
@@ -152,7 +182,13 @@ def _port_phrase(port: int) -> str:
 
 
 def build_nl_triples(df: pd.DataFrame) -> list[str]:
-    """Label-free NL sentences: no attack labels or relation verbs."""
+    """Label-free NL sentences: no attack labels or relation verbs.
+
+    Absolute magnitude cues (total volume, per-flow payload size, flow
+    count) are included alongside the global levels so semantically
+    distinct attacks with the same coarse level no longer collapse to the
+    same sentence.
+    """
     sentences = []
     for _, row in df.iterrows():
         protocol = row["protocol_name"]
@@ -160,9 +196,10 @@ def build_nl_triples(df: pd.DataFrame) -> list[str]:
         s = (
             f"Observed traffic from source {row['IPV4_SRC_ADDR']} "
             f"to destination {row['IPV4_DST_ADDR']} "
-            f"with {_frequency_phrase(row['flow_count_level'])}, "
-            f"{_bytes_phrase(row['avg_bytes_level'], protocol)}, "
-            f"and {_duration_phrase(row['avg_duration_level'])}, "
+            f"with {_frequency_phrase(row['flow_count_level'], row['flow_count'])}, "
+            f"transferring {_total_volume_phrase(row['total_bytes'])} "
+            f"as {_per_flow_bytes_phrase(row['avg_bytes'], row['avg_bytes_level'])}, "
+            f"{_duration_phrase(row['avg_duration_level'])}, "
             f"{_protocol_phrase(protocol)}, "
             f"{_port_phrase(port)}."
         )
