@@ -1396,7 +1396,12 @@ def dashboard_phase_4_5(dataset: str) -> Path:
     traces = art["traces"]
 
     real_f1 = pooled.get("real", float("nan"))
-    target = art["benchmark"].get("target_agaf", 0.6225)
+    target = art["benchmark"].get("target_agaf")
+    if target is None:
+        raise RuntimeError(
+            "benchmark_summary.json is missing target_agaf; rerun train_feedback "
+            "against the current AGAF benchmark."
+        )
 
     beats_random = (
         "real_vs_random" in ablation and ablation["real_vs_random"]["ci_low"] > 0

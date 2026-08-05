@@ -37,7 +37,11 @@ if __package__ in (None, ""):
 
 from src.pipeline.common.datasets import get_dataset_config
 from src.pipeline.common.splits import eval_macro_f1, mask_dropped_logits
-from src.pipeline.step4.train_feedback import _llm_alone_oof
+from src.pipeline.step4.train_feedback import (
+    BIAS_CONFIDENCE_FRAC,
+    TOP_K_PERCENT,
+    _llm_alone_oof,
+)
 
 BOOTSTRAP_ITERS = 2000
 SEED = 42
@@ -118,6 +122,9 @@ def assemble_ladder(dataset: str) -> Path:
             f1_score(labels_np, pred.numpy(), average="weighted", labels=list(ec), zero_division=0)
         )
 
+    def accuracy(pred):
+        return float((pred == labels).sum().item() / labels.numel())
+
     rungs = {
         "gnn_alone": macro(gnn_pred),
         "llm_alone": macro(llm_pred),
@@ -129,6 +136,12 @@ def assemble_ladder(dataset: str) -> Path:
         "llm_alone": weighted(llm_pred),
         "agaf": weighted(agaf_pred),
         "feedback_loop": weighted(loop_pred),
+    }
+    accuracy_scores = {
+        "gnn_alone": accuracy(gnn_pred),
+        "llm_alone": accuracy(llm_pred),
+        "agaf": accuracy(agaf_pred),
+        "feedback_loop": accuracy(loop_pred),
     }
 
     bootstraps = {
@@ -150,9 +163,17 @@ def assemble_ladder(dataset: str) -> Path:
         "llm_head": llm_head_used,
         "llm_alone_prototype": macro(llm_proto_pred),
         "ladder": rungs,
+        "accuracy": accuracy_scores,
         "weighted_f1": weighted_f1,
         "bootstraps": bootstraps,
         "ladder_order_holds": bool(ladder_ok),
+        "configuration": {
+            "top_k_percent": TOP_K_PERCENT,
+            "bias_confidence_fraction": BIAS_CONFIDENCE_FRAC,
+            "effective_feedback_percent": TOP_K_PERCENT * BIAS_CONFIDENCE_FRAC,
+            "semantic_consultant": "whitened_prototype_scorer",
+            "trained_llm_head": False,
+        },
     }
     out_json = root / "ladder_summary.json"
     out_json.write_text(json.dumps(summary, indent=2))
@@ -168,11 +189,14 @@ def assemble_ladder(dataset: str) -> Path:
     md.append(f"# {config.display_name} — Comparison Ladder\n")
     md.append(f"Pooled out-of-fold macro-F1 over {len(ec)} classes "
               f"(dropped: {[config.label_names[c] for c in dropped] or 'none'}).\n")
-    md.append("| Rung | Macro-F1 | Weighted-F1 |")
-    md.append("| --- | ---: | ---: |")
+    md.append("| Rung | Accuracy | Macro-F1 | Weighted-F1 |")
+    md.append("| --- | ---: | ---: | ---: |")
     for name, key in [("GNN-alone", "gnn_alone"), ("LLM-alone", "llm_alone"),
                       ("AGAF", "agaf"), ("**Feedback loop**", "feedback_loop")]:
-        md.append(f"| {name} | {rungs[key]:.4f} | {weighted_f1[key]:.4f} |")
+        md.append(
+            f"| {name} | {accuracy_scores[key]:.4f} | "
+            f"{rungs[key]:.4f} | {weighted_f1[key]:.4f} |"
+        )
     md.append("")
     md.append(f"**Ladder order (GNN & LLM < AGAF < loop): "
               f"{'HOLDS ✅' if ladder_ok else 'DOES NOT HOLD ❌'}**\n")
