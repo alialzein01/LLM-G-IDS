@@ -43,12 +43,16 @@ def encode(
     model_id: str = MODEL_ID,
     batch_size: int = BATCH_SIZE,
     hf_token: str | None = None,
+    revision: str | None = None,
 ) -> torch.Tensor:
     device = _select_device()
     print(f"Device: {device}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_token)
-    model = AutoModel.from_pretrained(model_id, token=hf_token)
+    loader_kwargs = {"token": hf_token}
+    if revision is not None:
+        loader_kwargs["revision"] = revision
+    tokenizer = AutoTokenizer.from_pretrained(model_id, **loader_kwargs)
+    model = AutoModel.from_pretrained(model_id, **loader_kwargs)
     model.eval()
     model.to(device)
     print(f"Loaded {model_id}")
@@ -78,15 +82,18 @@ def run_encode_kg(
     nl_path: str = NL_TRIPLES_PATH,
     output_dir: str = OUTPUT_DIR,
     hf_token: str | None = None,
+    model_revision: str | None = None,
 ) -> torch.Tensor:
     if hf_token is None:
         hf_token = os.environ.get("HF_TOKEN")
+    if model_revision is None:
+        model_revision = os.environ.get("CYSECBERT_MODEL_REVISION")
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     sentences = load_sentences(nl_path)
-    embeddings = encode(sentences, hf_token=hf_token)
+    embeddings = encode(sentences, hf_token=hf_token, revision=model_revision)
 
     assert embeddings.shape == (len(sentences), 768), (
         f"Expected shape ({len(sentences)}, 768), got {embeddings.shape}"
