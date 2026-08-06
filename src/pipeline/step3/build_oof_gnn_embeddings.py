@@ -36,7 +36,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.gnn_classifier import GATEdgeClassifier, VARIANT_NAMES
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import NUM_CLASSES, FocalLoss, get_class_weights
 
 IN_DIM = 10
@@ -136,7 +136,7 @@ def build_oof_gnn_embeddings(dataset: str) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default="unsw_nb15", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     args = parser.parse_args()
     build_oof_gnn_embeddings(args.dataset)
 

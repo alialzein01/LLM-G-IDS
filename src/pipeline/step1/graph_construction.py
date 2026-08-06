@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
 from torch_geometric.data import Data
@@ -53,6 +54,87 @@ LABEL_MAPPING = {
 def _mode_first(series: pd.Series) -> int:
     mode_values = series.mode(dropna=False)
     return int(mode_values.iloc[0])
+
+
+FLOW_SIGNATURE_COLUMNS = [
+    SRC_COL,
+    DST_COL,
+    ATTACK_COL,
+    "IN_BYTES",
+    "FLOW_DURATION_MILLISECONDS",
+    "PROTOCOL",
+    "L4_DST_PORT",
+]
+
+
+def _group_by_signature(df: pd.DataFrame) -> pd.DataFrame:
+    """Collapse flow records into one row per distinct model-visible behaviour.
+
+    Two flows sharing endpoints and all five edge attributes are indistinguishable
+    to the classifier. Left as separate rows, a random split scatters copies of the
+    same record across train and test and the reported score measures memorisation
+    rather than generalisation.
+
+    Collapsing them is not the same as discarding the repetition: `flow_count`
+    carries how often each behaviour occurred, so the frequency signal the
+    aggregated path captured survives as a feature instead of as duplicate rows.
+
+    `total_bytes` is stored as a true sum (bytes x occurrences) because Step 2
+    recovers per-flow payload size as `total_bytes / flow_count`.
+    """
+    before = len(df)
+    grouped = df.groupby(FLOW_SIGNATURE_COLUMNS, as_index=False, sort=False).agg(
+        flow_count=("IN_BYTES", "size"),
+        **{column: (column, "mean") for column in ALL_CENTRALITY_COLUMNS},
+    )
+    print(
+        f"Grouped by signature: {before} flows -> {len(grouped)} distinct behaviours "
+        f"({1 - len(grouped) / before:.1%} collapsed)"
+    )
+    return grouped
+
+
+def _cap_per_class(df: pd.DataFrame, cap: int | None, seed: int) -> pd.DataFrame:
+    """Keep at most `cap` rows per attack class.
+
+    Classes with fewer than `cap` rows are kept in full, so capping only ever
+    thins the majority classes and never touches the rare ones.
+    """
+    if cap is None:
+        return df
+
+    rng = np.random.default_rng(seed)
+    kept: list[np.ndarray] = []
+    for label, positions in df.groupby(ATTACK_COL, sort=False).indices.items():
+        if len(positions) > cap:
+            positions = rng.choice(positions, size=cap, replace=False)
+        kept.append(np.asarray(positions))
+
+    keep_positions = np.sort(np.concatenate(kept))
+    capped = df.iloc[keep_positions].reset_index(drop=True)
+
+    before = df[ATTACK_COL].value_counts().rename("before")
+    after = capped[ATTACK_COL].value_counts().rename("after")
+    print(f"Capped at {cap} flows per class:")
+    print(pd.concat([before, after], axis=1).fillna(0).astype(int).to_string())
+    return capped
+
+
+def _build_flow_edges(df: pd.DataFrame) -> pd.DataFrame:
+    """Map signature-grouped rows onto the EDGE_ATTR_COLUMNS schema.
+
+    Emits exactly the columns the aggregated path emits, so Step 2 and every later
+    stage run unmodified.
+    """
+    edge_df = df[
+        [SRC_COL, DST_COL, ATTACK_COL, "flow_count", *ALL_CENTRALITY_COLUMNS]
+    ].copy()
+    edge_df["flow_count"] = df["flow_count"].astype(float)
+    edge_df["total_bytes"] = (df["IN_BYTES"] * df["flow_count"]).astype(float)
+    edge_df["avg_duration"] = df["FLOW_DURATION_MILLISECONDS"].astype(float)
+    edge_df["most_common_protocol"] = df["PROTOCOL"].astype(int)
+    edge_df["most_common_port"] = df["L4_DST_PORT"].astype(int)
+    return edge_df
 
 
 def _build_node_index(edge_df: pd.DataFrame) -> tuple[dict[str, int], dict[int, str]]:
@@ -139,9 +221,22 @@ def run_step1(
     csv_path: str,
     output_dir: str,
     label_mapping: dict[str, int] | None = None,
+    per_flow: bool = False,
+    cap_per_class: int | None = None,
+    seed: int = 42,
 ) -> tuple[Data, pd.DataFrame]:
+    """Build the Step 1 communication graph.
+
+    By default flows are aggregated by (src, dst, attack), which is the
+    todo.md-mandated form. With `per_flow=True` one edge is emitted per distinct
+    model-visible flow signature, carrying its occurrence count in `flow_count`,
+    and `cap_per_class` bounds how many distinct behaviours each class contributes.
+    """
     if label_mapping is None:
         label_mapping = LABEL_MAPPING
+
+    if cap_per_class is not None and not per_flow:
+        raise ValueError("cap_per_class only applies when per_flow=True")
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -153,23 +248,31 @@ def run_step1(
     print(f"Loaded CSV shape: {df.shape}")
     print(f"No null values: {null_count == 0} (total nulls: {null_count})")
 
-    aggregations = {
-        "flow_count": ("IN_BYTES", "count"),
-        "total_bytes": ("IN_BYTES", "sum"),
-        "avg_duration": ("FLOW_DURATION_MILLISECONDS", "mean"),
-        "most_common_protocol": ("PROTOCOL", _mode_first),
-        "most_common_port": ("L4_DST_PORT", _mode_first),
-    }
-    aggregations.update({column: (column, "mean") for column in ALL_CENTRALITY_COLUMNS})
+    if per_flow:
+        df = _group_by_signature(df)
+        df = _cap_per_class(df, cap_per_class, seed)
+        edge_df = _build_flow_edges(df)
+        print(f"Total flows represented: {int(edge_df['flow_count'].sum())}")
+    else:
+        aggregations = {
+            "flow_count": ("IN_BYTES", "count"),
+            "total_bytes": ("IN_BYTES", "sum"),
+            "avg_duration": ("FLOW_DURATION_MILLISECONDS", "mean"),
+            "most_common_protocol": ("PROTOCOL", _mode_first),
+            "most_common_port": ("L4_DST_PORT", _mode_first),
+        }
+        aggregations.update(
+            {column: (column, "mean") for column in ALL_CENTRALITY_COLUMNS}
+        )
 
-    edge_df = df.groupby([SRC_COL, DST_COL, ATTACK_COL], as_index=False).agg(
-        **aggregations
-    )
+        edge_df = df.groupby([SRC_COL, DST_COL, ATTACK_COL], as_index=False).agg(
+            **aggregations
+        )
 
     node_to_idx, idx_to_node = _build_node_index(edge_df)
     num_nodes = len(node_to_idx)
 
-    print(f"Aggregated edges: {len(edge_df)}")
+    print(f"{'Flow' if per_flow else 'Aggregated'} edges: {len(edge_df)}")
     print(f"Unique IP count: {num_nodes}")
 
     x = _build_node_features(edge_df, node_to_idx, num_nodes)
@@ -179,6 +282,14 @@ def run_step1(
     data.node_to_idx = node_to_idx
     data.idx_to_node = idx_to_node
     data.label_mapping = label_mapping.copy()
+
+    if per_flow:
+        # Occurrence counts span 1 to many thousands. Z-scoring that raw leaves a
+        # feature that is ~0 almost everywhere with a handful of huge outliers, so
+        # compress it first. Aggregated mode is left untouched to keep the existing
+        # baseline byte-identical.
+        data.edge_attr[:, 0] = torch.log1p(data.edge_attr[:, 0])
+        data.log1p_flow_count = True
 
     normalization_slice = data.edge_attr[:, :3]
     data.edge_attr_mean = normalization_slice.mean(dim=0)
@@ -213,7 +324,10 @@ def run_step1(
     print(label_distribution.to_string())
     _print_edge_attr_stats(data.edge_attr)
 
-    edge_df.to_csv(output_path / "aggregated_edges.csv", index=False)
-    torch.save(data, output_path / "pyg_data.pt")
+    edges_name = "flow_edges.csv" if per_flow else "aggregated_edges.csv"
+    graph_name = "pyg_data_perflow.pt" if per_flow else "pyg_data.pt"
+    edge_df.to_csv(output_path / edges_name, index=False)
+    torch.save(data, output_path / graph_name)
+    print(f"Saved {edges_name} and {graph_name} to {output_path}")
 
     return data, edge_df

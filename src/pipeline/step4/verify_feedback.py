@@ -34,7 +34,7 @@ from src.models.feedback_classifier import (
     UncertaintySelector,
     WhitenedPrototypeScorer,
 )
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import NUM_CLASSES
 from src.pipeline.step2.knowledge_graph import assert_label_free
 from src.pipeline.step4.train_feedback import load_nl_lines
@@ -1531,7 +1531,7 @@ PHASES = {
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--phase", required=True, choices=sorted(PHASES))
-    parser.add_argument("--dataset", default="ton_iot", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     args = parser.parse_args()
     PHASES[args.phase](args.dataset)
 

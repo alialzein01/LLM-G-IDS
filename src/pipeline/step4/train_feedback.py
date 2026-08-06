@@ -43,7 +43,7 @@ from src.models.feedback_classifier import (
     WhitenedPrototypeScorer,
 )
 from src.models.gnn_classifier import VARIANT_NAMES
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import NUM_CLASSES, FocalLoss, get_class_weights
 
 
@@ -577,7 +577,7 @@ def load_nl_lines(dataset: str) -> list[str]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default="unsw_nb15", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     parser.add_argument(
         "--modes", nargs="+", default=list(FEEDBACK_MODES), choices=list(FEEDBACK_MODES)
     )
