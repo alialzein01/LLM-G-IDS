@@ -35,7 +35,7 @@ from sklearn.metrics import f1_score
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import eval_macro_f1, mask_dropped_logits
 from src.pipeline.step4.train_feedback import (
     BIAS_CONFIDENCE_FRAC,
@@ -238,7 +238,7 @@ def assemble_ladder(dataset: str) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default="ton_iot", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     args = parser.parse_args()
     assemble_ladder(args.dataset)
 

@@ -35,7 +35,7 @@ import torch
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.step1.graph_construction import DST_COL, SRC_COL
 
 
@@ -111,7 +111,7 @@ def augment(dataset: str) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default="ton_iot", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     args = parser.parse_args()
     augment(args.dataset)
 

@@ -34,6 +34,8 @@ DATA_PATH = "data/ton_iot/processed/step1/pyg_data.pt"
 SPLITS_PATH = "data/ton_iot/processed/splits/folds.pt"
 OUTPUT_DIR = "data/ton_iot/processed/step3_gnn"
 
+DEVICE = torch.device("cpu")
+
 IN_DIM = 10
 HIDDEN_DIM = 64
 EDGE_ATTR_DIM = 5
@@ -69,6 +71,23 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
+def _select_device(preference: str = "auto") -> torch.device:
+    """Resolve the training device.
+
+    `auto` prefers CUDA and otherwise falls back to CPU. MPS is deliberately not
+    auto-selected: this training loop indexes logits with boolean masks, and
+    torch's `nonzero_out_mps` hangs on masks of this size. It stays reachable via
+    an explicit `--device mps` for anyone wanting to retest it.
+    """
+    if preference != "auto":
+        if preference == "mps":
+            print("WARNING: MPS hangs in nonzero_out_mps on boolean mask indexing.")
+        return torch.device(preference)
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 def _build_model() -> GATEdgeClassifier:
     return GATEdgeClassifier(
         in_dim=IN_DIM,
@@ -77,7 +96,7 @@ def _build_model() -> GATEdgeClassifier:
         num_classes=NUM_CLASSES,
         heads=HEADS,
         dropout=DROPOUT,
-    )
+    ).to(DEVICE)
 
 
 def _macro_f1(
@@ -199,7 +218,9 @@ def _train_final_model(data: Data) -> GATEdgeClassifier:
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
 
-    full_mask = torch.ones(data.edge_label.shape[0], dtype=torch.bool)
+    full_mask = torch.ones(
+        data.edge_label.shape[0], dtype=torch.bool, device=data.edge_label.device
+    )
     class_weights = get_class_weights(data.edge_label, full_mask)
     criterion = FocalLoss(alpha=class_weights, gamma=FOCAL_GAMMA)
 
@@ -222,9 +243,14 @@ def main(
     splits_path: str = SPLITS_PATH,
     output_dir: str = OUTPUT_DIR,
     dataset: str = "ton_iot",
+    device: str = "auto",
 ) -> None:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+
+    global DEVICE
+    DEVICE = _select_device(device)
+    print(f"Device: {DEVICE}")
 
     print(f"Loading graph data from {data_path}")
     data: Data = torch.load(data_path, weights_only=False)
@@ -251,6 +277,10 @@ def main(
         print(f"Splits not found — creating new splits at {splits_path}")
         splits_file.parent.mkdir(parents=True, exist_ok=True)
         folds = create_edge_splits(data, output_path=splits_path)
+
+    # Splits are built on CPU tensors; move graph and masks only afterwards.
+    data = data.to(DEVICE)
+    folds = [{k: v.to(DEVICE) for k, v in fold.items()} for fold in folds]
 
     fold_results: list[dict[str, object]] = []
     targets = data.edge_label.cpu().numpy()
@@ -335,6 +365,12 @@ if __name__ == "__main__":
     parser.add_argument("--data-path")
     parser.add_argument("--splits-path")
     parser.add_argument("--output-dir")
+    parser.add_argument(
+        "--device",
+        choices=("auto", "cpu", "mps", "cuda"),
+        default="auto",
+        help="Training device. Affects speed only, not results.",
+    )
     args = parser.parse_args()
 
     config = get_dataset_config(args.dataset)
@@ -343,4 +379,5 @@ if __name__ == "__main__":
         splits_path=args.splits_path or config.splits_path,
         output_dir=args.output_dir or config.gnn_output_dir,
         dataset=args.dataset,
+        device=args.device,
     )

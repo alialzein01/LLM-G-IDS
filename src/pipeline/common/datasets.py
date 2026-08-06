@@ -66,6 +66,40 @@ DATASETS: dict[str, DatasetConfig] = {
         eval_classes=(0, 1, 2, 4, 5, 6, 8, 9),
         dropped_classes=(3, 7),
     ),
+    "ton_iot_capped": DatasetConfig(
+        key="ton_iot_capped",
+        display_name="NF-ToN-IoT (capped)",
+        phase1_input_path="data/ton_iot/raw/NF-ToN-IoT.csv",
+        graph_path="data/ton_iot_capped/processed/step1/pyg_data_perflow.pt",
+        aggregated_edges_path="data/ton_iot_capped/processed/step1/flow_edges.csv",
+        kg_csv_path="data/ton_iot_capped/processed/step2/kg_triples.csv",
+        kg_nl_path="data/ton_iot_capped/processed/step2/kg_triples_nl.txt",
+        splits_path="data/ton_iot_capped/processed/splits/folds.pt",
+        gnn_output_dir="data/ton_iot_capped/processed/step3_gnn",
+        gnn_embedding_path="data/ton_iot_capped/processed/step3_gnn/edge_embeddings.pt",
+        llm_embedding_path="data/ton_iot_capped/processed/step3_llm/edge_embeddings.pt",
+        fusion_output_dir="data/ton_iot_capped/processed/step3_fusion",
+        baseline_output_dir="data/ton_iot_capped/processed/step3_baselines",
+        label_names=(
+            "Benign",
+            "backdoor",
+            "ddos",
+            "dos",
+            "injection",
+            "mitm",
+            "password",
+            "ransomware",
+            "scanning",
+            "xss",
+        ),
+        # SIGNATURE-GROUPED per-flow graph, capped per class. One edge per distinct
+        # model-visible behaviour, carrying its occurrence count in flow_count. This
+        # lifts dos (4 -> 814) and ransomware (3 -> 30) above the 5-fold minimum, so
+        # all ten classes are scored here. Compare against the aggregated `ton_iot`
+        # ladder on its eight eval classes for a like-for-like reading.
+        eval_classes=tuple(range(10)),
+        dropped_classes=(),
+    ),
     "unsw_nb15": DatasetConfig(
         key="unsw_nb15",
         display_name="UNSW-NB15",

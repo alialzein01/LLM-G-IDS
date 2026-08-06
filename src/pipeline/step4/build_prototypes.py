@@ -40,7 +40,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.feedback_classifier import CYSECBERT_MODEL_ID
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import NUM_CLASSES
 
 
@@ -159,7 +159,7 @@ def build_prototypes(dataset: str) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default="unsw_nb15", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     args = parser.parse_args()
     build_prototypes(args.dataset)
 

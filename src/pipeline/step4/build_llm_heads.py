@@ -37,7 +37,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.fusion_classifier import UnimodalEdgeClassifier
-from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import (
     NUM_CLASSES,
     FocalLoss,
@@ -137,7 +137,7 @@ def build_llm_heads(dataset: str) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default="ton_iot", choices=["ton_iot", "unsw_nb15"])
+    parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     args = parser.parse_args()
     build_llm_heads(args.dataset)
 
