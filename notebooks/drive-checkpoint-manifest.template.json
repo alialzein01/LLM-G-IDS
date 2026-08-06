@@ -1,0 +1,54 @@
+{
+  "dataset": "unsw_nb15",
+  "purpose": "Instructor Google Drive checkpoint bundle for the canonical prototype-only notebook.",
+  "raw_files_required": [
+    "raw/UNSW-NB15_1.csv",
+    "raw/UNSW-NB15_2.csv",
+    "raw/UNSW-NB15_3.csv",
+    "raw/UNSW-NB15_4.csv"
+  ],
+  "included_artifact_patterns": [
+    "checkpoints/step0_preprocess/data/unsw_nb15/processed/step0/NF-UNSW-NB15-normalized.csv",
+    "checkpoints/step0_preprocess/data/unsw_nb15/processed/step0/step0_summary.json",
+    "checkpoints/step0_preprocess/data/unsw_nb15/processed/step0/step0_sample.csv",
+    "checkpoints/step1_graph_splits/data/unsw_nb15/processed/step1/pyg_data.pt",
+    "checkpoints/step1_graph_splits/data/unsw_nb15/processed/step1/aggregated_edges.csv",
+    "checkpoints/step1_graph_splits/data/unsw_nb15/processed/splits/folds.pt",
+    "checkpoints/step2_kg/data/unsw_nb15/processed/step2/kg_triples.csv",
+    "checkpoints/step2_kg/data/unsw_nb15/processed/step2/kg_triples_nl.txt",
+    "checkpoints/step3_gnn/data/unsw_nb15/processed/step4_feedback/oof_logits.pt",
+    "checkpoints/step3_gnn/data/unsw_nb15/processed/step3_gnn/edge_embeddings_oof.pt",
+    "checkpoints/step4_llm/data/unsw_nb15/processed/step3_llm/edge_embeddings.pt",
+    "checkpoints/step4_llm/data/unsw_nb15/processed/step4_feedback/prototypes.pt",
+    "checkpoints/step5_agaf/data/unsw_nb15/processed/step3_fusion/metrics.json",
+    "checkpoints/step5_agaf/data/unsw_nb15/processed/step3_fusion/benchmark_summary.json",
+    "checkpoints/step6_feedback/data/unsw_nb15/processed/step4_feedback/feedback_oof_real.pt",
+    "checkpoints/step6_feedback/data/unsw_nb15/processed/step4_feedback/benchmark_summary.json",
+    "checkpoints/final_ladder/data/unsw_nb15/processed/step4_feedback/ladder_summary.json",
+    "checkpoints/final_ladder/data/unsw_nb15/processed/step4_feedback/STEP4_UNSW_NB15_RESULTS.md"
+  ],
+  "excluded_artifact_patterns": [
+    "data/unsw_nb15/processed/step3_gnn/edge_embeddings.pt",
+    "data/unsw_nb15/processed/step4_feedback/llm_head_logits.pt",
+    "data/unsw_nb15/processed/step4_feedback/top_k_sweep",
+    "data/unsw_nb15/processed/step4_feedback/top_k_sweep_15_24",
+    "data/unsw_nb15/processed/step4_feedback/semantic_confidence_sweep",
+    "data/unsw_nb15/processed/step4_feedback/feedback_oof_random.pt",
+    "data/unsw_nb15/processed/step4_feedback/feedback_oof_head_only.pt",
+    "data/unsw_nb15/processed/step3_fusion_oof"
+  ],
+  "canonical_configuration": {
+    "top_k_percent": 16.0,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 8.0,
+    "semantic_consultant": "whitened_prototype_scorer",
+    "trained_llm_head": false,
+    "agaf_gnn_embedding": "edge_embeddings_oof.pt"
+  },
+  "expected_ladder_macro_f1": {
+    "gnn": 0.5496,
+    "llm": 0.7353,
+    "agaf": 0.7459,
+    "feedback": 0.7764
+  }
+}

@@ -1,0 +1,18 @@
+# Pinned package set for notebooks/unsw_nb15_instructor_pipeline.ipynb.
+# Install from a fresh Google Colab Python 3.11/3.12 runtime.
+#
+# PyTorch itself is installed in the notebook setup cell so it can use the
+# CPU wheel index explicitly for deterministic reproduction.
+pandas==2.2.3
+numpy==1.26.4
+networkx==3.4.2
+scikit-learn==1.5.2
+matplotlib==3.9.2
+tqdm==4.66.5
+pyvis==0.3.2
+transformers==4.44.2
+python-dotenv==1.0.1
+ipykernel==6.29.5
+ipywidgets==8.1.5
+jinja2==3.1.4
+torch-geometric==2.6.1
