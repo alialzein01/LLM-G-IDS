@@ -18,15 +18,15 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.metrics import f1_score
 from torch_geometric.data import Data
 
 import src.pipeline.step4.train_feedback as feedback_training
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
-from src.pipeline.common.splits import NUM_CLASSES
+from src.pipeline.common.splits import NUM_CLASSES, eval_macro_f1, mask_dropped_logits
+from src.pipeline.step4.feedback_config import write_selected_feedback_config
 
 
-DEFAULT_CANDIDATES = tuple(range(25, 36))
+DEFAULT_CANDIDATES = tuple(range(15, 36))
 
 
 def _validate_candidates(candidates: tuple[int, ...]) -> None:
@@ -52,16 +52,14 @@ def select_best_candidate(rows: list[dict]) -> dict:
     )
 
 
-def _pooled_macro_f1(labels: torch.Tensor, logits: torch.Tensor) -> float:
-    return float(
-        f1_score(
-            labels.numpy(),
-            logits.argmax(dim=1).numpy(),
-            average="macro",
-            labels=list(range(NUM_CLASSES)),
-            zero_division=0,
-        )
-    )
+def _pooled_macro_f1(
+    labels: torch.Tensor,
+    logits: torch.Tensor,
+    eval_classes: tuple[int, ...] | list[int],
+    dropped_classes: tuple[int, ...] | list[int] = (),
+) -> float:
+    preds = mask_dropped_logits(logits, dropped_classes).argmax(dim=1)
+    return eval_macro_f1(labels, preds, eval_classes)
 
 
 def _write_csv(rows: list[dict], path: Path) -> None:
@@ -89,6 +87,7 @@ def run_top_k_sweep(
     config = get_dataset_config(dataset)
     root = Path(output_dir or f"data/{dataset}/processed/step4_feedback/top_k_sweep")
     root.mkdir(parents=True, exist_ok=True)
+    feedback_root = root.parent
 
     data: Data = torch.load(config.graph_path, weights_only=False)
     embeddings = torch.load(config.llm_embedding_path, weights_only=False).float()
@@ -110,6 +109,8 @@ def run_top_k_sweep(
     feedback_training.IN_DIM = data.x.shape[1]
     labels = data.edge_label
     num_edges = labels.shape[0]
+    eval_classes = config.eval_classes
+    dropped_classes = config.dropped_classes
     rows: list[dict] = []
 
     print(
@@ -133,6 +134,8 @@ def run_top_k_sweep(
                 mode="real",
                 head_logits=None,
                 top_k_percent=float(candidate),
+                eval_classes=eval_classes,
+                dropped_classes=dropped_classes,
             )
             oof[fold["test_mask"]] = result.logits[fold["test_mask"]]
             fold_rows.append(
@@ -158,7 +161,9 @@ def run_top_k_sweep(
             * feedback_training.BIAS_CONFIDENCE_FRAC,
             "mean_best_val_macro_f1": float(validation_scores.mean()),
             "std_best_val_macro_f1": float(validation_scores.std()),
-            "pooled_oof_test_macro_f1": _pooled_macro_f1(labels, oof),
+            "pooled_oof_test_macro_f1": _pooled_macro_f1(
+                labels, oof, eval_classes, dropped_classes
+            ),
             "folds": fold_rows,
             "oof_logits_path": str(candidate_dir / "oof_logits.pt"),
         }
@@ -173,6 +178,7 @@ def run_top_k_sweep(
         )
 
     selected = dict(select_best_candidate(rows))
+    selected["sweep_summary_path"] = str(root / "summary.json")
     baseline = next(
         (row for row in rows if row["top_k_percent"] == 30),
         None,
@@ -185,6 +191,8 @@ def run_top_k_sweep(
     )
     summary = {
         "dataset": dataset,
+        "eval_classes": list(eval_classes),
+        "dropped_classes": list(dropped_classes),
         "selection_metric": "mean_best_val_macro_f1",
         "selection_uses_test_labels": False,
         "semantic_consultant": "whitened_prototype_scorer",
@@ -200,6 +208,9 @@ def run_top_k_sweep(
     with summary_path.open("w") as handle:
         json.dump(summary, handle, indent=2)
     _write_csv(rows, root / "summary.csv")
+    selected_config_path = write_selected_feedback_config(
+        dataset, selected, root=feedback_root
+    )
 
     print("\n=== VALIDATION RANKING ===")
     for rank, row in enumerate(
@@ -222,6 +233,7 @@ def run_top_k_sweep(
         f"\nSelected n={selected['top_k_percent']} by validation macro-F1; "
         f"pooled OOF test macro-F1={selected['pooled_oof_test_macro_f1']:.4f}"
     )
+    print(f"Selected feedback config -> {selected_config_path}")
     return summary_path
 
 

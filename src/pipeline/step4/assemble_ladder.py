@@ -39,9 +39,9 @@ from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import eval_macro_f1, mask_dropped_logits
 from src.pipeline.step4.train_feedback import (
     BIAS_CONFIDENCE_FRAC,
-    TOP_K_PERCENT,
     _llm_alone_oof,
 )
+from src.pipeline.step4.feedback_config import load_feedback_config
 
 BOOTSTRAP_ITERS = 2000
 SEED = 42
@@ -56,6 +56,11 @@ def _bootstrap_ci(labels, preds_a, preds_b, eval_classes, iters=BOOTSTRAP_ITERS,
     preds_b = np.asarray(preds_b)
     n = len(labels)
     labs = list(eval_classes)
+    row_mask = np.isin(labels, labs)
+    labels = labels[row_mask]
+    preds_a = preds_a[row_mask]
+    preds_b = preds_b[row_mask]
+    n = len(labels)
     diffs = np.empty(iters)
     for i in range(iters):
         idx = rng.integers(0, n, size=n)
@@ -79,6 +84,8 @@ def assemble_ladder(dataset: str) -> Path:
     ec = config.eval_classes
     dropped = config.dropped_classes
     root = Path(f"data/{dataset}/processed/step4_feedback")
+    feedback_config = load_feedback_config(dataset)
+    top_k_percent = float(feedback_config["top_k_percent"])
 
     data = torch.load(config.graph_path, weights_only=False)
     labels = data.edge_label
@@ -118,8 +125,12 @@ def assemble_ladder(dataset: str) -> Path:
         return eval_macro_f1(labels, pred, ec)
 
     def weighted(pred):
+        row_mask = np.isin(labels_np, list(ec))
         return float(
-            f1_score(labels_np, pred.numpy(), average="weighted", labels=list(ec), zero_division=0)
+            f1_score(
+                labels_np[row_mask], pred.numpy()[row_mask],
+                average="weighted", labels=list(ec), zero_division=0,
+            )
         )
 
     def accuracy(pred):
@@ -168,11 +179,12 @@ def assemble_ladder(dataset: str) -> Path:
         "bootstraps": bootstraps,
         "ladder_order_holds": bool(ladder_ok),
         "configuration": {
-            "top_k_percent": TOP_K_PERCENT,
+            "top_k_percent": top_k_percent,
             "bias_confidence_fraction": BIAS_CONFIDENCE_FRAC,
-            "effective_feedback_percent": TOP_K_PERCENT * BIAS_CONFIDENCE_FRAC,
+            "effective_feedback_percent": top_k_percent * BIAS_CONFIDENCE_FRAC,
             "semantic_consultant": "whitened_prototype_scorer",
             "trained_llm_head": False,
+            "selected_feedback_config": feedback_config,
         },
     }
     out_json = root / "ladder_summary.json"
