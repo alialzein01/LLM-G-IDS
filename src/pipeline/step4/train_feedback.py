@@ -44,7 +44,20 @@ from src.models.feedback_classifier import (
 )
 from src.models.gnn_classifier import VARIANT_NAMES
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
-from src.pipeline.common.splits import NUM_CLASSES, FocalLoss, get_class_weights
+from src.pipeline.common.splits import (
+    NUM_CLASSES,
+    FocalLoss,
+    eval_macro_f1,
+    get_class_weights,
+    mask_dropped_logits,
+)
+from src.pipeline.step4.feedback_config import (
+    DEFAULT_BIAS_CONFIDENCE_FRAC,
+    DEFAULT_CHURN_TOLERANCE,
+    DEFAULT_MAX_ITERATIONS,
+    DEFAULT_TOP_K_PERCENT,
+    load_feedback_config,
+)
 
 
 # --- hyperparameters (mirror build_oof_predictions.py; fewer epochs since
@@ -64,10 +77,10 @@ GRAD_CLIP = 1.0
 LOG_EVERY = 60
 SEED = 42
 
-TOP_K_PERCENT = 16.0
-MAX_ITERATIONS = 3
-CHURN_TOL = 0.01
-BIAS_CONFIDENCE_FRAC = 0.5  # only bias the top-half most-confident flagged edges
+TOP_K_PERCENT = DEFAULT_TOP_K_PERCENT
+MAX_ITERATIONS = DEFAULT_MAX_ITERATIONS
+CHURN_TOL = DEFAULT_CHURN_TOLERANCE
+BIAS_CONFIDENCE_FRAC = DEFAULT_BIAS_CONFIDENCE_FRAC  # only bias the top-half most-confident flagged edges
 
 BOOTSTRAP_ITERS = 2000
 
@@ -87,15 +100,22 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
-def _macro_f1(logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor) -> float:
-    preds = logits[mask].argmax(dim=1).cpu().numpy()
-    targets = labels[mask].cpu().numpy()
-    return float(
-        f1_score(
-            targets, preds, average="macro",
-            labels=list(range(NUM_CLASSES)), zero_division=0,
-        )
-    )
+def _preds_from_logits(
+    logits: torch.Tensor,
+    dropped_classes: tuple[int, ...] | list[int] = (),
+) -> torch.Tensor:
+    return mask_dropped_logits(logits, dropped_classes).argmax(dim=1)
+
+
+def _macro_f1(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    mask: torch.Tensor,
+    eval_classes: tuple[int, ...] | list[int] | None = None,
+    dropped_classes: tuple[int, ...] | list[int] = (),
+) -> float:
+    preds = _preds_from_logits(logits[mask], dropped_classes)
+    return eval_macro_f1(labels[mask], preds, eval_classes)
 
 
 def _build_model(
@@ -124,6 +144,8 @@ def _train_one_fold(
     mode: str,
     head_logits: torch.Tensor | None = None,
     top_k_percent: float = TOP_K_PERCENT,
+    eval_classes: tuple[int, ...] | list[int] | None = None,
+    dropped_classes: tuple[int, ...] | list[int] = (),
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -168,7 +190,9 @@ def _train_one_fold(
                 data.x, data.edge_index, data.edge_attr, emb, feedback_mode=mode,
                 head_logits=head_logits,
             )
-            val_f1 = _macro_f1(eval_logits, labels, val_mask)
+            val_f1 = _macro_f1(
+                eval_logits, labels, val_mask, eval_classes, dropped_classes
+            )
 
         if epoch % LOG_EVERY == 0 or epoch == 1:
             print(
@@ -205,12 +229,14 @@ def _train_one_fold(
                 "iter": t["iter"],
                 "churn": t["churn"],
                 "mean_entropy": t["mean_entropy"],
-                "test_macro_f1": _macro_f1(it_logits, labels, test_mask),
+                "test_macro_f1": _macro_f1(
+                    it_logits, labels, test_mask, eval_classes, dropped_classes
+                ),
                 "per_class_f1": _per_class_f1(it_logits, labels, test_mask),
             }
         )
 
-    test_f1 = _macro_f1(eval_logits, labels, test_mask)
+    test_f1 = _macro_f1(eval_logits, labels, test_mask, eval_classes, dropped_classes)
     print(
         f"    [{mode}] fold {fold_idx} DONE best_val={best_val_f1:.4f} "
         f"test={test_f1:.4f} iters={len(trace)}"
@@ -237,14 +263,19 @@ def _bootstrap_ci(
     labels: np.ndarray,
     preds_a: np.ndarray,
     preds_b: np.ndarray,
+    eval_classes: tuple[int, ...] | list[int] | None = None,
     iters: int = BOOTSTRAP_ITERS,
     seed: int = SEED,
 ) -> dict:
     """Bootstrap CI of macro-F1(a) - macro-F1(b) over resampled edges."""
     rng = np.random.default_rng(seed)
+    labs = list(eval_classes) if eval_classes is not None else list(range(NUM_CLASSES))
+    row_mask = np.isin(labels, labs)
+    labels = labels[row_mask]
+    preds_a = preds_a[row_mask]
+    preds_b = preds_b[row_mask]
     n = len(labels)
     diffs = []
-    labs = list(range(NUM_CLASSES))
     for _ in range(iters):
         idx = rng.integers(0, n, size=n)
         fa = f1_score(labels[idx], preds_a[idx], average="macro", labels=labs, zero_division=0)
@@ -261,7 +292,7 @@ def _bootstrap_ci(
 
 def _train_loop(
     model, data, emb, fold, criterion, mode, epochs, patience,
-    freeze_backbone=False, gen=None,
+    freeze_backbone=False, gen=None, eval_classes=None, dropped_classes=(),
 ):
     """Shared inner training loop. Returns (best_state, best_val_f1)."""
     trainable = [p for p in model.parameters() if p.requires_grad]
@@ -286,7 +317,9 @@ def _train_loop(
         model.eval()
         with torch.no_grad():
             eval_logits, _ = model(data.x, data.edge_index, data.edge_attr, emb, feedback_mode=mode)
-            val_f1 = _macro_f1(eval_logits, labels, val_mask)
+            val_f1 = _macro_f1(
+                eval_logits, labels, val_mask, eval_classes, dropped_classes
+            )
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
@@ -298,7 +331,9 @@ def _train_loop(
     return best_state, best_val_f1
 
 
-def _train_one_fold_frozen(data, emb, fold, fold_state, fold_idx):
+def _train_one_fold_frozen(
+    data, emb, fold, fold_state, fold_idx, eval_classes=None, dropped_classes=()
+):
     """Two-phase frozen training:
       Phase 1 — train the GAT backbone alone (feedback off) → the canonical
                 GNN baseline.
@@ -313,7 +348,9 @@ def _train_one_fold_frozen(data, emb, fold, fold_state, fold_idx):
 
     # Phase 1 — backbone (GNN alone)
     best_state, val1 = _train_loop(
-        model, data, emb, fold, criterion, "head_only", MAX_EPOCHS, EARLY_STOPPING_PATIENCE
+        model, data, emb, fold, criterion, "head_only", MAX_EPOCHS,
+        EARLY_STOPPING_PATIENCE, eval_classes=eval_classes,
+        dropped_classes=dropped_classes,
     )
     model.load_state_dict(best_state)
     model.eval()
@@ -324,7 +361,8 @@ def _train_one_fold_frozen(data, emb, fold, fold_state, fold_idx):
     model.freeze_backbone()
     best_state2, val2 = _train_loop(
         model, data, emb, fold, criterion, "real", MAX_EPOCHS, EARLY_STOPPING_PATIENCE,
-        freeze_backbone=True,
+        freeze_backbone=True, eval_classes=eval_classes,
+        dropped_classes=dropped_classes,
     )
     if best_state2 is not None:
         model.load_state_dict(best_state2)
@@ -334,8 +372,10 @@ def _train_one_fold_frozen(data, emb, fold, fold_state, fold_idx):
 
     test_mask = fold["test_mask"]
     print(
-        f"  [frozen] fold {fold_idx}: GNN-alone val={val1:.4f} test={_macro_f1(gnn_logits, labels, test_mask):.4f} | "
-        f"frozen-loop val={val2:.4f} test={_macro_f1(fb_logits, labels, test_mask):.4f}"
+        f"  [frozen] fold {fold_idx}: GNN-alone val={val1:.4f} "
+        f"test={_macro_f1(gnn_logits, labels, test_mask, eval_classes, dropped_classes):.4f} | "
+        f"frozen-loop val={val2:.4f} "
+        f"test={_macro_f1(fb_logits, labels, test_mask, eval_classes, dropped_classes):.4f}"
     )
     return gnn_logits.detach().cpu(), fb_logits.detach().cpu()
 
@@ -357,6 +397,8 @@ def _llm_alone_oof(data, emb, folds, protos):
 def train_feedback_frozen(dataset: str) -> Path:
     """Run the frozen-backbone ladder: GNN alone · LLM alone · AGAF · frozen loop."""
     config = get_dataset_config(dataset)
+    eval_classes = config.eval_classes
+    dropped_classes = config.dropped_classes
     root = Path(f"data/{dataset}/processed/step4_feedback")
     data = torch.load(config.graph_path, weights_only=False)
     global IN_DIM
@@ -371,15 +413,18 @@ def train_feedback_frozen(dataset: str) -> Path:
     fb_oof = torch.full((ne, NUM_CLASSES), float("nan"))
     print("===== FROZEN-BACKBONE LADDER =====")
     for fi, fold in enumerate(folds):
-        g, f = _train_one_fold_frozen(data, emb, fold, protos["folds"][fi], fi)
+        g, f = _train_one_fold_frozen(
+            data, emb, fold, protos["folds"][fi], fi,
+            eval_classes=eval_classes, dropped_classes=dropped_classes,
+        )
         gnn_oof[fold["test_mask"]] = g[fold["test_mask"]]
         fb_oof[fold["test_mask"]] = f[fold["test_mask"]]
 
     llm_oof = _llm_alone_oof(data, emb, folds, protos)
 
     def pooled(oof):
-        return float(f1_score(labels.numpy(), oof.argmax(1).numpy(), average="macro",
-                              labels=list(range(NUM_CLASSES)), zero_division=0))
+        preds = _preds_from_logits(oof, dropped_classes)
+        return eval_macro_f1(labels, preds, eval_classes)
 
     # Fair AGAF number: require the re-run benchmark on the current enriched NL.
     agaf_bench = Path(f"data/{dataset}/processed/step3_fusion/benchmark_summary.json")
@@ -396,7 +441,14 @@ def train_feedback_frozen(dataset: str) -> Path:
         "llm_alone": pooled(llm_oof),
         "agaf_reference": agaf_ref,
         "feedback_loop_frozen": pooled(fb_oof),
-        "vs_agaf_bootstrap": _bootstrap_ci(labels.numpy(), fb_oof.argmax(1).numpy(), gnn_oof.argmax(1).numpy()),
+        "eval_classes": list(eval_classes),
+        "dropped_classes": list(dropped_classes),
+        "vs_agaf_bootstrap": _bootstrap_ci(
+            labels.numpy(),
+            _preds_from_logits(fb_oof, dropped_classes).numpy(),
+            _preds_from_logits(gnn_oof, dropped_classes).numpy(),
+            eval_classes,
+        ),
     }
     torch.save(fb_oof, root / "feedback_oof_frozen.pt")
     with open(root / "ladder_summary.json", "w") as f:
@@ -418,29 +470,37 @@ def _build_benchmark_summary(
     oof_by_mode: dict[str, torch.Tensor],
     pooled_f1: dict[str, float],
     target_agaf: float | None,
+    top_k_percent: float = TOP_K_PERCENT,
+    eval_classes: tuple[int, ...] | list[int] | None = None,
+    dropped_classes: tuple[int, ...] | list[int] = (),
+    selected_config: dict | None = None,
     use_llm_head: bool = False,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
     pooled_accuracy = {
         mode: float(
-            (logits.argmax(dim=1) == labels).sum().item() / labels.numel()
+            (_preds_from_logits(logits, dropped_classes) == labels).sum().item()
+            / labels.numel()
         )
         for mode, logits in oof_by_mode.items()
     }
     return {
         "dataset": dataset,
+        "eval_classes": list(eval_classes) if eval_classes is not None else list(range(NUM_CLASSES)),
+        "dropped_classes": list(dropped_classes),
         "pooled_cv_macro_f1": pooled_f1.get("real"),
         "pooled_cv_accuracy": pooled_accuracy.get("real"),
         "per_mode_pooled_macro_f1": pooled_f1,
         "per_mode_pooled_accuracy": pooled_accuracy,
-        "top_k_percent": TOP_K_PERCENT,
+        "top_k_percent": top_k_percent,
         "bias_confidence_fraction": BIAS_CONFIDENCE_FRAC,
-        "effective_feedback_percent": TOP_K_PERCENT * BIAS_CONFIDENCE_FRAC,
+        "effective_feedback_percent": top_k_percent * BIAS_CONFIDENCE_FRAC,
         "semantic_consultant": (
             "trained_llm_head" if use_llm_head else "whitened_prototype_scorer"
         ),
         "trained_llm_head": use_llm_head,
         "target_agaf": target_agaf,
+        "selected_config": selected_config,
     }
 
 
@@ -448,11 +508,18 @@ def train_feedback(
     dataset: str,
     modes: list[str] | None = None,
     use_llm_head: bool = False,
+    top_k_percent: float | None = None,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     config = get_dataset_config(dataset)
     root = Path(f"data/{dataset}/processed/step4_feedback")
     root.mkdir(parents=True, exist_ok=True)
+    selected_config = load_feedback_config(dataset)
+    resolved_top_k = (
+        float(top_k_percent)
+        if top_k_percent is not None
+        else float(selected_config["top_k_percent"])
+    )
 
     data: Data = torch.load(config.graph_path, weights_only=False)
     global IN_DIM
@@ -478,6 +545,8 @@ def train_feedback(
         print("Semantic consultant: whitened-prototype scorer (no trained head)")
     labels = data.edge_label
     num_edges = labels.shape[0]
+    eval_classes = config.eval_classes
+    dropped_classes = config.dropped_classes
 
     oof_by_mode: dict[str, torch.Tensor] = {}
     pooled_f1: dict[str, float] = {}
@@ -490,7 +559,8 @@ def train_feedback(
             fold_head = head_logits_all[fold_idx] if head_logits_all is not None else None
             fold_result = _train_one_fold(
                 data, emb, fold, protos["folds"][fold_idx], fold_idx, mode,
-                head_logits=fold_head,
+                head_logits=fold_head, top_k_percent=resolved_top_k,
+                eval_classes=eval_classes, dropped_classes=dropped_classes,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -500,16 +570,20 @@ def train_feedback(
         if torch.isnan(oof).any():
             raise RuntimeError(f"[{mode}] some edges uncovered by any test fold.")
         oof_by_mode[mode] = oof
-        preds = oof.argmax(dim=1)
-        pooled = float(
-            f1_score(labels.numpy(), preds.numpy(), average="macro",
-                     labels=list(range(NUM_CLASSES)), zero_division=0)
-        )
+        preds = _preds_from_logits(oof, dropped_classes)
+        pooled = eval_macro_f1(labels, preds, eval_classes)
         pooled_f1[mode] = pooled
         torch.save(oof, root / f"feedback_oof_{mode}.pt")
         with open(root / f"feedback_trace_{mode}.json", "w") as f:
-            json.dump({"dataset": dataset, "mode": mode,
-                       "pooled_cv_macro_f1": pooled, "folds": trace_by_fold}, f, indent=2)
+            json.dump({
+                "dataset": dataset,
+                "mode": mode,
+                "eval_classes": list(eval_classes),
+                "dropped_classes": list(dropped_classes),
+                "top_k_percent": resolved_top_k,
+                "pooled_cv_macro_f1": pooled,
+                "folds": trace_by_fold,
+            }, f, indent=2)
         print(f"[{mode}] pooled CV macro-F1 = {pooled:.4f}")
 
     # --- summaries ---------------------------------------------------------
@@ -527,23 +601,35 @@ def train_feedback(
         oof_by_mode=oof_by_mode,
         pooled_f1=pooled_f1,
         target_agaf=target_agaf,
+        top_k_percent=resolved_top_k,
+        eval_classes=eval_classes,
+        dropped_classes=dropped_classes,
+        selected_config=selected_config,
         use_llm_head=use_llm_head,
     )
     with open(root / "benchmark_summary.json", "w") as f:
         json.dump(benchmark, f, indent=2)
 
-    ablation: dict = {"dataset": dataset, "per_mode_pooled_macro_f1": pooled_f1}
+    ablation: dict = {
+        "dataset": dataset,
+        "eval_classes": list(eval_classes),
+        "dropped_classes": list(dropped_classes),
+        "top_k_percent": resolved_top_k,
+        "per_mode_pooled_macro_f1": pooled_f1,
+    }
     if "real" in oof_by_mode and "random" in oof_by_mode:
         ablation["real_vs_random"] = _bootstrap_ci(
             labels_np,
-            oof_by_mode["real"].argmax(1).numpy(),
-            oof_by_mode["random"].argmax(1).numpy(),
+            _preds_from_logits(oof_by_mode["real"], dropped_classes).numpy(),
+            _preds_from_logits(oof_by_mode["random"], dropped_classes).numpy(),
+            eval_classes,
         )
     if "real" in oof_by_mode and "head_only" in oof_by_mode:
         ablation["real_vs_head_only"] = _bootstrap_ci(
             labels_np,
-            oof_by_mode["real"].argmax(1).numpy(),
-            oof_by_mode["head_only"].argmax(1).numpy(),
+            _preds_from_logits(oof_by_mode["real"], dropped_classes).numpy(),
+            _preds_from_logits(oof_by_mode["head_only"], dropped_classes).numpy(),
+            eval_classes,
         )
     with open(root / "ablation_summary.json", "w") as f:
         json.dump(ablation, f, indent=2)
@@ -590,11 +676,18 @@ def main() -> None:
         help="Use trained per-fold MLP head logits as the semantic consultant "
              "instead of the whitened-prototype scorer.",
     )
+    parser.add_argument(
+        "--top-k-percent", type=float, default=None,
+        help="Override the validation-selected top-k percentage for this run.",
+    )
     args = parser.parse_args()
     if args.frozen:
         train_feedback_frozen(args.dataset)
     else:
-        train_feedback(args.dataset, args.modes, use_llm_head=args.use_llm_head)
+        train_feedback(
+            args.dataset, args.modes, use_llm_head=args.use_llm_head,
+            top_k_percent=args.top_k_percent,
+        )
 
 
 if __name__ == "__main__":

@@ -104,15 +104,23 @@ def mask_dropped_logits(
 def eval_macro_f1(
     labels, preds, eval_classes: tuple[int, ...] | list[int] | None = None
 ) -> float:
-    """Macro-F1 restricted to `eval_classes` (defaults to all NUM_CLASSES).
-    `labels`/`preds` may be tensors or numpy arrays."""
+    """Macro-F1 over rows whose true label is in `eval_classes`.
+
+    `labels`/`preds` may be tensors or numpy arrays. Dropped classes are not
+    counted as false positives for evaluated classes because those rows are
+    outside the headline protocol.
+    """
     from sklearn.metrics import f1_score
 
     labs = list(eval_classes) if eval_classes is not None else list(range(NUM_CLASSES))
     y_true = labels.cpu().numpy() if hasattr(labels, "cpu") else np.asarray(labels)
     y_pred = preds.cpu().numpy() if hasattr(preds, "cpu") else np.asarray(preds)
+    row_mask = np.isin(y_true, labs)
     return float(
-        f1_score(y_true, y_pred, average="macro", labels=labs, zero_division=0)
+        f1_score(
+            y_true[row_mask], y_pred[row_mask],
+            average="macro", labels=labs, zero_division=0,
+        )
     )
 
 
