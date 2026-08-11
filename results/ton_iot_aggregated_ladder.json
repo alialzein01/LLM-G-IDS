@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "graph_scope": "aggregated",
+  "feature_profile": "structural10",
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "eval_classes": [0, 1, 2, 4, 5, 6, 8, 9],
+  "dropped_classes": [3, 7],
+  "n_eval_classes": 8,
+  "ladder_order_holds": false,
+  "configuration": {
+    "top_k_percent": 15.0,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 7.5,
+    "semantic_consultant": "whitened_prototype",
+    "trained_llm_head": false,
+    "max_feedback_iterations": 3,
+    "churn_tolerance": 0.01,
+    "seed": 42,
+    "deterministic_cpu": true
+  },
+  "results": {
+    "gnn": {
+      "accuracy": 0.7606958157028679,
+      "macro_f1": 0.32711755971083384
+    },
+    "llm": {
+      "accuracy": 0.4978843441466855,
+      "macro_f1": 0.27852446280044896
+    },
+    "agaf": {
+      "accuracy": 0.5566525622943113,
+      "macro_f1": 0.32334946705765
+    },
+    "feedback": {
+      "accuracy": 0.8692994828396803,
+      "macro_f1": 0.36543866112633194
+    }
+  },
+  "feedback_ablations": {
+    "random": {
+      "macro_f1": 0.3663769164088915
+    },
+    "head_only": {
+      "macro_f1": 0.3565847837348862
+    },
+    "real_vs_random": {
+      "mean_macro_f1_difference": -0.0003755629548704341,
+      "ci_95": [
+        -0.029485452502562993,
+        0.026585916812600297
+      ]
+    },
+    "real_vs_head_only": {
+      "mean_macro_f1_difference": 0.009360546087337997,
+      "ci_95": [
+        -0.019671907833457965,
+        0.038871359264444426
+      ]
+    }
+  },
+  "selection": {
+    "criterion": "mean validation macro_f1",
+    "selected_top_k_percent": 15.0,
+    "mean_validation_macro_f1": 0.4401629474559573,
+    "validation_macro_f1_std": 0.03768499254430421,
+    "sweep_range": [15, 35]
+  },
+  "statistical_comparisons": {
+    "feedback_vs_agaf": {
+      "mean_macro_f1_difference": 0.04403600749214208,
+      "ci_95": [
+        0.00040971825128716685,
+        0.08557267890789097
+      ],
+      "bootstrap_probability_positive": 0.976
+    },
+    "agaf_vs_llm": {
+      "mean_macro_f1_difference": 0.042225997268586626,
+      "ci_95": [
+        0.0012767028040415452,
+        0.08433415203510633
+      ],
+      "bootstrap_probability_positive": 0.9795
+    },
+    "agaf_vs_gnn": {
+      "mean_macro_f1_difference": -0.005343437682013793,
+      "ci_95": [
+        -0.05767253011041734,
+        0.050555133623913284
+      ],
+      "bootstrap_probability_positive": 0.42
+    },
+    "feedback_vs_gnn": {
+      "mean_macro_f1_difference": 0.038692569810128294,
+      "ci_95": [
+        0.0006243816297829124,
+        0.07901644691712399
+      ],
+      "bootstrap_probability_positive": 0.976
+    }
+  },
+  "limitations": [
+    "Edges are aggregated with the attack label in the grouping key, so these are not deployment-valid estimates.",
+    "Macro-F1 is over 8 eval classes (dos and ransomware dropped for support); do not compare directly to UNSW-NB15's 10-class macro-F1 as interchangeable.",
+    "The canonical UNSW ladder order (GNN < LLM < AGAF < Feedback) does not hold here: GNN exceeds AGAF and LLM is weakest.",
+    "Real-versus-random feedback ablation CI crosses zero; the feedback gain versus AGAF is positive but selection of n=15 was validation-tuned.",
+    "The selected percentage was optimized on rotating validation folds; nested cross-validation or an untouched dataset is required for a fully unbiased final estimate."
+  ]
+}
