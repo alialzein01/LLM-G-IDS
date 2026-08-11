@@ -1,0 +1,28 @@
+{
+  "dataset": "ton_iot_capped",
+  "feature_profile": "structural10",
+  "per_flow": true,
+  "cap_per_class": 20000,
+  "seed": 42,
+  "git_sha": "7f9bce6-dirty",
+  "started_at": "2026-08-11T15:59:32.211151+00:00",
+  "dry_run": false,
+  "stages": {
+    "preprocess": 0.0,
+    "step1": 6.2,
+    "features": 0.0,
+    "step2": 2.9,
+    "splits": 4.7,
+    "verify": 5.4,
+    "gnn": 742.8,
+    "oof_emb": 626.5,
+    "encode": 684.4,
+    "fusion": 968.7,
+    "oof": 627.4,
+    "llm_heads": 152.8,
+    "prototypes": 5.4,
+    "feedback": 5728.2,
+    "ladder": 164.4
+  },
+  "finished_at": "2026-08-11T19:11:49.595962+00:00"
+}

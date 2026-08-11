@@ -12,14 +12,12 @@ DEFAULT_EDGE_ATTR_DIM = 5
 DEFAULT_NUM_CLASSES = 10
 DEFAULT_HEADS = 8
 DEFAULT_DROPOUT = 0.2
-VARIANT_NAMES = ("temporal", "content", "behavioral")
+VARIANT_NAMES = ("plain",)  # EXPERIMENT: single plain GATv2 branch
 
 
 EDGE_FOCUS_WEIGHTS = {
-    # flow_count, total_bytes, avg_duration, protocol, dst_port
-    "temporal": (1.25, 0.75, 1.50, 0.50, 0.25),
-    "content": (0.50, 1.50, 0.50, 1.00, 1.25),
-    "behavioral": (1.25, 0.75, 1.00, 0.75, 1.50),
+    # EXPERIMENT: no rescaling — stock GATv2 edge features
+    "plain": (1.0, 1.0, 1.0, 1.0, 1.0),
 }
 
 
