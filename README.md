@@ -173,6 +173,75 @@ therefore defaults to a single plain GATv2 branch.** To restore the FedGATSage
 ensemble, set `VARIANT_NAMES = ("temporal", "content", "behavioral")` and the three
 `EDGE_FOCUS_WEIGHTS` entries back.
 
+## AGAF deviates from the specification
+
+todo.md Step 3 specifies the fusion as:
+
+> "Both embeddings are **concatenated** and passed to a lightweight attention-based
+> classifier. The classifier learns **per-sample attention weights** that determine
+> how much to rely on structural vs. semantic evidence."
+
+The original implementation does neither. It computes a convex blend
+
+```
+fused = g * h + (1 - g) * s          # g: [E, proj_dim], one gate per feature
+```
+
+which merges the two modalities into `proj_dim` instead of concatenating them, and
+its weights are per-*feature*, not per-sample. Two consequences:
+
+1. **Information is destroyed rather than re-weighted.** Whatever the gate does not
+   keep is gone. A gate that settles at 0.5 averages the two views together, which
+   can land *below both inputs* — and did: AGAF 0.5744 against GNN 0.6722 and LLM
+   0.6200.
+2. **The training loss actively pushed it there.** `loss = cls_loss -
+   gate_entropy_lambda * gate_entropy` **subtracts** gate entropy, so the optimiser
+   is rewarded for maximising it — and maximum entropy for a 0-to-1 gate is exactly
+   0.5. With the default `GATE_ENTROPY_LAMBDA = 0.01` the observed gate entropy was
+   0.6857 against a theoretical maximum of ln 2 = 0.693. The gate was pinned at
+   (0.495, 0.505) for all 300 epochs.
+
+`--fusion-mode concat` implements the specified design: both projections survive
+into `2 * proj_dim`, and attention is per-sample over exactly two modalities, so
+`alpha` is an interpretable `[E, 2]` pair summing to 1.
+
+```
+alpha  = softmax(W [h ; s])                    # [E, 2]
+fused  = concat[alpha_struct * h, alpha_sem * s]   # [E, 2*proj_dim]
+```
+
+Concatenation is what makes this robust: attention re-weights each modality's
+contribution without ever removing one, so the worst case is that the classifier
+learns to ignore the weaker half. It cannot fall below both inputs.
+
+| | gate (original) | concat (specified) |
+|---|---:|---:|
+| pooled OOF macro-F1 | 0.5744 | **0.6977** |
+| pooled accuracy | 0.5508 | **0.7232** |
+| per-fold std | — | 0.0022 |
+| attention at convergence | (0.495, 0.505) | (0.02, 0.98) |
+
+AGAF moves from the worst rung to above both of its inputs, +0.1233. The attention
+also *commits*: it settles around 2% structural / 98% semantic and varies per edge,
+so it is now readable as the spec intended.
+
+**Caveat:** two variables changed together — the concatenation and
+`--gate-entropy-lambda 0.0`. A gate-mode run at lambda 0 would separate their
+contributions and has not been done. The strong semantic lean also deserves
+scrutiny, since the LLM scores 0.6200 alone versus the GNN's 0.6722; the semantic
+view may simply be more useful in combination than in isolation.
+
+Reproduce with:
+
+```bash
+python -m src.pipeline.step3.train_fusion --dataset ton_iot_capped \
+    --gnn-emb-path data/ton_iot_capped/processed/step3_gnn/edge_embeddings_oof.pt \
+    --fusion-mode concat --gate-entropy-lambda 0.0 \
+    --output-dir data/ton_iot_capped/processed/step3_fusion_concat
+```
+
+`--fusion-mode gate` remains the default, so existing results reproduce unchanged.
+
 ## Reproducing
 
 Per-flow + capping (~3h 12m on CPU: GNN 12 min, encode 11 min, AGAF 16 min,
