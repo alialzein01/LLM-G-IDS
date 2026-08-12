@@ -1,0 +1,91 @@
+{
+  "dataset": "ton_iot_capped",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "metric": "pooled_oof_macro_f1",
+  "llm_head": "prototype_scorer",
+  "llm_alone_prototype": 0.6200162053920072,
+  "ladder": {
+    "gnn_alone": 0.6721849889244683,
+    "llm_alone": 0.6200162053920072,
+    "agaf": 0.5743966209055702,
+    "feedback_loop": 0.6945293010955707
+  },
+  "accuracy": {
+    "gnn_alone": 0.7003651856360317,
+    "llm_alone": 0.6983740544300495,
+    "agaf": 0.5507868880966873,
+    "feedback_loop": 0.7234327449786975
+  },
+  "weighted_f1": {
+    "gnn_alone": 0.6907896946368757,
+    "llm_alone": 0.6920089477860152,
+    "agaf": 0.5584749347206316,
+    "feedback_loop": 0.7101509873723125
+  },
+  "bootstraps": {
+    "agaf_vs_gnn": {
+      "mean_diff": -0.09774119322992124,
+      "ci_low": -0.10497141854817911,
+      "ci_high": -0.09100089857226022,
+      "prob_positive": 0.0
+    },
+    "agaf_vs_llm": {
+      "mean_diff": -0.04566990415117168,
+      "ci_low": -0.054675717170971784,
+      "ci_high": -0.03646961416381211,
+      "prob_positive": 0.0
+    },
+    "loop_vs_agaf": {
+      "mean_diff": 0.12007800279551685,
+      "ci_low": 0.11393371806369876,
+      "ci_high": 0.1264844793050957,
+      "prob_positive": 1.0
+    },
+    "loop_vs_llm": {
+      "mean_diff": 0.0744080986443452,
+      "ci_low": 0.0666461160141397,
+      "ci_high": 0.0825484876634103,
+      "prob_positive": 1.0
+    },
+    "loop_vs_gnn": {
+      "mean_diff": 0.022336809565595604,
+      "ci_low": 0.01796522245359173,
+      "ci_high": 0.026572222215728775,
+      "prob_positive": 1.0
+    }
+  },
+  "ladder_order_holds": false,
+  "configuration": {
+    "top_k_percent": 16.0,
+    "bias_confidence_fraction": 0.5,
+    "effective_feedback_percent": 8.0,
+    "semantic_consultant": "whitened_prototype_scorer",
+    "trained_llm_head": false,
+    "selected_feedback_config": {
+      "schema_version": 1,
+      "dataset": "ton_iot_capped",
+      "source": "default",
+      "selection_uses_test_labels": false,
+      "selection_metric": "mean_best_val_macro_f1",
+      "top_k_percent": 16.0,
+      "bias_confidence_fraction": 0.5,
+      "effective_feedback_percent": 8.0,
+      "max_feedback_iterations": 3,
+      "churn_tolerance": 0.01,
+      "semantic_consultant": "whitened_prototype_scorer",
+      "trained_llm_head": false
+    }
+  }
+}
