@@ -81,6 +81,7 @@ def run_top_k_sweep(
     dataset: str,
     candidates: tuple[int, ...] = DEFAULT_CANDIDATES,
     output_dir: str | Path | None = None,
+    use_llm_head: bool = False,
 ) -> Path:
     """Train, persist, and validation-rank all requested entropy percentages."""
     _validate_candidates(candidates)
@@ -94,6 +95,17 @@ def run_top_k_sweep(
     folds = torch.load(config.splits_path, weights_only=False)
     prototype_path = Path(f"data/{dataset}/processed/step4_feedback/prototypes.pt")
     prototypes = torch.load(prototype_path, weights_only=False)
+
+    # Tune top-k against the same semantic consultant the final run will use;
+    # the prototype scorer and the trained head flag different edges.
+    head_logits_all = None
+    if use_llm_head:
+        head_path = Path(f"data/{dataset}/processed/step4_feedback/llm_head_logits.pt")
+        if not head_path.exists():
+            raise FileNotFoundError(
+                f"--use-llm-head needs {head_path}; run build_llm_heads first."
+            )
+        head_logits_all = torch.load(head_path, weights_only=False)
 
     if embeddings.shape[0] != data.edge_label.shape[0]:
         raise RuntimeError(
@@ -115,7 +127,7 @@ def run_top_k_sweep(
 
     print(
         f"Top-k entropy sweep: dataset={dataset}, candidates={list(candidates)}, "
-        "semantic_consultant=whitened_prototypes"
+        f"semantic_consultant={'trained_llm_head' if use_llm_head else 'whitened_prototypes'}"
     )
     for candidate in candidates:
         print(f"\n===== TOP_K_PERCENT={candidate} =====")
@@ -132,7 +144,9 @@ def run_top_k_sweep(
                 fold_state=prototypes["folds"][fold_idx],
                 fold_idx=fold_idx,
                 mode="real",
-                head_logits=None,
+                head_logits=(
+                    head_logits_all[fold_idx] if head_logits_all is not None else None
+                ),
                 top_k_percent=float(candidate),
                 eval_classes=eval_classes,
                 dropped_classes=dropped_classes,
@@ -242,6 +256,12 @@ def main() -> None:
     parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     parser.add_argument("--min-percent", type=int, default=25)
     parser.add_argument("--max-percent", type=int, default=35)
+    parser.add_argument("--output-dir")
+    parser.add_argument(
+        "--use-llm-head", action="store_true",
+        help="Tune against the trained per-fold MLP head instead of the "
+             "whitened-prototype scorer.",
+    )
     args = parser.parse_args()
     if args.min_percent > args.max_percent:
         parser.error("--min-percent must be less than or equal to --max-percent")
@@ -250,7 +270,12 @@ def main() -> None:
     torch.set_num_threads(1)
     torch.use_deterministic_algorithms(True, warn_only=True)
     candidates = tuple(range(args.min_percent, args.max_percent + 1))
-    run_top_k_sweep(args.dataset, candidates=candidates)
+    run_top_k_sweep(
+        args.dataset,
+        candidates=candidates,
+        output_dir=args.output_dir,
+        use_llm_head=args.use_llm_head,
+    )
 
 
 if __name__ == "__main__":
