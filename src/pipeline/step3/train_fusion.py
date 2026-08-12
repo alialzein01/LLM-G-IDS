@@ -43,6 +43,9 @@ PROJ_DIM = 128
 HIDDEN_DIM = 128
 DROPOUT = 0.2
 GATE_ENTROPY_LAMBDA = 0.01
+# "gate"   = convex blend g*h + (1-g)*s (original)
+# "concat" = todo.md Step 3: concatenate both modalities, per-sample attention
+FUSION_MODE = "gate"
 FEATURE_ATTENTION_ENTROPY_LAMBDA = 0.0
 
 LEARNING_RATE = 1e-3
@@ -75,6 +78,7 @@ def _build_model() -> AGAFFusionEdgeClassifier:
         num_classes=NUM_CLASSES,
         dropout=DROPOUT,
         head_fusion=USE_HEAD_LOGITS,
+        fusion_mode=FUSION_MODE,
     )
 
 
@@ -350,9 +354,11 @@ def main(
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
     use_head_logits: bool = False,
     head_logits_path: str | None = None,
+    fusion_mode: str = FUSION_MODE,
 ) -> None:
-    global USE_HEAD_LOGITS, EVAL_CLASSES
+    global USE_HEAD_LOGITS, EVAL_CLASSES, FUSION_MODE
     USE_HEAD_LOGITS = use_head_logits
+    FUSION_MODE = fusion_mode
     EVAL_CLASSES = get_dataset_config(dataset).eval_classes
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -406,7 +412,12 @@ def main(
     targets = labels.cpu().numpy()
     pooled_preds = np.full(n_edges, fill_value=-1, dtype=np.int64)
     pooled_gate = np.full((n_edges, PROJ_DIM), fill_value=np.nan, dtype=np.float32)
-    pooled_feature_attention = np.full((n_edges, PROJ_DIM), fill_value=np.nan, dtype=np.float32)
+    # Attention width is mode-dependent: PROJ_DIM per-feature weights in "gate"
+    # mode, but a single interpretable [structural, semantic] pair in "concat".
+    attention_dim = PROJ_DIM if FUSION_MODE == "gate" else 2
+    pooled_feature_attention = np.full(
+        (n_edges, attention_dim), fill_value=np.nan, dtype=np.float32
+    )
     for fold_idx, fold in enumerate(folds):
         print(f"\n=== Fold {fold_idx} ===")
         result = _train_one_fold(
@@ -546,6 +557,11 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir")
     parser.add_argument("--gate-entropy-lambda", type=float, default=GATE_ENTROPY_LAMBDA)
     parser.add_argument(
+        "--fusion-mode", choices=("gate", "concat"), default=FUSION_MODE,
+        help="concat follows todo.md Step 3: concatenate both modalities and let "
+             "per-sample attention weight them, instead of averaging via a gate.",
+    )
+    parser.add_argument(
         "--feature-attention-entropy-lambda",
         type=float,
         default=FEATURE_ATTENTION_ENTROPY_LAMBDA,
@@ -571,4 +587,5 @@ if __name__ == "__main__":
         feature_attention_entropy_lambda=args.feature_attention_entropy_lambda,
         use_head_logits=args.use_head_logits,
         head_logits_path=args.head_logits_path,
+        fusion_mode=args.fusion_mode,
     )

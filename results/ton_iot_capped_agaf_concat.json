@@ -1,0 +1,71 @@
+{
+  "dataset": "ton_iot_capped",
+  "model_name": "agaf_fusion",
+  "cv_val_macro_f1_mean": 0.7062903978736836,
+  "cv_val_macro_f1_std": 0.005011484431388399,
+  "cv_test_macro_f1_mean": 0.6977136064301488,
+  "cv_test_macro_f1_std": 0.002218037041637045,
+  "pooled_cv_accuracy": 0.7232414572645857,
+  "pooled_cv_macro_f1": 0.6977409745394049,
+  "pooled_cv_weighted_f1": 0.711511561847703,
+  "per_class_support": [
+    {
+      "class_id": 0,
+      "class_name": "Benign",
+      "support": 20000
+    },
+    {
+      "class_id": 1,
+      "class_name": "backdoor",
+      "support": 1204
+    },
+    {
+      "class_id": 2,
+      "class_name": "ddos",
+      "support": 20000
+    },
+    {
+      "class_id": 3,
+      "class_name": "dos",
+      "support": 814
+    },
+    {
+      "class_id": 4,
+      "class_name": "injection",
+      "support": 20000
+    },
+    {
+      "class_id": 5,
+      "class_name": "mitm",
+      "support": 1009
+    },
+    {
+      "class_id": 6,
+      "class_name": "password",
+      "support": 20000
+    },
+    {
+      "class_id": 7,
+      "class_name": "ransomware",
+      "support": 30
+    },
+    {
+      "class_id": 8,
+      "class_name": "scanning",
+      "support": 11953
+    },
+    {
+      "class_id": 9,
+      "class_name": "xss",
+      "support": 20000
+    }
+  ],
+  "artifact_paths": {
+    "model": "data/ton_iot_capped/processed/step3_fusion_concat/model.pt",
+    "scalers": "data/ton_iot_capped/processed/step3_fusion_concat/scalers.pt",
+    "edge_embeddings": "data/ton_iot_capped/processed/step3_fusion_concat/edge_embeddings.pt",
+    "gate_weights": "data/ton_iot_capped/processed/step3_fusion_concat/gate_weights.pt",
+    "feature_attention_weights": "data/ton_iot_capped/processed/step3_fusion_concat/feature_attention_weights.pt",
+    "metrics": "data/ton_iot_capped/processed/step3_fusion_concat/metrics.json"
+  }
+}

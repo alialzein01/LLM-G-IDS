@@ -96,14 +96,41 @@ class AGAFFusionEdgeClassifier(nn.Module):
         num_classes: int = DEFAULT_NUM_CLASSES,
         dropout: float = DEFAULT_DROPOUT,
         head_fusion: bool = False,
+        fusion_mode: str = "gate",
     ) -> None:
         super().__init__()
+        if fusion_mode not in ("gate", "concat"):
+            raise ValueError(f"fusion_mode must be 'gate' or 'concat', got {fusion_mode}")
+        self.fusion_mode = fusion_mode
+        self.proj_dim = proj_dim
+
         self.gnn_proj = ModalityProjector(gnn_dim, proj_dim)
         self.llm_proj = ModalityProjector(llm_dim, proj_dim)
-        self.gate = nn.Linear(4 * proj_dim, proj_dim)
-        self.feature_attention = nn.Linear(proj_dim, proj_dim)
 
-        self.mlp_hidden = nn.Linear(proj_dim, hidden_dim)
+        if fusion_mode == "gate":
+            # Convex blend: fused = g*h + (1-g)*s, one gate per projected feature.
+            # Collapses the two modalities into proj_dim, so whatever the gate does
+            # not keep is gone. A gate that settles at 0.5 averages them away.
+            self.gate = nn.Linear(4 * proj_dim, proj_dim)
+            self.feature_attention = nn.Linear(proj_dim, proj_dim)
+            self.mlp_hidden = nn.Linear(proj_dim, hidden_dim)
+        else:
+            # todo.md Step 3: "Both embeddings are concatenated and passed to a
+            # lightweight attention-based classifier. The classifier learns
+            # per-sample attention weights that determine how much to rely on
+            # structural vs. semantic evidence."
+            #
+            # The concatenation is what makes this robust: both modalities survive
+            # into 2*proj_dim, so attention re-weights their contribution without
+            # ever destroying one. Worst case the classifier learns to ignore the
+            # weaker half; it cannot land below both inputs the way a 0.5 gate does.
+            #
+            # Attention is per-sample over exactly two modalities, so alpha is an
+            # interpretable [E, 2] pair summing to 1 -- "how structural vs how
+            # semantic was this edge's decision" -- as the spec requires.
+            self.modality_attention = nn.Linear(2 * proj_dim, 2)
+            self.mlp_hidden = nn.Linear(2 * proj_dim, hidden_dim)
+
         self.mlp_out = nn.Linear(hidden_dim, num_classes)
         self.dropout = dropout
 
@@ -144,10 +171,24 @@ class AGAFFusionEdgeClassifier(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         h = self.gnn_proj(gnn_emb)
         s = self.llm_proj(llm_emb)
-        fused, gate = self.fuse(h, s)
 
-        feature_attention = F.softmax(self.feature_attention(fused), dim=1)
-        attended = feature_attention * fused
+        if self.fusion_mode == "gate":
+            fused, gate = self.fuse(h, s)
+            feature_attention = F.softmax(self.feature_attention(fused), dim=1)
+            attended = feature_attention * fused
+            gate_gnn_mean = gate.mean(dim=1)
+        else:
+            pair = torch.cat([h, s], dim=1)
+            # alpha[:, 0] = weight on structural, alpha[:, 1] = weight on semantic
+            alpha = F.softmax(self.modality_attention(pair), dim=1)
+            attended = torch.cat(
+                [alpha[:, 0:1] * h, alpha[:, 1:2] * s], dim=1
+            )
+            gate_gnn_mean = alpha[:, 0]
+            # Kept so the training loop's gate-entropy term and the diagnostic
+            # writers see the same tensor shapes in both modes.
+            gate = alpha[:, 0:1].expand(-1, self.proj_dim)
+            feature_attention = alpha
 
         edge_emb = self.mlp_hidden(attended)
         edge_emb = F.relu(edge_emb)
@@ -157,8 +198,8 @@ class AGAFFusionEdgeClassifier(nn.Module):
         diagnostics = {
             "gate": gate,
             "feature_attention": feature_attention,
-            "gate_gnn_mean": gate.mean(dim=1),
-            "gate_llm_mean": 1.0 - gate.mean(dim=1),
+            "gate_gnn_mean": gate_gnn_mean,
+            "gate_llm_mean": 1.0 - gate_gnn_mean,
             "feature_attention_entropy": -(
                 feature_attention * (feature_attention + 1e-12).log()
             ).sum(dim=1),
