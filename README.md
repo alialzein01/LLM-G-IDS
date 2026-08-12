@@ -74,15 +74,32 @@ superseded and should not be quoted.**
 
 ## Results
 
-Pooled five-fold out-of-fold macro-F1. Both use the whitened-prototype semantic
-consultant (`trained_llm_head: false`).
+Pooled five-fold out-of-fold macro-F1.
 
-| rung | aggregated (8 classes) | per-flow + capped (10 classes) |
+| rung | aggregated (8 classes) | capped, prototype | capped, **trained head** |
+|---|---:|---:|---:|
+| GNN | 0.3271 | 0.6722 | 0.6722 |
+| LLM | 0.2785 | 0.6200 | 0.6200 |
+| AGAF | 0.3233 | 0.5744 | 0.5744 |
+| Feedback loop | 0.3654 | 0.6691 | **0.6945** |
+
+The two capped columns differ only in the loop's semantic consultant. Swapping the
+whitened-prototype scorer for the trained per-fold MLP head lifts the loop from
+0.6691 to **0.6945**, above the GNN, and makes the semantic contribution
+statistically real:
+
+| feedback mode | prototype | trained head |
 |---|---:|---:|
-| GNN | 0.3271 | **0.6722** |
-| LLM | 0.2785 | **0.6200** |
-| AGAF | 0.3233 | **0.5744** |
-| Feedback loop | 0.3654 | **0.6691** |
+| real | 0.6691 | **0.6945** |
+| head_only | 0.6687 | 0.6638 |
+| random | 0.6584 | 0.6688 |
+| **real − head_only** | +0.0004, P=0.63 | **+0.0307, P=1.00** |
+
+With the prototype scorer the loop was indistinguishable from its own head-only
+control. With the trained head it clears it decisively (CI [0.0260, 0.0350]).
+
+**AGAF is now the only broken rung** — `Loop 0.6945 > GNN 0.6722 > LLM 0.6200 >
+AGAF 0.5744`. See "AGAF deviates from the specification" below.
 
 Every rung roughly doubles, in the harder 10-class setting. Overfitting is gone:
 train macro-F1 0.6549 against OOF 0.6722 — the out-of-fold score is now *higher*
