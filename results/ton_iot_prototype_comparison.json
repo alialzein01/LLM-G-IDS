@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "graph_scope": "aggregated",
+  "role": "comparison_only",
+  "comparison_note": "Prototype-scorer variant of the ToN-IoT aggregated ladder. NOT the authoritative contract — see results/ton_iot_current.json. Kept so the effect of the semantic consultant on the ladder shape is auditable from one place.",
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "generated": "2026-08-17",
+  "eval_classes": [0, 1, 2, 4, 5, 6, 8, 9],
+  "dropped_classes": [3, 7],
+  "n_eval_classes": 8,
+  "ladder_order_holds": true,
+  "source_artifacts": {
+    "command": "python -m src.pipeline.step4.assemble_ladder --dataset ton_iot"
+  },
+  "configuration": {
+    "top_k_percent": 15.0,
+    "semantic_confidence_fraction": 0.5,
+    "semantic_consultant": "whitened_prototype",
+    "trained_llm_head": false,
+    "agaf_head_fusion": false,
+    "seed": 42,
+    "deterministic_cpu": true
+  },
+  "results": {
+    "gnn": {
+      "accuracy": 0.8015984955336154,
+      "macro_f1": 0.33984409634016377
+    },
+    "llm": {
+      "accuracy": 0.4978843441466855,
+      "macro_f1": 0.27852446280044896
+    },
+    "agaf": {
+      "accuracy": 0.7244945933239304,
+      "macro_f1": 0.4446525803655099
+    },
+    "feedback": {
+      "accuracy": 0.9050305594734368,
+      "macro_f1": 0.45379173009472
+    }
+  },
+  "interpretation": [
+    "With the prototype scorer the ladder holds: LLM 0.279 < GNN 0.340 < AGAF 0.445 < Loop 0.454.",
+    "It holds only because the LLM rung is crippled. The same embeddings with a trained head score 0.517.",
+    "Reporting this ladder while using the trained head anywhere else in the pipeline would be inconsistent, so the trained-head version is authoritative.",
+    "loop_vs_agaf here is +0.011 with CI [-0.060, 0.078] — indistinguishable, unlike the trained-head run where the loop is clearly below."
+  ]
+}

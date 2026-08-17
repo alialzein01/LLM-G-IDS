@@ -8,13 +8,14 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from sklearn.metrics import f1_score
 from sklearn.preprocessing import StandardScaler
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.models.fusion_classifier import AGAFFusionEdgeClassifier
+from src.models.fusion_classifier import FUSION_MODES, AGAFFusionEdgeClassifier
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.metrics import (
     classification_metrics,
@@ -60,21 +61,50 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
+def _infonce_alignment(
+    h_proj: torch.Tensor, s_proj: torch.Tensor, temperature: float
+) -> torch.Tensor:
+    """
+    DCVD's cross-modal alignment: pull the structural and semantic views of the
+    same edge together, push apart views of different edges.
+
+    The two branches arrive on different scales (GNN norm ~23.6 vs LLM ~8.3 on
+    ToN-IoT), which lets the gate favour a modality for its magnitude rather
+    than its information. Cosine similarity here is scale-free by construction.
+    """
+    h = F.normalize(h_proj, dim=1)
+    s = F.normalize(s_proj, dim=1)
+    logits = (h @ s.t()) / temperature
+    target = torch.arange(h.shape[0], device=h.device)
+    return 0.5 * (F.cross_entropy(logits, target) + F.cross_entropy(logits.t(), target))
+
+
 # M3: when True, AGAF's semantic modality is the trained LLM head's per-fold OOF
 # logits (dim == NUM_CLASSES) and those logits are re-injected at the output via a
 # learned gate (see AGAFFusionEdgeClassifier.head_fusion). Set in main().
 USE_HEAD_LOGITS = False
+
+# Fusion variant under test and its capacity. Defaults reproduce the existing
+# AGAF exactly; everything else is opt-in from the CLI. Set in main().
+FUSION_MODE = "feature_gate"
+FIXED_LAMBDA = 0.5
+ALIGN_LAMBDA = 0.0
+ALIGN_TEMPERATURE = 0.07
+ACTIVE_PROJ_DIM = PROJ_DIM
+ACTIVE_HIDDEN_DIM = HIDDEN_DIM
 
 
 def _build_model() -> AGAFFusionEdgeClassifier:
     return AGAFFusionEdgeClassifier(
         gnn_dim=GNN_DIM,
         llm_dim=NUM_CLASSES if USE_HEAD_LOGITS else LLM_DIM,
-        proj_dim=PROJ_DIM,
-        hidden_dim=HIDDEN_DIM,
+        proj_dim=ACTIVE_PROJ_DIM,
+        hidden_dim=ACTIVE_HIDDEN_DIM,
         num_classes=NUM_CLASSES,
         dropout=DROPOUT,
         head_fusion=USE_HEAD_LOGITS,
+        fusion_mode=FUSION_MODE,
+        fixed_lambda=FIXED_LAMBDA,
     )
 
 
@@ -138,6 +168,12 @@ def _train_step(
         - gate_entropy_lambda * gate_entropy
         - feature_attention_entropy_lambda * feature_entropy
     )
+    if ALIGN_LAMBDA > 0.0:
+        loss = loss + ALIGN_LAMBDA * _infonce_alignment(
+            diagnostics["h_proj"][train_mask],
+            diagnostics["s_proj"][train_mask],
+            ALIGN_TEMPERATURE,
+        )
     return loss, cls_loss.detach(), gate_entropy.detach()
 
 
@@ -350,10 +386,28 @@ def main(
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
     use_head_logits: bool = False,
     head_logits_path: str | None = None,
+    fusion_mode: str = "feature_gate",
+    fixed_lambda: float = 0.5,
+    align_lambda: float = 0.0,
+    align_temperature: float = 0.07,
+    proj_dim: int = PROJ_DIM,
+    hidden_dim: int = HIDDEN_DIM,
 ) -> None:
     global USE_HEAD_LOGITS, EVAL_CLASSES
+    global FUSION_MODE, FIXED_LAMBDA, ALIGN_LAMBDA, ALIGN_TEMPERATURE
+    global ACTIVE_PROJ_DIM, ACTIVE_HIDDEN_DIM
     USE_HEAD_LOGITS = use_head_logits
+    FUSION_MODE = fusion_mode
+    FIXED_LAMBDA = fixed_lambda
+    ALIGN_LAMBDA = align_lambda
+    ALIGN_TEMPERATURE = align_temperature
+    ACTIVE_PROJ_DIM = proj_dim
+    ACTIVE_HIDDEN_DIM = hidden_dim
     EVAL_CLASSES = get_dataset_config(dataset).eval_classes
+    print(
+        f"Fusion variant: mode={fusion_mode} proj_dim={proj_dim} hidden_dim={hidden_dim} "
+        f"align_lambda={align_lambda} fixed_lambda={fixed_lambda}"
+    )
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -405,8 +459,10 @@ def main(
     fold_results: list[dict[str, object]] = []
     targets = labels.cpu().numpy()
     pooled_preds = np.full(n_edges, fill_value=-1, dtype=np.int64)
-    pooled_gate = np.full((n_edges, PROJ_DIM), fill_value=np.nan, dtype=np.float32)
-    pooled_feature_attention = np.full((n_edges, PROJ_DIM), fill_value=np.nan, dtype=np.float32)
+    pooled_gate = np.full((n_edges, ACTIVE_PROJ_DIM), fill_value=np.nan, dtype=np.float32)
+    pooled_feature_attention = np.full(
+        (n_edges, ACTIVE_PROJ_DIM), fill_value=np.nan, dtype=np.float32
+    )
     for fold_idx, fold in enumerate(folds):
         print(f"\n=== Fold {fold_idx} ===")
         result = _train_one_fold(
@@ -557,6 +613,23 @@ if __name__ == "__main__":
         "modality + gated output fusion (instead of raw 768-d embeddings).",
     )
     parser.add_argument("--head-logits-path")
+    parser.add_argument(
+        "--fusion-mode",
+        choices=list(FUSION_MODES),
+        default="feature_gate",
+        help="Fusion mechanism: feature_gate (AGAF), concat (GMLM), "
+        "fixed (BertGCN), scalar (Moorthy), selfattn (RAGFormer).",
+    )
+    parser.add_argument("--fixed-lambda", type=float, default=0.5)
+    parser.add_argument(
+        "--align-lambda",
+        type=float,
+        default=0.0,
+        help="Weight of the DCVD InfoNCE cross-modal alignment term (0 = off).",
+    )
+    parser.add_argument("--align-temperature", type=float, default=0.07)
+    parser.add_argument("--proj-dim", type=int, default=PROJ_DIM)
+    parser.add_argument("--hidden-dim", type=int, default=HIDDEN_DIM)
     args = parser.parse_args()
 
     config = get_dataset_config(args.dataset)
@@ -571,4 +644,10 @@ if __name__ == "__main__":
         feature_attention_entropy_lambda=args.feature_attention_entropy_lambda,
         use_head_logits=args.use_head_logits,
         head_logits_path=args.head_logits_path,
+        fusion_mode=args.fusion_mode,
+        fixed_lambda=args.fixed_lambda,
+        align_lambda=args.align_lambda,
+        align_temperature=args.align_temperature,
+        proj_dim=args.proj_dim,
+        hidden_dim=args.hidden_dim,
     )
