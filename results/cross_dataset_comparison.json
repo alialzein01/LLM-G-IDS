@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "feature_profile": "structural10",
+  "semantic_consultant": "per-dataset: UNSW whitened_prototype, ToN trained_oof_head",
+  "trained_llm_head": "per-dataset: UNSW false, ToN true",
+  "notes": [
+    "Absolute macro-F1 levels are not interchangeable across datasets because eval-class counts differ (UNSW 10 vs ToN 8).",
+    "The two datasets no longer share a semantic consultant: UNSW uses the prototype scorer, ToN uses the trained OOF head with AGAF head fusion. Do not read the ladder shapes as like-for-like.",
+    "ToN prototype-scorer figures are kept separately in results/ton_iot_prototype_comparison.json.",
+    "Both runs use validation-selected top-k and leakage-controlled OOF AGAF embeddings."
+  ],
+  "datasets": {
+    "unsw_nb15": {
+      "contract": "results/unsw_nb15_current.json",
+      "n_eval_classes": 10,
+      "top_k_percent": 16.0,
+      "ladder_order_holds": true,
+      "macro_f1": {
+        "gnn": 0.5496206583793729,
+        "llm": 0.7353188026257084,
+        "agaf": 0.7458681287559671,
+        "feedback": 0.7763992869991123
+      }
+    },
+    "ton_iot_aggregated": {
+      "contract": "results/ton_iot_current.json",
+      "n_eval_classes": 8,
+      "dropped_classes": [
+        "dos",
+        "ransomware"
+      ],
+      "top_k_percent": 15.0,
+      "ladder_order_holds": false,
+      "macro_f1": {
+        "gnn": 0.33984409634016377,
+        "llm": 0.5165429122825544,
+        "agaf": 0.5140964250159155,
+        "feedback": 0.45379173009472
+      },
+      "semantic_consultant": "trained_oof_head",
+      "agaf_head_fusion": true,
+      "comparison_contract": "results/ton_iot_prototype_comparison.json"
+    }
+  },
+  "observed_deltas_feedback_minus_gnn": {
+    "unsw_nb15": 0.2267786286197394,
+    "ton_iot_aggregated": 0.11394763375455624
+  },
+  "observed_deltas_feedback_minus_agaf": {
+    "unsw_nb15": 0.0305311582431452,
+    "ton_iot_aggregated": -0.060304694921195445
+  },
+  "generated": "2026-08-17"
+}

@@ -13,6 +13,15 @@ DEFAULT_NUM_CLASSES = 10
 DEFAULT_DROPOUT = 0.2
 DEFAULT_GATE_TEMPERATURE = 1.0
 
+# Fusion mechanisms surveyed in docs/, all reduced to a common interface so they
+# can be swapped on the same folds:
+#   feature_gate — the existing AGAF gate (GMU-style, dimension-wise sigmoid)
+#   concat       — GMLM: no gate, no attention; concat then MLP
+#   fixed        — BertGCN: one blend weight, identical for every edge
+#   scalar       — Moorthy et al.: one learned weight per modality per edge
+#   selfattn     — RAGFormer: the two embeddings as a 2-token sequence
+FUSION_MODES = ("feature_gate", "concat", "fixed", "scalar", "selfattn")
+
 
 class ModalityProjector(nn.Module):
     def __init__(self, in_dim: int, proj_dim: int) -> None:
@@ -96,11 +105,38 @@ class AGAFFusionEdgeClassifier(nn.Module):
         num_classes: int = DEFAULT_NUM_CLASSES,
         dropout: float = DEFAULT_DROPOUT,
         head_fusion: bool = False,
+        fusion_mode: str = "feature_gate",
+        fixed_lambda: float = 0.5,
     ) -> None:
         super().__init__()
+        if fusion_mode not in FUSION_MODES:
+            raise ValueError(f"fusion_mode must be one of {FUSION_MODES}, got {fusion_mode!r}")
+        self.fusion_mode = fusion_mode
+        self.fixed_lambda = fixed_lambda
+        self.proj_dim = proj_dim
+
         self.gnn_proj = ModalityProjector(gnn_dim, proj_dim)
         self.llm_proj = ModalityProjector(llm_dim, proj_dim)
-        self.gate = nn.Linear(4 * proj_dim, proj_dim)
+
+        # Only the mechanism in use is allocated, so parameter counts stay
+        # honest when variants are compared on a 1275-edge training split.
+        if fusion_mode == "feature_gate":
+            self.gate = nn.Linear(4 * proj_dim, proj_dim)
+        elif fusion_mode == "concat":
+            self.concat_proj = nn.Linear(2 * proj_dim, proj_dim)
+        elif fusion_mode == "scalar":
+            # Shared scorer applied to each modality separately, softmaxed over
+            # the two — one interpretable weight per edge, per modality.
+            self.modality_score = nn.Sequential(
+                nn.Linear(proj_dim, proj_dim // 4),
+                nn.Tanh(),
+                nn.Linear(proj_dim // 4, 1),
+            )
+        elif fusion_mode == "selfattn":
+            self.modality_attn = nn.MultiheadAttention(
+                proj_dim, num_heads=4, batch_first=True
+            )
+
         self.feature_attention = nn.Linear(proj_dim, proj_dim)
 
         self.mlp_hidden = nn.Linear(proj_dim, hidden_dim)
@@ -129,11 +165,50 @@ class AGAFFusionEdgeClassifier(nn.Module):
     def fuse(
         self, h_proj: torch.Tensor, s_proj: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        gate_input = torch.cat(
-            [h_proj, s_proj, torch.abs(h_proj - s_proj), h_proj * s_proj], dim=1
-        )
-        gate = torch.sigmoid(self.gate(gate_input))
-        fused = gate * h_proj + (1.0 - gate) * s_proj
+        """
+        Return (fused, gate). `gate` is always [E, proj_dim] and always reads as
+        "share given to the GNN branch", so the per-class diagnostics and the
+        pooled artifacts mean the same thing across every mechanism.
+        """
+        mode = self.fusion_mode
+
+        if mode == "feature_gate":
+            gate_input = torch.cat(
+                [h_proj, s_proj, torch.abs(h_proj - s_proj), h_proj * s_proj], dim=1
+            )
+            gate = torch.sigmoid(self.gate(gate_input))
+            fused = gate * h_proj + (1.0 - gate) * s_proj
+            return fused, gate
+
+        if mode == "concat":
+            # GMLM: both modalities pass through whole; nothing decides a share.
+            fused = F.relu(self.concat_proj(torch.cat([h_proj, s_proj], dim=1)))
+            gate = torch.full_like(h_proj, 0.5)
+            return fused, gate
+
+        if mode == "fixed":
+            # BertGCN: one blend weight, the same for every edge in the dataset.
+            gate = torch.full_like(h_proj, self.fixed_lambda)
+            fused = self.fixed_lambda * h_proj + (1.0 - self.fixed_lambda) * s_proj
+            return fused, gate
+
+        if mode == "scalar":
+            # Moorthy et al.: score each modality, softmax over the two.
+            scores = torch.cat(
+                [self.modality_score(h_proj), self.modality_score(s_proj)], dim=1
+            )
+            alpha = F.softmax(scores, dim=1)
+            fused = alpha[:, 0:1] * h_proj + alpha[:, 1:2] * s_proj
+            gate = alpha[:, 0:1].expand(-1, self.proj_dim)
+            return fused, gate
+
+        # RAGFormer: two modality tokens, self-attention, residual.
+        seq = torch.stack([h_proj, s_proj], dim=1)
+        attended, weights = self.modality_attn(seq, seq, seq)
+        seq = seq + attended
+        fused = seq.mean(dim=1)
+        # Attention mass the GNN token receives, averaged over queries.
+        gate = weights[:, :, 0].mean(dim=1, keepdim=True).expand(-1, self.proj_dim)
         return fused, gate
 
     def forward(
@@ -157,6 +232,10 @@ class AGAFFusionEdgeClassifier(nn.Module):
         diagnostics = {
             "gate": gate,
             "feature_attention": feature_attention,
+            # Kept for the optional InfoNCE alignment term, which needs the two
+            # projected views of the same edge before they are combined.
+            "h_proj": h,
+            "s_proj": s,
             "gate_gnn_mean": gate.mean(dim=1),
             "gate_llm_mean": 1.0 - gate.mean(dim=1),
             "feature_attention_entropy": -(

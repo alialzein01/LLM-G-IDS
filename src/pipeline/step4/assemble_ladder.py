@@ -38,7 +38,6 @@ if __package__ in (None, ""):
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import eval_macro_f1, mask_dropped_logits
 from src.pipeline.step4.train_feedback import (
-    BIAS_CONFIDENCE_FRAC,
     _llm_alone_oof,
 )
 from src.pipeline.step4.feedback_config import load_feedback_config
@@ -79,42 +78,63 @@ def _masked_preds(logits: torch.Tensor, dropped) -> torch.Tensor:
     return mask_dropped_logits(logits, dropped).argmax(dim=1)
 
 
-def assemble_ladder(dataset: str) -> Path:
+def assemble_ladder(
+    dataset: str,
+    feedback_dir: str | Path | None = None,
+    fusion_dir: str | Path | None = None,
+    use_llm_head: bool = False,
+    head_logits_path: str | Path | None = None,
+) -> Path:
     config = get_dataset_config(dataset)
     ec = config.eval_classes
     dropped = config.dropped_classes
-    root = Path(f"data/{dataset}/processed/step4_feedback")
-    feedback_config = load_feedback_config(dataset)
+    canonical_root = Path(f"data/{dataset}/processed/step4_feedback")
+    root = Path(feedback_dir) if feedback_dir is not None else canonical_root
+    resolved_fusion_dir = (
+        Path(fusion_dir) if fusion_dir is not None else Path(config.fusion_output_dir)
+    )
+    feedback_config = load_feedback_config(
+        dataset,
+        root=root if feedback_dir is not None else None,
+    )
     top_k_percent = float(feedback_config["top_k_percent"])
+    confidence_fraction = float(feedback_config["bias_confidence_fraction"])
 
     data = torch.load(config.graph_path, weights_only=False)
     labels = data.edge_label
     labels_np = labels.numpy()
     folds = torch.load(config.splits_path, weights_only=False)
     emb = torch.load(config.llm_embedding_path, weights_only=False).float()
-    protos = torch.load(root / "prototypes.pt", weights_only=False)
+    protos = torch.load(canonical_root / "prototypes.pt", weights_only=False)
 
     # --- rung predictions (all masked to eval classes) ---------------------
-    gnn_logits = torch.load(root / "oof_logits.pt", weights_only=False)
+    gnn_logits = torch.load(canonical_root / "oof_logits.pt", weights_only=False)
     gnn_pred = _masked_preds(gnn_logits, dropped)
 
-    # LLM-alone: ALWAYS the whitened-prototype scorer.
-    #
-    # This must be the same LLM the feedback loop consults, or the ladder is
-    # not a like-for-like comparison. `train_feedback` defaults to the
-    # prototype scorer (`use_llm_head=False`), so the prototype scorer is the
-    # rung. Scoring this rung with the trained MLP head instead — while the
-    # loop consults the prototype — is what produced the misleading
-    # "loop beats LLM by +0.09" reading: the loop was being compared against an
-    # LLM it never uses. Report the trained head separately as its own
-    # baseline if you want it; do not substitute it here.
+    # The LLM rung must use the same semantic consultant as AGAF and feedback.
     llm_proto_logits = _llm_alone_oof(data, emb, folds, protos)
     llm_proto_pred = _masked_preds(llm_proto_logits, dropped)
-    llm_pred = llm_proto_pred
-    llm_head_used = "prototype_scorer"
+    llm_head_pred = None
+    if use_llm_head:
+        resolved_head_path = (
+            Path(head_logits_path)
+            if head_logits_path is not None
+            else canonical_root / "llm_head_logits.pt"
+        )
+        per_fold_head_logits = torch.load(resolved_head_path, weights_only=False)
+        llm_head_oof = torch.zeros_like(per_fold_head_logits[0])
+        for fold_idx, fold in enumerate(folds):
+            test_mask = fold["test_mask"]
+            llm_head_oof[test_mask] = per_fold_head_logits[fold_idx][test_mask]
+        llm_head_pred = _masked_preds(llm_head_oof, dropped)
+        llm_pred = llm_head_pred
+        llm_head_used = "trained_oof_head"
+    else:
+        llm_pred = llm_proto_pred
+        llm_head_used = "prototype_scorer"
 
     agaf_metrics = json.loads(
-        (Path(f"data/{dataset}/processed/step3_fusion/metrics.json")).read_text()
+        (resolved_fusion_dir / "metrics.json").read_text()
     )
     agaf_pred = torch.tensor(agaf_metrics["predictions"], dtype=torch.long)
 
@@ -173,6 +193,9 @@ def assemble_ladder(dataset: str) -> Path:
         "metric": "pooled_oof_macro_f1",
         "llm_head": llm_head_used,
         "llm_alone_prototype": macro(llm_proto_pred),
+        "llm_alone_trained_head": (
+            macro(llm_head_pred) if llm_head_pred is not None else None
+        ),
         "ladder": rungs,
         "accuracy": accuracy_scores,
         "weighted_f1": weighted_f1,
@@ -180,10 +203,10 @@ def assemble_ladder(dataset: str) -> Path:
         "ladder_order_holds": bool(ladder_ok),
         "configuration": {
             "top_k_percent": top_k_percent,
-            "bias_confidence_fraction": BIAS_CONFIDENCE_FRAC,
-            "effective_feedback_percent": top_k_percent * BIAS_CONFIDENCE_FRAC,
-            "semantic_consultant": "whitened_prototype_scorer",
-            "trained_llm_head": False,
+            "bias_confidence_fraction": confidence_fraction,
+            "effective_feedback_percent": top_k_percent * confidence_fraction,
+            "semantic_consultant": llm_head_used,
+            "trained_llm_head": use_llm_head,
             "selected_feedback_config": feedback_config,
         },
     }
@@ -232,7 +255,7 @@ def assemble_ladder(dataset: str) -> Path:
         md.append(f"| {config.label_names[c]}{tag} | {counts[c]} | {per_class[c]:.3f} |")
     md.append("")
 
-    out_md = Path(f"data/{dataset}/processed/step4_feedback/STEP4_{dataset.upper()}_RESULTS.md")
+    out_md = root / f"STEP4_{dataset.upper()}_RESULTS.md"
     out_md.write_text("\n".join(md))
 
     print(f"\n=== {config.display_name} LADDER (pooled OOF macro-F1, {len(ec)} classes) ===")
@@ -251,8 +274,18 @@ def assemble_ladder(dataset: str) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
+    parser.add_argument("--feedback-dir")
+    parser.add_argument("--fusion-dir")
+    parser.add_argument("--use-llm-head", action="store_true")
+    parser.add_argument("--head-logits-path")
     args = parser.parse_args()
-    assemble_ladder(args.dataset)
+    assemble_ladder(
+        args.dataset,
+        feedback_dir=args.feedback_dir,
+        fusion_dir=args.fusion_dir,
+        use_llm_head=args.use_llm_head,
+        head_logits_path=args.head_logits_path,
+    )
 
 
 if __name__ == "__main__":

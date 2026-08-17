@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "graph_scope": "aggregated",
+  "feature_profile": "structural10",
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "generated": "2026-08-17",
+  "eval_classes": [0, 1, 2, 4, 5, 6, 8, 9],
+  "dropped_classes": [3, 7],
+  "n_eval_classes": 8,
+  "ladder_order_holds": false,
+  "source_artifacts": {
+    "ladder": "data/ton_iot/processed/step4_feedback/ladder_summary.json",
+    "fusion": "data/ton_iot/processed/step3_fusion_head/benchmark_summary.json",
+    "command": "python -m src.pipeline.step3.train_fusion --dataset ton_iot --use-head-logits --output-dir data/ton_iot/processed/step3_fusion_head && python -m src.pipeline.step4.assemble_ladder --dataset ton_iot --use-llm-head --fusion-dir data/ton_iot/processed/step3_fusion_head"
+  },
+  "configuration": {
+    "top_k_percent": 15.0,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 7.5,
+    "semantic_consultant": "trained_oof_head",
+    "trained_llm_head": true,
+    "agaf_head_fusion": true,
+    "max_feedback_iterations": 3,
+    "churn_tolerance": 0.01,
+    "gate_entropy_lambda": 0.01,
+    "fusion_mode": "feature_gate",
+    "seed": 42,
+    "deterministic_cpu": true
+  },
+  "results": {
+    "gnn": {
+      "accuracy": 0.8015984955336154,
+      "macro_f1": 0.33984409634016377
+    },
+    "llm": {
+      "accuracy": 0.9149036201222379,
+      "macro_f1": 0.5165429122825544
+    },
+    "agaf": {
+      "accuracy": 0.9139633286318759,
+      "macro_f1": 0.5140964250159155
+    },
+    "feedback": {
+      "accuracy": 0.9050305594734368,
+      "macro_f1": 0.45379173009472
+    }
+  },
+  "statistical_comparisons": {
+    "agaf_vs_gnn": {
+      "mean_macro_f1_difference": 0.17238135445509917,
+      "ci_95": [0.1101937820560285, 0.23477701646491614],
+      "bootstrap_probability_positive": 1.0
+    },
+    "agaf_vs_llm": {
+      "mean_macro_f1_difference": -0.0024634159398222613,
+      "ci_95": [-0.011003384337217556, 0.0023358281804551763],
+      "bootstrap_probability_positive": 0.3495
+    },
+    "feedback_vs_agaf": {
+      "mean_macro_f1_difference": -0.05985554029736324,
+      "ci_95": [-0.10003096624937054, -0.019268342284550752],
+      "bootstrap_probability_positive": 0.0015
+    },
+    "feedback_vs_llm": {
+      "mean_macro_f1_difference": -0.06231895623718549,
+      "ci_95": [-0.1036315886665647, -0.021234508479764973],
+      "bootstrap_probability_positive": 0.0005
+    },
+    "feedback_vs_gnn": {
+      "mean_macro_f1_difference": 0.11252581415773594,
+      "ci_95": [0.05163242290332278, 0.16954510296448846],
+      "bootstrap_probability_positive": 1.0
+    }
+  },
+  "limitations": [
+    "Edges are aggregated with the attack label in the grouping key, so these are not deployment-valid estimates.",
+    "Macro-F1 is over 8 eval classes (dos and ransomware dropped for support); not comparable to the UNSW 10-class ladder.",
+    "The ladder does NOT hold: AGAF ties the LLM (CI crosses zero) and the feedback loop sits BELOW both, by a margin whose CI excludes zero.",
+    "AGAF reproduces the trained LLM head almost exactly; the GNN branch adds no measurable lift on top of it.",
+    "The graph has 2127 edges; rare eval classes have 12-35 edges, so single-seed differences between fusion mechanisms are not resolvable (see the 2026-08-17 report).",
+    "The gate-entropy regulariser is still active at lambda=0.01, which rewards an uninformative gate; its effect has not been isolated."
+  ]
+}
