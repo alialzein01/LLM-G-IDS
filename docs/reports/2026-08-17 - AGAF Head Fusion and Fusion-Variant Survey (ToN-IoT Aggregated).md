@@ -184,17 +184,87 @@ Two errors found and fixed during this session:
 
 ---
 
+## 6b. Follow-up runs (same day)
+
+Two items from the original "open" list were closed.
+
+### The gate-entropy regulariser was not the cause
+
+Re-running head-fused AGAF with `--gate-entropy-lambda 0` produced **bit-identical**
+predictions (pooled macro-F1 `0.4532371043908496` in both runs) and an unchanged gate
+spread (0.0155 → 0.0158).
+
+The reason is visible in the trained weights:
+
+```
+head_gate bias:  init 3.0  ->  trained 2.9947
+implied trust in the LLM head: 0.9523
+```
+
+The output gate never moved off its initialisation. **AGAF defers ~95% to the trained
+LLM head**, so its own fused branch barely reaches the output — which is why a change to
+the fused branch's regulariser cannot alter the predictions.
+
+This reframes section 3. Head fusion did not make fusion work; it made AGAF stop hurting
+by having it copy the stronger branch. The 0.4447 → 0.5141 gain is real as engineering,
+but it is not evidence that structural and semantic evidence combine.
+
+### The feedback loop, re-run against head-fused AGAF
+
+The loop had never seen the head-fused AGAF benchmark. Re-running it:
+
+| Run | top_k | Loop macro-F1 | Loop − AGAF | CI 95% |
+|---|---|---|---|---|
+| prototype path (original) | 15.0 | 0.4538 | −0.060 | [−0.100, −0.019] |
+| head, fallback top_k | **16.0** | 0.4784 | −0.035 | [−0.067, −0.004] |
+| head, ToN-selected top_k | **15.0** | **0.4986** | −0.015 | [−0.046, +0.016] |
+
+**A configuration trap worth recording:** with no `selected_feedback_config.json` in the
+output directory, `train_feedback` silently falls back to `top_k = 16.0` — UNSW's selected
+value, not ToN's 15.0. The first re-run used the wrong value and understated the loop by
+0.020. Always pass `--top-k-percent 15.0` for ToN.
+
+At the correct setting the loop's CI crosses zero, so **the loop is now statistically tied
+with AGAF**, not below it.
+
+### The loop's selection mechanism does work
+
+| Mode | macro-F1 |
+|---|---|
+| real | 0.4986 |
+| head_only | 0.3641 |
+| random | 0.3498 |
+
+real − random = **+0.147**, CI [+0.093, +0.204], P=1.000
+real − head_only = **+0.132**, CI [+0.080, +0.184], P=1.000
+
+This is a genuine change of state. On the prototype path, real vs random was −0.0004 with
+the CI crossing zero — choosing which flows to consult was no better than picking at
+random. It is now decisively better. The selection logic is sound; what it feeds is the
+limitation.
+
+### Resulting ladder state
+
+```
+GNN 0.3398   <<   Loop 0.4986  ~  AGAF 0.5141  ~  LLM 0.5165
+```
+
+Only the GNN is clearly separated. Every pairwise CI among the top three crosses zero.
+The strict order Loop > AGAF > {GNN, LLM} is not demonstrated.
+
+---
+
 ## 7. Open items
 
-**Not yet isolated — the gate-entropy regulariser.** `train_fusion.py` computes
-`loss = cls_loss − 0.01 × gate_entropy`. Bernoulli entropy peaks at 0.5, so subtracting
-it *rewards* an uninformative gate. Every run in this report had it active. The frozen
-gate observed in the per-class diagnostics is therefore partly self-inflicted.
-One run at `--gate-entropy-lambda 0` settles it.
+**~~The gate-entropy regulariser~~ — closed in 6b.** Not the cause. Disabling it gave
+bit-identical predictions, because the output gate defers 95% to the LLM head.
 
-**The feedback loop regressed relative to AGAF.** Loop 0.4538 vs AGAF 0.5141, CI
-excluding zero. The loop still consumes the prototype path; it has not been re-run
-against the head-fused AGAF benchmark.
+**~~The feedback loop regressed~~ — closed in 6b.** At the correct `top_k = 15.0` the
+loop reaches 0.4986 and ties AGAF (CI crosses zero).
+
+**Still open — AGAF does not actually fuse.** Its output gate sits at 0.95 trust in the
+LLM head. Any claim that structural and semantic evidence combine is currently
+unsupported on ToN. Testing this properly needs a GNN worth listening to.
 
 **The GNN remains the bottleneck.** At 0.3398 it is far below FedGATSage's 0.6193 on
 the same dataset. Their recipe includes per-node traffic-statistic features, which our
