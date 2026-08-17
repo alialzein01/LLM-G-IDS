@@ -57,15 +57,24 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.33984409634016377)
         self.assertAlmostEqual(results["llm"]["macro_f1"], 0.5165429122825544)
         self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.5140964250159155)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.45379173009472)
+        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.4985978148287057)
 
         # Head fusion lifted AGAF well clear of the GNN (CI excludes zero) ...
         self.assertGreater(results["agaf"]["macro_f1"], results["gnn"]["macro_f1"])
-        # ... but AGAF only ties the trained LLM head, and the loop sits below both.
-        self.assertLess(results["feedback"]["macro_f1"], results["agaf"]["macro_f1"])
-        self.assertLess(
-            abs(results["agaf"]["macro_f1"] - results["llm"]["macro_f1"]), 0.01
-        )
+        self.assertGreater(results["feedback"]["macro_f1"], results["gnn"]["macro_f1"])
+        # ... but the top three rungs are statistically tied: every pairwise CI
+        # among LLM / AGAF / loop crosses zero, so the strict ladder is NOT shown.
+        for pair in ("agaf_vs_llm", "feedback_vs_agaf", "feedback_vs_llm"):
+            low, high = payload["statistical_comparisons"][pair]["ci_95"]
+            self.assertLess(low, 0.0, pair)
+            self.assertGreater(high, 0.0, pair)
+
+        # The loop's selection is real even though its rung is tied: choosing which
+        # flows to consult beats both random selection and head-only consultation.
+        ablations = payload["feedback_ablations"]
+        self.assertGreater(ablations["real"]["macro_f1"], ablations["random"]["macro_f1"])
+        self.assertGreater(ablations["real_vs_random"]["ci_95"][0], 0.0)
+        self.assertGreater(ablations["real_vs_head_only"]["ci_95"][0], 0.0)
 
     def test_ton_iot_prototype_comparison_is_marked_non_authoritative(self) -> None:
         """The prototype ladder is kept only so the consultant's effect is auditable."""

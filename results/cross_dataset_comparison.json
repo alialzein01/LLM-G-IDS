@@ -9,7 +9,8 @@
     "Absolute macro-F1 levels are not interchangeable across datasets because eval-class counts differ (UNSW 10 vs ToN 8).",
     "The two datasets no longer share a semantic consultant: UNSW uses the prototype scorer, ToN uses the trained OOF head with AGAF head fusion. Do not read the ladder shapes as like-for-like.",
     "ToN prototype-scorer figures are kept separately in results/ton_iot_prototype_comparison.json.",
-    "Both runs use validation-selected top-k and leakage-controlled OOF AGAF embeddings."
+    "Both runs use validation-selected top-k and leakage-controlled OOF AGAF embeddings.",
+    "On ToN the top three rungs (LLM, AGAF, loop) are statistically tied; only the GNN is clearly separated. Do not read the ToN column as an ordered ladder."
   ],
   "datasets": {
     "unsw_nb15": {
@@ -37,7 +38,7 @@
         "gnn": 0.33984409634016377,
         "llm": 0.5165429122825544,
         "agaf": 0.5140964250159155,
-        "feedback": 0.45379173009472
+        "feedback": 0.4985978148287057
       },
       "semantic_consultant": "trained_oof_head",
       "agaf_head_fusion": true,
@@ -46,11 +47,11 @@
   },
   "observed_deltas_feedback_minus_gnn": {
     "unsw_nb15": 0.2267786286197394,
-    "ton_iot_aggregated": 0.11394763375455624
+    "ton_iot_aggregated": 0.15875371848854192
   },
   "observed_deltas_feedback_minus_agaf": {
     "unsw_nb15": 0.0305311582431452,
-    "ton_iot_aggregated": -0.060304694921195445
+    "ton_iot_aggregated": -0.015498610187209771
   },
   "generated": "2026-08-17"
 }
