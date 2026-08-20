@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "graph_scope": "aggregated",
+  "role": "llm_only_baseline",
+  "role_note": "The strongest honest LLM-only baseline on ToN-IoT: a per-fold MLP head trained on the same CySecBERT KG embeddings, with AGAF head fusion. This is NOT a rung of the canonical ladder. The canonical architecture uses the whitened-prototype consultant on every rung, matching UNSW-NB15 \u2014 see results/ton_iot_current.json.",
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    8,
+    9
+  ],
+  "dropped_classes": [
+    3,
+    7
+  ],
+  "n_eval_classes": 8,
+  "configuration": {
+    "top_k_percent": 15.0,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 7.5,
+    "semantic_consultant": "trained_oof_head",
+    "trained_llm_head": true,
+    "agaf_head_fusion": true,
+    "max_feedback_iterations": 3,
+    "churn_tolerance": 0.01,
+    "gate_entropy_lambda": 0.01,
+    "fusion_mode": "feature_gate",
+    "seed": 42,
+    "deterministic_cpu": true
+  },
+  "llm_only_macro_f1": 0.5165429122825544,
+  "llm_only_accuracy": 0.9149036201222379,
+  "full_head_consultant_ladder": {
+    "gnn": 0.33984409634016377,
+    "llm": 0.5165429122825544,
+    "agaf": 0.5140964250159155,
+    "feedback": 0.4985978148287057
+  },
+  "statistical_comparisons": {
+    "agaf_vs_gnn": {
+      "mean_macro_f1_difference": 0.17238135445509917,
+      "ci_95": [
+        0.1101937820560285,
+        0.23477701646491614
+      ],
+      "bootstrap_probability_positive": 1.0
+    },
+    "agaf_vs_llm": {
+      "mean_macro_f1_difference": -0.0024634159398222613,
+      "ci_95": [
+        -0.011003384337217556,
+        0.0023358281804551763
+      ],
+      "bootstrap_probability_positive": 0.3495
+    },
+    "feedback_vs_agaf": {
+      "mean_macro_f1_difference": -0.014883984595890949,
+      "ci_95": [
+        -0.046193302023108576,
+        0.015971063436109215
+      ],
+      "bootstrap_probability_positive": 0.166
+    },
+    "feedback_vs_llm": {
+      "mean_macro_f1_difference": -0.017347400535713205,
+      "ci_95": [
+        -0.0476310364842515,
+        0.012296771291710262
+      ],
+      "bootstrap_probability_positive": 0.1255
+    },
+    "feedback_vs_gnn": {
+      "mean_macro_f1_difference": 0.15749736985920823,
+      "ci_95": [
+        0.10068570020431261,
+        0.21505442698135827
+      ],
+      "bootstrap_probability_positive": 1.0
+    }
+  },
+  "source_artifacts": {
+    "ladder": "data/ton_iot/processed/step4_feedback/ladder_summary.json",
+    "fusion": "data/ton_iot/processed/step3_fusion_head/benchmark_summary.json",
+    "command": "python -m src.pipeline.step3.train_fusion --dataset ton_iot --use-head-logits --output-dir data/ton_iot/processed/step3_fusion_head && python -m src.pipeline.step4.train_feedback --dataset ton_iot --use-llm-head --top-k-percent 15.0 --agaf-benchmark-path data/ton_iot/processed/step3_fusion_head/benchmark_summary.json --output-dir data/ton_iot/processed/step4_feedback_head15 && python -m src.pipeline.step4.assemble_ladder --dataset ton_iot --use-llm-head --fusion-dir data/ton_iot/processed/step3_fusion_head --feedback-dir data/ton_iot/processed/step4_feedback_head15",
+    "feedback": "data/ton_iot/processed/step4_feedback_head15/ladder_summary.json"
+  },
+  "must_be_reported": [
+    "Under the head consultant the ToN ladder does not hold and nothing at the top is significantly ordered: AGAF ties the LLM (-0.0025, CI [-0.0110, +0.0023]), the loop ties AGAF (-0.0149, CI [-0.0462, +0.0160]), the loop ties the LLM (-0.0173, CI [-0.0476, +0.0123]). Only the GNN is clearly separated at the bottom.",
+    "The trained LLM head alone scores 0.5165, above every other rung including the loop (0.4986). As on UNSW, an MLP on the KG embeddings matches or beats the full system.",
+    "AGAF's learned output gate stayed at its 0.95 initialisation (trained bias 2.9947 vs init 3.0), so AGAF defers ~95% to the head and reproduces it almost class for class. Disabling the gate-entropy regulariser produced bit-identical predictions, so the entropy term is not the cause."
+  ],
+  "generated": "2026-08-20"
+}
