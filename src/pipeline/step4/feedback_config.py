@@ -40,18 +40,27 @@ def write_selected_feedback_config(
     dataset: str,
     selected: dict[str, Any],
     root: str | Path | None = None,
+    *,
+    semantic_consultant: str = "whitened_prototype_scorer",
+    trained_llm_head: bool = False,
+    bias_confidence_fraction: float = DEFAULT_BIAS_CONFIDENCE_FRAC,
+    selection_parameter: str = "top_k_percent",
 ) -> Path:
     top_k = float(selected["top_k_percent"])
     payload = default_feedback_config(dataset)
     payload.update(
         {
             "source": "validation_sweep",
+            "selection_parameter": selection_parameter,
             "top_k_percent": top_k,
-            "effective_feedback_percent": top_k * DEFAULT_BIAS_CONFIDENCE_FRAC,
+            "bias_confidence_fraction": bias_confidence_fraction,
+            "effective_feedback_percent": top_k * bias_confidence_fraction,
             "mean_validation_macro_f1": float(selected["mean_best_val_macro_f1"]),
             "validation_macro_f1_std": float(selected["std_best_val_macro_f1"]),
             "pooled_oof_test_macro_f1": float(selected["pooled_oof_test_macro_f1"]),
             "sweep_summary_path": selected.get("sweep_summary_path"),
+            "semantic_consultant": semantic_consultant,
+            "trained_llm_head": trained_llm_head,
         }
     )
     path = selected_config_path(dataset, root)

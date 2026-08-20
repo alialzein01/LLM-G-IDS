@@ -1,8 +1,9 @@
 """Validation-selected sweep of feedback-loop entropy percentages.
 
-Each candidate is retrained independently on the existing five folds with the
-prototype semantic consultant. Candidate selection uses mean best-validation
-macro-F1 only; held-out OOF test F1 is reported after selection.
+Each candidate is retrained independently on the existing five folds with
+either the prototype semantic consultant or the trained per-fold LLM head.
+Candidate selection uses mean best-validation macro-F1 only; held-out OOF test
+F1 is reported after selection.
 
 Run:
     python -m src.pipeline.step4.sweep_top_k --dataset unsw_nb15
@@ -81,6 +82,8 @@ def run_top_k_sweep(
     dataset: str,
     candidates: tuple[int, ...] = DEFAULT_CANDIDATES,
     output_dir: str | Path | None = None,
+    use_llm_head: bool = False,
+    head_logits_path: str | Path | None = None,
 ) -> Path:
     """Train, persist, and validation-rank all requested entropy percentages."""
     _validate_candidates(candidates)
@@ -94,6 +97,16 @@ def run_top_k_sweep(
     folds = torch.load(config.splits_path, weights_only=False)
     prototype_path = Path(f"data/{dataset}/processed/step4_feedback/prototypes.pt")
     prototypes = torch.load(prototype_path, weights_only=False)
+    head_logits_all = None
+    semantic_consultant = "whitened_prototype_scorer"
+    if use_llm_head:
+        resolved_head_path = (
+            Path(head_logits_path)
+            if head_logits_path is not None
+            else Path(f"data/{dataset}/processed/step4_feedback/llm_head_logits.pt")
+        )
+        head_logits_all = torch.load(resolved_head_path, weights_only=False)
+        semantic_consultant = "trained_oof_head"
 
     if embeddings.shape[0] != data.edge_label.shape[0]:
         raise RuntimeError(
@@ -105,6 +118,15 @@ def run_top_k_sweep(
             f"Fold count ({len(folds)}) does not match prototype states "
             f"({len(prototypes['folds'])})."
         )
+    if head_logits_all is not None and head_logits_all.shape != (
+        len(folds),
+        data.edge_label.shape[0],
+        NUM_CLASSES,
+    ):
+        raise RuntimeError(
+            f"Trained-head logits have shape {tuple(head_logits_all.shape)}; expected "
+            f"({len(folds)}, {data.edge_label.shape[0]}, {NUM_CLASSES})."
+        )
 
     feedback_training.IN_DIM = data.x.shape[1]
     labels = data.edge_label
@@ -115,7 +137,7 @@ def run_top_k_sweep(
 
     print(
         f"Top-k entropy sweep: dataset={dataset}, candidates={list(candidates)}, "
-        "semantic_consultant=whitened_prototypes"
+        f"semantic_consultant={semantic_consultant}"
     )
     for candidate in candidates:
         print(f"\n===== TOP_K_PERCENT={candidate} =====")
@@ -132,7 +154,11 @@ def run_top_k_sweep(
                 fold_state=prototypes["folds"][fold_idx],
                 fold_idx=fold_idx,
                 mode="real",
-                head_logits=None,
+                head_logits=(
+                    head_logits_all[fold_idx]
+                    if head_logits_all is not None
+                    else None
+                ),
                 top_k_percent=float(candidate),
                 eval_classes=eval_classes,
                 dropped_classes=dropped_classes,
@@ -195,7 +221,8 @@ def run_top_k_sweep(
         "dropped_classes": list(dropped_classes),
         "selection_metric": "mean_best_val_macro_f1",
         "selection_uses_test_labels": False,
-        "semantic_consultant": "whitened_prototype_scorer",
+        "semantic_consultant": semantic_consultant,
+        "trained_llm_head": use_llm_head,
         "bias_confidence_fraction": feedback_training.BIAS_CONFIDENCE_FRAC,
         "selected": selected,
         "candidates": rows,
@@ -209,7 +236,11 @@ def run_top_k_sweep(
         json.dump(summary, handle, indent=2)
     _write_csv(rows, root / "summary.csv")
     selected_config_path = write_selected_feedback_config(
-        dataset, selected, root=feedback_root
+        dataset,
+        selected,
+        root=feedback_root,
+        semantic_consultant=semantic_consultant,
+        trained_llm_head=use_llm_head,
     )
 
     print("\n=== VALIDATION RANKING ===")
@@ -242,6 +273,9 @@ def main() -> None:
     parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     parser.add_argument("--min-percent", type=int, default=25)
     parser.add_argument("--max-percent", type=int, default=35)
+    parser.add_argument("--output-dir")
+    parser.add_argument("--use-llm-head", action="store_true")
+    parser.add_argument("--head-logits-path")
     args = parser.parse_args()
     if args.min_percent > args.max_percent:
         parser.error("--min-percent must be less than or equal to --max-percent")
@@ -250,7 +284,13 @@ def main() -> None:
     torch.set_num_threads(1)
     torch.use_deterministic_algorithms(True, warn_only=True)
     candidates = tuple(range(args.min_percent, args.max_percent + 1))
-    run_top_k_sweep(args.dataset, candidates=candidates)
+    run_top_k_sweep(
+        args.dataset,
+        candidates=candidates,
+        output_dir=args.output_dir,
+        use_llm_head=args.use_llm_head,
+        head_logits_path=args.head_logits_path,
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "experiment": "llm_simplification_sweep",
+  "question": "Instructor hypothesis (2026-08-18): simplifying the LLM's input should push the LLM and AGAF rungs below the feedback loop, making the ladder hold.",
+  "status": "comparison_only - NOT the canonical UNSW result",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "semantic_consultant": "whitened_prototype (canonical UNSW consultant)",
+  "top_k_percent": 16.0,
+  "semantic_confidence_fraction": 0.5,
+  "text_levels": {
+    "L0_rich": "canonical kg_triples_nl.txt - prose + absolute magnitude cues + coarse levels (~380 chars/line)",
+    "levels_only": "prose + coarse levels, absolute magnitude cues removed (200 chars/line)",
+    "bare_numbers": "no prose, raw feature values only (93 chars/line)",
+    "structure_only": "endpoints + protocol/port only, traffic statistics removed (54 chars/line)"
+  },
+  "llm_access_axes": {
+    "loop_full_llm_access": "default: attention bias on flagged top-k edges (~8%) PLUS output fusion of the LLM branch on ALL edges",
+    "loop_8pct_llm_access": "--no-output-fusion: attention bias on flagged top-k edges ONLY (~8% of edges)"
+  },
+  "results": {
+    "L0_rich": {
+      "gnn": 0.5496206583793729,
+      "llm": 0.7353188026257084,
+      "agaf": 0.7458681287559671,
+      "loop_full_llm_access": 0.7763992869991123,
+      "loop_8pct_llm_access": 0.534290434659695,
+      "ladder_holds_full": true,
+      "ladder_holds_8pct": false,
+      "loop_minus_agaf_full": {
+        "mean_diff": 0.03014139084321895,
+        "ci_low": -0.0025424770390930357,
+        "ci_high": 0.06307520573151591,
+        "prob_positive": 0.965
+      },
+      "loop_minus_agaf_8pct": {
+        "mean_diff": -0.21197812606803876,
+        "ci_low": -0.2557586953754058,
+        "ci_high": -0.16774320309762542,
+        "prob_positive": 0.0
+      },
+      "agaf_minus_llm": {
+        "mean_diff": 0.01091766087080694,
+        "ci_low": -0.01681434428471074,
+        "ci_high": 0.03908988188219918,
+        "prob_positive": 0.79
+      }
+    },
+    "levels_only": {
+      "gnn": 0.5496206583793729,
+      "llm": 0.6850081284766796,
+      "agaf": 0.7608685909535519,
+      "loop_full_llm_access": 0.6969327775371397,
+      "loop_8pct_llm_access": 0.5622132970028111,
+      "ladder_holds_full": false,
+      "ladder_holds_8pct": false,
+      "loop_minus_agaf_full": {
+        "mean_diff": -0.06391879766794778,
+        "ci_low": -0.10053868547636115,
+        "ci_high": -0.0266047453925118,
+        "prob_positive": 0.0
+      },
+      "loop_minus_agaf_8pct": {
+        "mean_diff": -0.1989684452508883,
+        "ci_low": -0.23712117997213492,
+        "ci_high": -0.15953806997546158,
+        "prob_positive": 0.0
+      },
+      "agaf_minus_llm": {
+        "mean_diff": 0.07659455875133235,
+        "ci_low": 0.044888368095399735,
+        "ci_high": 0.11016443837801576,
+        "prob_positive": 1.0
+      }
+    },
+    "bare_numbers": {
+      "gnn": 0.5496206583793729,
+      "llm": 0.4883251876895808,
+      "agaf": 0.6598810189382462,
+      "loop_full_llm_access": 0.6435351016440423,
+      "loop_8pct_llm_access": 0.5419418289413506,
+      "ladder_holds_full": false,
+      "ladder_holds_8pct": false,
+      "loop_minus_agaf_full": {
+        "mean_diff": -0.01629981048582144,
+        "ci_low": -0.060177115995322966,
+        "ci_high": 0.027781337818522465,
+        "prob_positive": 0.2345
+      },
+      "loop_minus_agaf_8pct": {
+        "mean_diff": -0.1175659793606996,
+        "ci_low": -0.15848341495025142,
+        "ci_high": -0.07591051193292389,
+        "prob_positive": 0.0
+      },
+      "agaf_minus_llm": {
+        "mean_diff": 0.1706956585396562,
+        "ci_low": 0.13066850660315582,
+        "ci_high": 0.2128475479642788,
+        "prob_positive": 1.0
+      }
+    },
+    "structure_only": {
+      "gnn": 0.5496206583793729,
+      "llm": 0.3947176596844278,
+      "agaf": 0.5639573306984889,
+      "loop_full_llm_access": 0.536926503868704,
+      "loop_8pct_llm_access": 0.5366853018801115,
+      "ladder_holds_full": false,
+      "ladder_holds_8pct": false,
+      "loop_minus_agaf_full": {
+        "mean_diff": -0.026871076966747863,
+        "ci_low": -0.06315882999854036,
+        "ci_high": 0.00948960741202761,
+        "prob_positive": 0.077
+      },
+      "loop_minus_agaf_8pct": {
+        "mean_diff": -0.026751473309293793,
+        "ci_low": -0.06782713157930013,
+        "ci_high": 0.011968163260239978,
+        "prob_positive": 0.0885
+      },
+      "agaf_minus_llm": {
+        "mean_diff": 0.16836782013976856,
+        "ci_low": 0.13216134382396616,
+        "ci_high": 0.20515016950651935,
+        "prob_positive": 1.0
+      }
+    }
+  },
+  "findings": [
+    "The target ordering (GNN < LLM < AGAF < loop) holds ONLY at L0 rich text. Every simplification level breaks it, and breaks it in the direction opposite to the hypothesis: AGAF ends up ABOVE the loop at all three simplified levels.",
+    "Simplifying the text does drag the LLM rung below the loop (L2: 0.4883 vs 0.6435; L3: 0.3947 vs 0.5369) - but only by dragging it below the GNN rung too (0.5496), which breaks the bottom of the ladder instead.",
+    "AGAF is far more robust to LLM simplification than the loop: from L0 to L3 the LLM falls 0.341, the loop falls 0.240, and AGAF falls only 0.182. AGAF never drops below the loop at any level.",
+    "L1 (levels_only) AGAF 0.7609 is HIGHER than L0 AGAF 0.7459, so the rich magnitude prose is not even optimal for fusion - removing it helped AGAF while hurting the LLM and the loop.",
+    "DECISIVE: with output fusion disabled, so the LLM reaches the loop only through the ~8% attention path, the loop collapses to 0.5343 at L0 - BELOW the GNN alone (0.5496). The same collapse holds at every text level (0.534-0.562).",
+    "That means the loop's advantage does not come from the iterative 8% semantic consultation at all; it comes from the all-edge output fusion of LLM embeddings. The premise that 'feedback only consults the LLM on 8% of the data' describes a mechanism that, in isolation, performs no better than the bare GNN.",
+    "At L3 the two axes converge (0.5369 full vs 0.5367 8%-only): once the LLM text is weak enough, output fusion contributes nothing, which is consistent with output fusion being the sole source of the loop's gain."
+  ],
+  "artifacts": {
+    "nl_variants": "data/unsw_nb15/processed/step2_simplified/",
+    "generator": "src/pipeline/step2/build_simplified_nl.py",
+    "per_level_runs": "data/unsw_nb15/processed/simplify_llm/<level>/{llm,fusion,feedback_full,feedback_8pct}",
+    "new_flag": "src/pipeline/step4/train_feedback.py --no-output-fusion"
+  },
+  "integrity": {
+    "canonical_embeddings_restored": true,
+    "canonical_prototypes_restored": true,
+    "L0_axis_A_reproduces_canonical_ladder": "0.5496 / 0.7353 / 0.7459 / 0.7764, ladder_order_holds true",
+    "gnn_rung_constant_across_levels": "0.5496 (LLM-independent, used as the fixed reference line)",
+    "nl_text_label_free": "asserted by knowledge_graph.assert_label_free for every variant"
+  }
+}

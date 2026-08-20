@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "experiment": "trained_llm_head_end_to_end",
+  "graph_scope": "aggregated",
+  "feature_profile": "structural10",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "eval_classes": [0, 1, 2, 4, 5, 6, 8, 9],
+  "dropped_classes": [3, 7],
+  "configuration": {
+    "semantic_consultant": "trained_oof_head",
+    "trained_llm_head": true,
+    "top_k_percent": 28.0,
+    "top_k_source": "trained_head_validation_sweep",
+    "top_k_retuned_for_trained_head": true,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 14.0,
+    "seed": 42,
+    "device": "cpu"
+  },
+  "top_k_selection": {
+    "candidates": {
+      "min_percent": 15,
+      "max_percent": 40,
+      "step_percent": 1
+    },
+    "selection_metric": "mean_best_val_macro_f1",
+    "selection_uses_test_labels": false,
+    "selected_top_k_percent": 28.0,
+    "mean_validation_macro_f1": 0.5263501538406576,
+    "validation_macro_f1_std": 0.03736224912131499,
+    "pooled_oof_test_macro_f1": 0.49251423310184483
+  },
+  "semantic_confidence_selection": {
+    "candidates": {
+      "min_fraction": 0.1,
+      "max_fraction": 1.0,
+      "step_fraction": 0.1
+    },
+    "fixed_top_k_percent": 28.0,
+    "selection_metric": "mean_best_val_macro_f1",
+    "selection_uses_test_labels": false,
+    "selected_fraction": 0.5,
+    "effective_feedback_percent": 14.0,
+    "mean_validation_macro_f1": 0.5263501538406576,
+    "validation_macro_f1_std": 0.03736224912131499,
+    "pooled_oof_test_macro_f1": 0.49251423310184483
+  },
+  "ladder": {
+    "gnn": 0.32711755971083384,
+    "llm_trained_head": 0.511418544140285,
+    "agaf_trained_head": 0.5091578290765989,
+    "feedback_trained_head": 0.49251423310184483,
+    "ladder_order_holds": false
+  },
+  "feedback_ablations": {
+    "real": 0.49251423310184483,
+    "random": 0.37275697888889886,
+    "head_only": 0.3565847837348862,
+    "real_vs_random": {
+      "mean_macro_f1_difference": 0.11907062281219104,
+      "ci_95": [0.0604782520307246, 0.17930347577384242],
+      "probability_positive": 1.0
+    },
+    "real_vs_head_only": {
+      "mean_macro_f1_difference": 0.13451555334084944,
+      "ci_95": [0.07804480304672597, 0.18923217862026365],
+      "probability_positive": 1.0
+    }
+  },
+  "statistical_comparisons": {
+    "agaf_vs_gnn": {
+      "mean_macro_f1_difference": 0.1798356441312233,
+      "ci_95": [0.11779023014576556, 0.24167832377867257],
+      "probability_positive": 1.0
+    },
+    "agaf_vs_llm": {
+      "mean_macro_f1_difference": -0.0023704934023498925,
+      "ci_95": [-0.012287309861220981, 0.004717561050254551],
+      "probability_positive": 0.3475
+    },
+    "feedback_vs_agaf": {
+      "mean_macro_f1_difference": -0.015988067067583565,
+      "ci_95": [-0.04310030446640839, 0.010521405800009988],
+      "probability_positive": 0.1135
+    }
+  },
+  "artifact_paths": {
+    "agaf": "data/ton_iot/processed/step3_fusion_trained_head",
+    "feedback": "data/ton_iot/processed/step4_feedback_trained_head",
+    "ladder_summary": "data/ton_iot/processed/step4_feedback_trained_head/ladder_summary.json",
+    "top_k_sweep": "data/ton_iot/processed/step4_feedback_trained_head/top_k_sweep/summary.json",
+    "top_k_extension": "data/ton_iot/processed/step4_feedback_trained_head/top_k_extension/top_k_sweep/summary.json",
+    "semantic_confidence_sweep": "data/ton_iot/processed/step4_feedback_trained_head/semantic_confidence_sweep/summary.json"
+  },
+  "interpretation": [
+    "The trained LLM head substantially outperforms the prototype scorer (0.5114 versus 0.2785 macro-F1).",
+    "AGAF matches but does not significantly improve on the trained LLM head.",
+    "Feedback is lower than trained-head AGAF, but real semantic feedback decisively outperforms random and head-only controls.",
+    "A validation-only sweep over top-k percentages 15 through 40 selected 28 percent; its pooled OOF test macro-F1 is 0.4925.",
+    "A validation-only semantic-confidence sweep from 0.1 through 1.0 retained the existing 0.5 fraction."
+  ]
+}

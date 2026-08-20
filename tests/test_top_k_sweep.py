@@ -14,6 +14,10 @@ from src.pipeline.step4.sweep_top_k import (
     _pooled_macro_f1,
     select_best_candidate,
 )
+from src.pipeline.step4.sweep_semantic_confidence import (
+    DEFAULT_CANDIDATES as DEFAULT_CONFIDENCE_CANDIDATES,
+    select_best_candidate as select_best_confidence_candidate,
+)
 
 
 class FeedbackTopKSweepTest(unittest.TestCase):
@@ -33,6 +37,28 @@ class FeedbackTopKSweepTest(unittest.TestCase):
 
     def test_default_candidates_cover_every_integer(self) -> None:
         self.assertEqual(DEFAULT_CANDIDATES, tuple(range(15, 36)))
+
+    def test_default_confidence_candidates_cover_tenths(self) -> None:
+        self.assertEqual(
+            DEFAULT_CONFIDENCE_CANDIDATES,
+            tuple(round(value / 10, 1) for value in range(1, 11)),
+        )
+
+    def test_confidence_selection_uses_validation_only(self) -> None:
+        rows = [
+            {
+                "bias_confidence_fraction": 0.4,
+                "mean_best_val_macro_f1": 0.71,
+                "pooled_oof_test_macro_f1": 0.99,
+            },
+            {
+                "bias_confidence_fraction": 0.6,
+                "mean_best_val_macro_f1": 0.73,
+                "pooled_oof_test_macro_f1": 0.10,
+            },
+        ]
+        selected = select_best_confidence_candidate(rows)
+        self.assertEqual(selected["bias_confidence_fraction"], 0.6)
 
     def test_selection_uses_validation_and_breaks_ties_toward_smaller_n(
         self,
@@ -93,6 +119,29 @@ class FeedbackTopKSweepTest(unittest.TestCase):
             self.assertEqual(payload["source"], "validation_sweep")
             self.assertEqual(payload["top_k_percent"], 18.0)
             self.assertFalse(payload["selection_uses_test_labels"])
+
+    def test_selected_feedback_config_records_trained_head(self) -> None:
+        selected = {
+            "top_k_percent": 21,
+            "mean_best_val_macro_f1": 0.74,
+            "std_best_val_macro_f1": 0.02,
+            "pooled_oof_test_macro_f1": 0.70,
+            "sweep_summary_path": "summary.json",
+        }
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            write_selected_feedback_config(
+                "ton_iot",
+                selected,
+                root=tmp,
+                semantic_consultant="trained_oof_head",
+                trained_llm_head=True,
+            )
+            payload = load_feedback_config("ton_iot", root=tmp)
+
+        self.assertEqual(payload["semantic_consultant"], "trained_oof_head")
+        self.assertTrue(payload["trained_llm_head"])
 
 
 if __name__ == "__main__":

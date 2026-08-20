@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "experiment": "trained_llm_head_end_to_end",
+  "status": "comparison_only \u2014 NOT the canonical UNSW result",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "configuration": {
+    "semantic_consultant": "trained_oof_head",
+    "trained_llm_head": true,
+    "top_k_percent": 20.0,
+    "top_k_source": "head_consultant_validation_sweep (15-35, validation-only)",
+    "top_k_retuned_for_trained_head": true,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 10.0,
+    "agaf_head_fusion": true,
+    "seed": 42,
+    "device": "cpu",
+    "env": {
+      "IDS_FORCE_CPU": "1",
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "ladder": {
+    "gnn_alone": 0.5496206583793729,
+    "llm_alone": 0.8321241658653257,
+    "agaf": 0.8330803709964035,
+    "feedback_loop": 0.8268559668786054
+  },
+  "accuracy": {
+    "gnn_alone": 0.6890243902439024,
+    "llm_alone": 0.8795731707317073,
+    "agaf": 0.8810975609756098,
+    "feedback_loop": 0.8780487804878049
+  },
+  "weighted_f1": {
+    "gnn_alone": 0.6930010010040122,
+    "llm_alone": 0.8841009885163299,
+    "agaf": 0.8854183406163904,
+    "feedback_loop": 0.8809811200060808
+  },
+  "ladder_order_holds": false,
+  "llm_alone_prototype_crosscheck": 0.7353188026257084,
+  "agaf_head_fusion_benchmark": {
+    "pooled_cv_macro_f1": 0.8330803709964035,
+    "cv_val_macro_f1_mean": 0.8271286733551685,
+    "cv_test_macro_f1_mean": 0.8316087766517903
+  },
+  "feedback_ablations": {
+    "dataset": "unsw_nb15",
+    "eval_classes": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "dropped_classes": [],
+    "top_k_percent": 20.0,
+    "bias_confidence_fraction": 0.5,
+    "per_mode_pooled_macro_f1": {
+      "real": 0.8268559668786054,
+      "random": 0.4892133362420534,
+      "head_only": 0.5578377548169227
+    },
+    "real_vs_random": {
+      "mean_diff": 0.33755094249547535,
+      "ci_low": 0.2945359608046704,
+      "ci_high": 0.3804526886646249,
+      "prob_positive": 1.0
+    },
+    "real_vs_head_only": {
+      "mean_diff": 0.2682423667758163,
+      "ci_low": 0.22883174881786147,
+      "ci_high": 0.30603199412416376,
+      "prob_positive": 1.0
+    }
+  },
+  "bootstraps": {
+    "agaf_vs_gnn": {
+      "mean_diff": 0.28368242652085496,
+      "ci_low": 0.24210801187473707,
+      "ci_high": 0.32356958418201737,
+      "prob_positive": 1.0
+    },
+    "agaf_vs_llm": {
+      "mean_diff": 0.0009847966522687648,
+      "ci_low": 0.0,
+      "ci_high": 0.003321404106620876,
+      "prob_positive": 0.642
+    },
+    "loop_vs_agaf": {
+      "mean_diff": -0.00671764425730602,
+      "ci_low": -0.023243210522160593,
+      "ci_high": 0.009301371490565969,
+      "prob_positive": 0.204
+    },
+    "loop_vs_llm": {
+      "mean_diff": -0.005732847605037255,
+      "ci_low": -0.022291269282525845,
+      "ci_high": 0.01082261976984946,
+      "prob_positive": 0.2425
+    },
+    "loop_vs_gnn": {
+      "mean_diff": 0.2769647822635489,
+      "ci_low": 0.23711745236488066,
+      "ci_high": 0.316456597476753,
+      "prob_positive": 1.0
+    }
+  },
+  "canonical_prototype_ladder_for_reference": {
+    "gnn": {
+      "accuracy": 0.6890243902439024,
+      "macro_f1": 0.5496206583793729
+    },
+    "llm": {
+      "accuracy": 0.7789634146341463,
+      "macro_f1": 0.7353188026257084
+    },
+    "agaf": {
+      "accuracy": 0.7637195121951219,
+      "macro_f1": 0.7458681287559671
+    },
+    "feedback": {
+      "accuracy": 0.8185975609756098,
+      "macro_f1": 0.7763992869991123
+    }
+  },
+  "artifacts": {
+    "llm_head_logits": "data/unsw_nb15/processed/step4_feedback/llm_head_logits.pt",
+    "fusion_dir": "data/unsw_nb15/processed/step3_fusion_head",
+    "feedback_dir": "data/unsw_nb15/processed/step4_feedback_head",
+    "feedback_dir_tuned": "data/unsw_nb15/processed/step4_feedback_head_tuned",
+    "top_k_sweep": "data/unsw_nb15/processed/step4_feedback_head/top_k_sweep"
+  },
+  "findings": [
+    "With the trained OOF head as the consultant on every rung, the ladder DOES NOT hold at any top-k in 15-35: the loop's best validation-selected value (n=20, 0.8269) still sits below AGAF (0.8331) and below the LLM head it consults (0.8321).",
+    "Retuning top_k for the head recovered +0.0059 over the carried-over n=16 (0.8210 -> 0.8269) and narrowed loop-AGAF from -0.0126 to -0.0067, but did not flip the sign.",
+    "No candidate n reaches the LLM head on validation-selected terms; the best test value in the whole sweep (n=33, 0.8312) is still below the head, and selecting it would require test labels.",
+    "Validation macro-F1 is nearly flat across n (0.8265-0.8312, spread 0.0047), so top_k is not the binding constraint under the head consultant.",
+    "AGAF-head and LLM-head are separated by 0.0010 (CI [0.0000, 0.0033]) - AGAF adds essentially nothing over its own consultant, which is degenerate rather than a result.",
+    "head_only ablation (0.5578377548169227) is bit-identical across every head run and the prototype run, as expected: that mode sets fusion_emb = None so the GNN logits pass through untouched."
+  ],
+  "top_k_selection": {
+    "candidates": {
+      "min_percent": 15,
+      "max_percent": 35,
+      "step_percent": 1
+    },
+    "selection_metric": "mean_best_val_macro_f1",
+    "selection_uses_test_labels": false,
+    "selected_top_k_percent": 20,
+    "mean_validation_macro_f1": 0.8312200206538554,
+    "validation_macro_f1_std": 0.024298604951925935,
+    "pooled_oof_test_macro_f1": 0.8268559668786054,
+    "validation_range_across_all_n": [
+      0.8264880361271677,
+      0.8312200206538554
+    ],
+    "test_range_across_all_n": [
+      0.8018286019241032,
+      0.8311988886731048
+    ],
+    "per_candidate": [
+      {
+        "top_k_percent": 15,
+        "mean_best_val_macro_f1": 0.8274203339597133,
+        "pooled_oof_test_macro_f1": 0.8107335274860039
+      },
+      {
+        "top_k_percent": 16,
+        "mean_best_val_macro_f1": 0.8293638544914691,
+        "pooled_oof_test_macro_f1": 0.8210254951598601
+      },
+      {
+        "top_k_percent": 17,
+        "mean_best_val_macro_f1": 0.829363289353133,
+        "pooled_oof_test_macro_f1": 0.8178253914620687
+      },
+      {
+        "top_k_percent": 18,
+        "mean_best_val_macro_f1": 0.8312145471699026,
+        "pooled_oof_test_macro_f1": 0.8118991851376464
+      },
+      {
+        "top_k_percent": 19,
+        "mean_best_val_macro_f1": 0.8298094251809423,
+        "pooled_oof_test_macro_f1": 0.8194929223558656
+      },
+      {
+        "top_k_percent": 20,
+        "mean_best_val_macro_f1": 0.8312200206538554,
+        "pooled_oof_test_macro_f1": 0.8268559668786054
+      },
+      {
+        "top_k_percent": 21,
+        "mean_best_val_macro_f1": 0.8286304277874542,
+        "pooled_oof_test_macro_f1": 0.8213683674846767
+      },
+      {
+        "top_k_percent": 22,
+        "mean_best_val_macro_f1": 0.8269437893313493,
+        "pooled_oof_test_macro_f1": 0.8101634761515275
+      },
+      {
+        "top_k_percent": 23,
+        "mean_best_val_macro_f1": 0.8284917521836738,
+        "pooled_oof_test_macro_f1": 0.8179675703838685
+      },
+      {
+        "top_k_percent": 24,
+        "mean_best_val_macro_f1": 0.8288710498308023,
+        "pooled_oof_test_macro_f1": 0.8180300533217683
+      },
+      {
+        "top_k_percent": 25,
+        "mean_best_val_macro_f1": 0.8303022298416091,
+        "pooled_oof_test_macro_f1": 0.8149905678660648
+      },
+      {
+        "top_k_percent": 26,
+        "mean_best_val_macro_f1": 0.8275065774631012,
+        "pooled_oof_test_macro_f1": 0.8018286019241032
+      },
+      {
+        "top_k_percent": 27,
+        "mean_best_val_macro_f1": 0.8289632195708341,
+        "pooled_oof_test_macro_f1": 0.8145117782438195
+      },
+      {
+        "top_k_percent": 28,
+        "mean_best_val_macro_f1": 0.8289632195708341,
+        "pooled_oof_test_macro_f1": 0.8178665745122956
+      },
+      {
+        "top_k_percent": 29,
+        "mean_best_val_macro_f1": 0.8298094251809423,
+        "pooled_oof_test_macro_f1": 0.8242666189723955
+      },
+      {
+        "top_k_percent": 30,
+        "mean_best_val_macro_f1": 0.8303364934795878,
+        "pooled_oof_test_macro_f1": 0.8258105772774444
+      },
+      {
+        "top_k_percent": 31,
+        "mean_best_val_macro_f1": 0.8291525983476447,
+        "pooled_oof_test_macro_f1": 0.8240180372369741
+      },
+      {
+        "top_k_percent": 32,
+        "mean_best_val_macro_f1": 0.8285046785481459,
+        "pooled_oof_test_macro_f1": 0.8230566141992925
+      },
+      {
+        "top_k_percent": 33,
+        "mean_best_val_macro_f1": 0.8264880361271677,
+        "pooled_oof_test_macro_f1": 0.8311988886731048
+      },
+      {
+        "top_k_percent": 34,
+        "mean_best_val_macro_f1": 0.829363289353133,
+        "pooled_oof_test_macro_f1": 0.8129839105643525
+      },
+      {
+        "top_k_percent": 35,
+        "mean_best_val_macro_f1": 0.8303364934795878,
+        "pooled_oof_test_macro_f1": 0.8293634002419846
+      }
+    ]
+  },
+  "ladder_at_untuned_n16": {
+    "gnn_alone": 0.5496206583793729,
+    "llm_alone": 0.8321241658653257,
+    "agaf": 0.8330803709964035,
+    "feedback_loop": 0.8210254951598601
+  }
+}

@@ -120,7 +120,15 @@ def _macro_f1(
 
 def _build_model(
     top_k_percent: float = TOP_K_PERCENT,
+    bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
+    use_no_regret_floor: bool = False,
+    use_output_fusion: bool = True,
 ) -> FeedbackLoopClassifier:
+    if not 0.0 < bias_confidence_fraction <= 1.0:
+        raise ValueError(
+            "bias_confidence_fraction must be in (0, 1], got "
+            f"{bias_confidence_fraction}"
+        )
     return FeedbackLoopClassifier(
         in_dim=IN_DIM,
         hidden_dim=HIDDEN_DIM,
@@ -131,7 +139,9 @@ def _build_model(
         top_k_percent=top_k_percent,
         max_iterations=MAX_ITERATIONS,
         churn_tol=CHURN_TOL,
-        bias_confidence_frac=BIAS_CONFIDENCE_FRAC,
+        bias_confidence_frac=bias_confidence_fraction,
+        use_no_regret_floor=use_no_regret_floor,
+        use_output_fusion=use_output_fusion,
     )
 
 
@@ -144,13 +154,21 @@ def _train_one_fold(
     mode: str,
     head_logits: torch.Tensor | None = None,
     top_k_percent: float = TOP_K_PERCENT,
+    bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
     eval_classes: tuple[int, ...] | list[int] | None = None,
     dropped_classes: tuple[int, ...] | list[int] = (),
+    use_no_regret_floor: bool = False,
+    use_output_fusion: bool = True,
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
     _set_seed(SEED + fold_idx)
-    model = _build_model(top_k_percent=top_k_percent)
+    model = _build_model(
+        top_k_percent=top_k_percent,
+        bias_confidence_fraction=bias_confidence_fraction,
+        use_no_regret_floor=use_no_regret_floor,
+        use_output_fusion=use_output_fusion,
+    )
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"]
     )
@@ -475,6 +493,8 @@ def _build_benchmark_summary(
     dropped_classes: tuple[int, ...] | list[int] = (),
     selected_config: dict | None = None,
     use_llm_head: bool = False,
+    bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
+    use_output_fusion: bool = True,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
     pooled_accuracy = {
@@ -493,12 +513,18 @@ def _build_benchmark_summary(
         "per_mode_pooled_macro_f1": pooled_f1,
         "per_mode_pooled_accuracy": pooled_accuracy,
         "top_k_percent": top_k_percent,
-        "bias_confidence_fraction": BIAS_CONFIDENCE_FRAC,
-        "effective_feedback_percent": top_k_percent * BIAS_CONFIDENCE_FRAC,
+        "bias_confidence_fraction": bias_confidence_fraction,
+        "effective_feedback_percent": top_k_percent * bias_confidence_fraction,
         "semantic_consultant": (
             "trained_llm_head" if use_llm_head else "whitened_prototype_scorer"
         ),
         "trained_llm_head": use_llm_head,
+        "use_output_fusion": use_output_fusion,
+        "llm_access": (
+            "attention_bias_on_flagged_edges + output_fusion_on_all_edges"
+            if use_output_fusion
+            else "attention_bias_on_flagged_edges_only"
+        ),
         "target_agaf": target_agaf,
         "selected_config": selected_config,
     }
@@ -509,16 +535,32 @@ def train_feedback(
     modes: list[str] | None = None,
     use_llm_head: bool = False,
     top_k_percent: float | None = None,
+    output_dir: str | Path | None = None,
+    prototypes_path: str | Path | None = None,
+    head_logits_path: str | Path | None = None,
+    agaf_benchmark_path: str | Path | None = None,
+    bias_confidence_fraction: float | None = None,
+    use_no_regret_floor: bool = False,
+    use_output_fusion: bool = True,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     config = get_dataset_config(dataset)
-    root = Path(f"data/{dataset}/processed/step4_feedback")
+    canonical_root = Path(f"data/{dataset}/processed/step4_feedback")
+    root = Path(output_dir) if output_dir is not None else canonical_root
     root.mkdir(parents=True, exist_ok=True)
-    selected_config = load_feedback_config(dataset)
+    selected_config = load_feedback_config(
+        dataset,
+        root=root if output_dir is not None else None,
+    )
     resolved_top_k = (
         float(top_k_percent)
         if top_k_percent is not None
         else float(selected_config["top_k_percent"])
+    )
+    resolved_confidence_fraction = (
+        float(bias_confidence_fraction)
+        if bias_confidence_fraction is not None
+        else float(selected_config["bias_confidence_fraction"])
     )
 
     data: Data = torch.load(config.graph_path, weights_only=False)
@@ -526,14 +568,15 @@ def train_feedback(
     IN_DIM = data.x.shape[1]  # derive from graph (supports pruned node features)
     emb = torch.load(config.llm_embedding_path, weights_only=False).float()
     folds = torch.load(config.splits_path, weights_only=False)
-    protos = torch.load(root / "prototypes.pt", weights_only=False)
+    resolved_prototypes_path = Path(prototypes_path) if prototypes_path else canonical_root / "prototypes.pt"
+    protos = torch.load(resolved_prototypes_path, weights_only=False)
     # The loop's semantic consultant is the whitened-prototype scorer, which
     # fits no parameters. `use_llm_head` swaps in per-fold trained MLP head
     # logits instead; it is off by default so the reported ladder measures the
     # prototype path end to end.
     head_logits_all = None
     if use_llm_head:
-        head_path = root / "llm_head_logits.pt"
+        head_path = Path(head_logits_path) if head_logits_path else canonical_root / "llm_head_logits.pt"
         if not head_path.exists():
             raise FileNotFoundError(
                 f"use_llm_head=True but {head_path} is missing. Run "
@@ -560,7 +603,10 @@ def train_feedback(
             fold_result = _train_one_fold(
                 data, emb, fold, protos["folds"][fold_idx], fold_idx, mode,
                 head_logits=fold_head, top_k_percent=resolved_top_k,
+                bias_confidence_fraction=resolved_confidence_fraction,
                 eval_classes=eval_classes, dropped_classes=dropped_classes,
+                use_no_regret_floor=use_no_regret_floor,
+                use_output_fusion=use_output_fusion,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -581,6 +627,7 @@ def train_feedback(
                 "eval_classes": list(eval_classes),
                 "dropped_classes": list(dropped_classes),
                 "top_k_percent": resolved_top_k,
+                "bias_confidence_fraction": resolved_confidence_fraction,
                 "pooled_cv_macro_f1": pooled,
                 "folds": trace_by_fold,
             }, f, indent=2)
@@ -588,10 +635,14 @@ def train_feedback(
 
     # --- summaries ---------------------------------------------------------
     labels_np = labels.numpy()
-    agaf_benchmark_path = Path(config.fusion_output_dir) / "benchmark_summary.json"
+    resolved_agaf_benchmark_path = (
+        Path(agaf_benchmark_path)
+        if agaf_benchmark_path is not None
+        else Path(config.fusion_output_dir) / "benchmark_summary.json"
+    )
     target_agaf = None
-    if agaf_benchmark_path.exists():
-        agaf_payload = json.loads(agaf_benchmark_path.read_text())
+    if resolved_agaf_benchmark_path.exists():
+        agaf_payload = json.loads(resolved_agaf_benchmark_path.read_text())
         agaf_macro_f1 = agaf_payload.get("pooled_cv_macro_f1")
         if agaf_macro_f1 is not None:
             target_agaf = float(agaf_macro_f1)
@@ -606,6 +657,8 @@ def train_feedback(
         dropped_classes=dropped_classes,
         selected_config=selected_config,
         use_llm_head=use_llm_head,
+        bias_confidence_fraction=resolved_confidence_fraction,
+        use_output_fusion=use_output_fusion,
     )
     with open(root / "benchmark_summary.json", "w") as f:
         json.dump(benchmark, f, indent=2)
@@ -615,6 +668,7 @@ def train_feedback(
         "eval_classes": list(eval_classes),
         "dropped_classes": list(dropped_classes),
         "top_k_percent": resolved_top_k,
+        "bias_confidence_fraction": resolved_confidence_fraction,
         "per_mode_pooled_macro_f1": pooled_f1,
     }
     if "real" in oof_by_mode and "random" in oof_by_mode:
@@ -680,6 +734,26 @@ def main() -> None:
         "--top-k-percent", type=float, default=None,
         help="Override the validation-selected top-k percentage for this run.",
     )
+    parser.add_argument(
+        "--output-dir",
+        help="Write feedback artifacts here instead of the canonical Step 4 directory.",
+    )
+    parser.add_argument("--prototypes-path")
+    parser.add_argument("--head-logits-path")
+    parser.add_argument("--agaf-benchmark-path")
+    parser.add_argument("--bias-confidence-fraction", type=float)
+    parser.add_argument(
+        "--no-output-fusion", action="store_true",
+        help="Disable the per-edge output fusion of the LLM branch, so the LLM "
+             "reaches the loop ONLY through the attention bias on the flagged "
+             "top-k edges (~effective_feedback_percent of edges).",
+    )
+    parser.add_argument(
+        "--no-regret-floor", action="store_true",
+        help="Fuse as floor(confidence-routed GNN/head) + bounded correction "
+             "instead of the unconstrained gated blend, so the loop can't "
+             "score below the better of its two branches on average.",
+    )
     args = parser.parse_args()
     if args.frozen:
         train_feedback_frozen(args.dataset)
@@ -687,6 +761,13 @@ def main() -> None:
         train_feedback(
             args.dataset, args.modes, use_llm_head=args.use_llm_head,
             top_k_percent=args.top_k_percent,
+            output_dir=args.output_dir,
+            prototypes_path=args.prototypes_path,
+            head_logits_path=args.head_logits_path,
+            agaf_benchmark_path=args.agaf_benchmark_path,
+            bias_confidence_fraction=args.bias_confidence_fraction,
+            use_no_regret_floor=args.no_regret_floor,
+            use_output_fusion=not args.no_output_fusion,
         )
 
 
