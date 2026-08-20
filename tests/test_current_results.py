@@ -10,6 +10,7 @@ from reproduce_ladder import load_expected_accuracy, load_expected_ladder
 UNSW_RESULTS_PATH = Path("results/unsw_nb15_current.json")
 UNSW_HEAD_BASELINE_PATH = Path("results/unsw_nb15_head_baseline.json")
 TON_HEAD_BASELINE_PATH = Path("results/ton_iot_head_baseline.json")
+LOOP_MECHANISM_PATH = Path("results/unsw_nb15_loop_mechanism.json")
 TON_RESULTS_PATH = Path("results/ton_iot_current.json")
 COMPARISON_PATH = Path("results/cross_dataset_comparison.json")
 
@@ -119,6 +120,32 @@ class CurrentResultsContractTest(unittest.TestCase):
                 payload["llm_only_macro_f1"],
                 canonical["results"]["feedback"]["macro_f1"],
                 f"{path} no longer beats the loop; update the caveat text",
+            )
+
+    def test_loop_attention_mechanism_is_recorded_as_inert(self) -> None:
+        """The ~8% attention consultation changes zero predictions, in every config.
+
+        todo.md Step 4 calls the bidirectional loop the core novelty. It does not run on
+        this graph. This test pins that finding so it cannot be quietly dropped.
+        """
+        payload = json.loads(LOOP_MECHANISM_PATH.read_text())
+        self.assertTrue(payload["verdict"].startswith("NO"))
+
+        # Churn is exactly zero everywhere: the biased pass reproduces the unbiased pass.
+        for config, churn in payload["mechanism_diagnostics"]["churn_by_config"].items():
+            self.assertEqual(churn, 0.0, f"{config} churn is no longer zero")
+
+        # Even a full-scale ~1 nat bias flips nothing, so magnitude is not the problem.
+        mags = payload["mechanism_diagnostics"]["bias_magnitude_by_config"]
+        self.assertGreater(max(mags.values()), 1.0)
+
+        # No configuration beats the no-feedback control.
+        control = payload["control_macro_f1"]
+        for name, stats in payload["results_multi_seed"].items():
+            if name == "control_headonly":
+                continue
+            self.assertLessEqual(
+                stats["mean"], control, f"{name} now beats the control; re-open Phase 2"
             )
 
     def test_cross_dataset_comparison_matches_contracts(self) -> None:
