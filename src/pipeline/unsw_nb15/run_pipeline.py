@@ -9,7 +9,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from src.pipeline.common.run_pipeline import DEFAULT_CAP, DEFAULT_SEED, STAGE_ORDER
+from src.pipeline.common.run_pipeline import DEFAULT_SEED, STAGE_ORDER
 from src.pipeline.common.run_pipeline import run_all as _shared_run_all
 
 
@@ -22,7 +22,6 @@ def run_all(**kwargs):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="unsw_nb15", choices=["unsw_nb15"])
-    parser.add_argument("--cap", type=int, default=DEFAULT_CAP)
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--only", nargs="+", choices=STAGE_ORDER)
     parser.add_argument("--skip", nargs="+", choices=STAGE_ORDER)
@@ -30,7 +29,6 @@ def main() -> None:
     args = parser.parse_args()
     run_all(
         dataset=args.dataset,
-        cap=args.cap or None,
         seed=args.seed,
         only=args.only,
         skip=args.skip,

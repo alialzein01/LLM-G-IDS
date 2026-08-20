@@ -50,7 +50,6 @@ STAGE_ORDER = [
 
 FEATURE_PROFILES = ("structural10", "enhanced12")
 DEFAULT_SEED = 42
-DEFAULT_CAP = 20_000
 
 
 def _git_sha() -> str:
@@ -149,7 +148,6 @@ def run_all(
     dataset: str = "ton_iot",
     *,
     feature_profile: str = "structural10",
-    cap: int | None = DEFAULT_CAP,
     seed: int = DEFAULT_SEED,
     only: list[str] | None = None,
     skip: list[str] | None = None,
@@ -157,7 +155,6 @@ def run_all(
     module_runner: Callable[..., None] = _run_module,
 ) -> dict[str, Any]:
     config = get_dataset_config(dataset)
-    per_flow = dataset.endswith("_capped")
     stages = _select_stages(only, skip)
 
     step1_dir = str(Path(config.graph_path).parent)
@@ -168,8 +165,6 @@ def run_all(
     manifest: dict[str, Any] = {
         "dataset": dataset,
         "feature_profile": feature_profile,
-        "per_flow": per_flow,
-        "cap_per_class": cap if per_flow else None,
         "seed": seed,
         "git_sha": _git_sha(),
         "started_at": datetime.now(timezone.utc).isoformat(),
@@ -212,9 +207,6 @@ def run_all(
                 config.phase1_input_path,
                 step1_dir,
                 label_mapping=_label_mapping(dataset),
-                per_flow=per_flow,
-                cap_per_class=cap if per_flow else None,
-                seed=seed,
             )
         done("step1", t0)
 
@@ -248,10 +240,7 @@ def run_all(
 
     if stage("verify"):
         t0 = time.perf_counter()
-        if per_flow:
-            run_stage_module("verify", "src.pipeline.step1.verify_flow_graph", "--dataset", dataset)
-        else:
-            print("aggregated graph: signature leakage check not applicable")
+        print("aggregated graph: signature leakage check not applicable")
         done("verify", t0)
 
     for name, module, extra in [
@@ -337,8 +326,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     parser.add_argument("--feature-profile", default="structural10", choices=FEATURE_PROFILES)
-    parser.add_argument("--cap", type=int, default=DEFAULT_CAP,
-                        help="Rows per class for capped datasets. Use 0 to disable.")
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--only", nargs="+", choices=STAGE_ORDER)
     parser.add_argument("--skip", nargs="+", choices=STAGE_ORDER)
@@ -347,7 +334,6 @@ def main() -> None:
     run_all(
         dataset=args.dataset,
         feature_profile=args.feature_profile,
-        cap=args.cap or None,
         seed=args.seed,
         only=args.only,
         skip=args.skip,
