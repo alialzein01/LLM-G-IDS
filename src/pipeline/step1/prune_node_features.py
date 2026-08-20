@@ -14,7 +14,7 @@ reproduces the existing graph rather than redefining it.
 Run before `augment_traffic_features`, which appends its 7 traffic columns to
 whatever structural features remain:
 
-    python -m src.pipeline.step1.prune_node_features --dataset ton_iot_capped
+    python -m src.pipeline.step1.prune_node_features --dataset ton_iot
 """
 
 from __future__ import annotations
