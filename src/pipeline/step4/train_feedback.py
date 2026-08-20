@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -81,6 +82,10 @@ TOP_K_PERCENT = DEFAULT_TOP_K_PERCENT
 MAX_ITERATIONS = DEFAULT_MAX_ITERATIONS
 CHURN_TOL = DEFAULT_CHURN_TOLERANCE
 BIAS_CONFIDENCE_FRAC = DEFAULT_BIAS_CONFIDENCE_FRAC  # only bias the top-half most-confident flagged edges
+# Multiplier on the projected attention bias. 1.5 is the spec's ~1.5-nat order; the
+# Phase-2 mechanism sweep raises it to test whether the bias is simply too quiet to
+# change which neighbours the GAT attends to.
+DEFAULT_BIAS_STRENGTH = 1.5
 
 BOOTSTRAP_ITERS = 2000
 
@@ -93,6 +98,7 @@ class FoldTrainingResult:
     iterations: list[dict]
     best_val_macro_f1: float
     test_macro_f1: float
+    bias_diagnostics: dict | None = None
 
 
 def _set_seed(seed: int) -> None:
@@ -123,6 +129,10 @@ def _build_model(
     bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
+    bias_strength: float = DEFAULT_BIAS_STRENGTH,
+    bias_dim: int = 1,
+    max_iterations: int = MAX_ITERATIONS,
+    bias_init: str = "zeros",
 ) -> FeedbackLoopClassifier:
     if not 0.0 < bias_confidence_fraction <= 1.0:
         raise ValueError(
@@ -137,8 +147,11 @@ def _build_model(
         heads=HEADS,
         dropout=DROPOUT,
         top_k_percent=top_k_percent,
-        max_iterations=MAX_ITERATIONS,
+        max_iterations=max_iterations,
         churn_tol=CHURN_TOL,
+        bias_dim=bias_dim,
+        initial_log_bias_strength=math.log(bias_strength),
+        bias_init=bias_init,
         bias_confidence_frac=bias_confidence_fraction,
         use_no_regret_floor=use_no_regret_floor,
         use_output_fusion=use_output_fusion,
@@ -159,6 +172,10 @@ def _train_one_fold(
     dropped_classes: tuple[int, ...] | list[int] = (),
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
+    bias_strength: float = DEFAULT_BIAS_STRENGTH,
+    bias_dim: int = 1,
+    max_iterations: int = MAX_ITERATIONS,
+    bias_init: str = "zeros",
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -168,6 +185,10 @@ def _train_one_fold(
         bias_confidence_fraction=bias_confidence_fraction,
         use_no_regret_floor=use_no_regret_floor,
         use_output_fusion=use_output_fusion,
+        bias_strength=bias_strength,
+        bias_dim=bias_dim,
+        max_iterations=max_iterations,
+        bias_init=bias_init,
     )
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"]
@@ -255,15 +276,47 @@ def _train_one_fold(
         )
 
     test_f1 = _macro_f1(eval_logits, labels, test_mask, eval_classes, dropped_classes)
+
+    # --- mechanism diagnostics -------------------------------------------
+    # SemanticAttentionBias initialises its projection to all zeros, so the
+    # attention bias starts at exactly zero and has to learn its way off that
+    # init. These numbers say whether it ever did: `projection_weight_absmean`
+    # near zero means the bias never fires, and `flagged_bias_absmean` is the
+    # magnitude actually added to GATv2's attention logits (which sit on a
+    # ~1 nat scale, so anything <<1 cannot reorder a softmax).
+    with torch.no_grad():
+        bm = model.bias_module
+        semantic = model._semantic_logits(emb, mode, None, head_logits)
+        if semantic is None:
+            bias_diag = {"mode_has_no_semantic_signal": True}
+        else:
+            probs = eval_logits.softmax(dim=-1)
+            flagged = model.selector(probs).nonzero(as_tuple=False).squeeze(-1)
+            flagged = model._gate_by_confidence(flagged, semantic)
+            full_bias = bm(semantic[flagged], flagged, data.edge_index.shape[1])
+            fb = full_bias[flagged]
+            bias_diag = {
+                "learned_bias_strength": float(bm.log_bias_strength.exp()),
+                "projection_weight_absmean": float(bm.projection.weight.abs().mean()),
+                "projection_weight_absmax": float(bm.projection.weight.abs().max()),
+                "flagged_bias_absmean": float(fb.abs().mean()) if fb.numel() else 0.0,
+                "flagged_bias_absmax": float(fb.abs().max()) if fb.numel() else 0.0,
+                "n_flagged_edges": int(flagged.numel()),
+                "iterations_run": len(trace),
+                "final_churn": trace[-1]["churn"] if trace else float("nan"),
+            }
     print(
         f"    [{mode}] fold {fold_idx} DONE best_val={best_val_f1:.4f} "
         f"test={test_f1:.4f} iters={len(trace)}"
+        + (f" bias|.|={bias_diag['flagged_bias_absmean']:.2e}"
+           if "flagged_bias_absmean" in bias_diag else "")
     )
     return FoldTrainingResult(
         logits=eval_logits.detach().cpu(),
         iterations=iter_rows,
         best_val_macro_f1=best_val_f1,
         test_macro_f1=test_f1,
+        bias_diagnostics=bias_diag,
     )
 
 
@@ -542,8 +595,15 @@ def train_feedback(
     bias_confidence_fraction: float | None = None,
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
+    bias_strength: float = DEFAULT_BIAS_STRENGTH,
+    bias_dim: int = 1,
+    max_iterations: int = MAX_ITERATIONS,
+    bias_init: str = "zeros",
+    seed: int = SEED,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
+    global SEED
+    SEED = seed
     config = get_dataset_config(dataset)
     canonical_root = Path(f"data/{dataset}/processed/step4_feedback")
     root = Path(output_dir) if output_dir is not None else canonical_root
@@ -607,10 +667,18 @@ def train_feedback(
                 eval_classes=eval_classes, dropped_classes=dropped_classes,
                 use_no_regret_floor=use_no_regret_floor,
                 use_output_fusion=use_output_fusion,
+                bias_strength=bias_strength,
+                bias_dim=bias_dim,
+                max_iterations=max_iterations,
+                bias_init=bias_init,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
-                {"fold": fold_idx, "iterations": fold_result.iterations}
+                {
+                    "fold": fold_idx,
+                    "iterations": fold_result.iterations,
+                    "bias_diagnostics": fold_result.bias_diagnostics,
+                }
             )
 
         if torch.isnan(oof).any():
@@ -743,6 +811,32 @@ def main() -> None:
     parser.add_argument("--agaf-benchmark-path")
     parser.add_argument("--bias-confidence-fraction", type=float)
     parser.add_argument(
+        "--bias-init", choices=("zeros", "xavier"), default="zeros",
+        help="Init for the bias projection. 'zeros' (default) makes the biased GAT "
+             "reproduce stock GATv2 exactly but starts the mechanism inert; 'xavier' "
+             "starts it live.",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=SEED,
+        help="Training seed. Vary it to measure how much of a between-config gap is "
+             "just run-to-run noise.",
+    )
+    parser.add_argument(
+        "--bias-strength", type=float, default=DEFAULT_BIAS_STRENGTH,
+        help="Multiplier on the projected attention bias (default 1.5, the spec's "
+             "~1.5-nat order). Raise it to test whether the bias is too quiet to change "
+             "which neighbours the GAT attends to.",
+    )
+    parser.add_argument(
+        "--bias-dim", type=int, default=1,
+        help="Width of the attention bias: 1 broadcasts one value across all attention "
+             "heads (default); 8 gives each head its own bias.",
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=MAX_ITERATIONS,
+        help="Feedback rounds before the loop stops (default 3).",
+    )
+    parser.add_argument(
         "--no-output-fusion", action="store_true",
         help="Disable the per-edge output fusion of the LLM branch, so the LLM "
              "reaches the loop ONLY through the attention bias on the flagged "
@@ -768,6 +862,11 @@ def main() -> None:
             bias_confidence_fraction=args.bias_confidence_fraction,
             use_no_regret_floor=args.no_regret_floor,
             use_output_fusion=not args.no_output_fusion,
+            bias_strength=args.bias_strength,
+            bias_dim=args.bias_dim,
+            max_iterations=args.max_iterations,
+            bias_init=args.bias_init,
+            seed=args.seed,
         )
 
 

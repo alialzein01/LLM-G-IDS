@@ -301,12 +301,22 @@ class SemanticAttentionBias(nn.Module):
         num_classes: int,
         bias_dim: int = 1,
         initial_log_bias_strength: float = math.log(1.5),
+        bias_init: str = "zeros",
     ) -> None:
         super().__init__()
         self.num_classes = num_classes
         self.bias_dim = bias_dim
         self.projection = nn.Linear(num_classes, bias_dim)
-        nn.init.zeros_(self.projection.weight)
+        # Zero init is the safety property: an all-zero bias makes the biased GAT
+        # reproduce stock GATv2 exactly. It also means the bias starts inert and has
+        # to learn its way off zero. `bias_init="xavier"` starts it live instead, to
+        # test whether the zero init is what starves the mechanism.
+        if bias_init == "zeros":
+            nn.init.zeros_(self.projection.weight)
+        elif bias_init == "xavier":
+            nn.init.xavier_uniform_(self.projection.weight)
+        else:
+            raise ValueError(f"unknown bias_init {bias_init!r}; use 'zeros' or 'xavier'")
         nn.init.zeros_(self.projection.bias)
         self.log_bias_strength = nn.Parameter(
             torch.tensor(float(initial_log_bias_strength))
@@ -570,6 +580,8 @@ class FeedbackLoopClassifier(nn.Module):
         max_iterations: int = 3,
         churn_tol: float = 0.01,
         bias_dim: int = 1,
+        initial_log_bias_strength: float = math.log(1.5),
+        bias_init: str = "zeros",
         random_feedback_seed: int = 12345,
         bias_confidence_frac: float = 1.0,
         use_output_fusion: bool = True,
@@ -635,7 +647,12 @@ class FeedbackLoopClassifier(nn.Module):
         self.scorer = WhitenedPrototypeScorer(
             num_classes=num_classes, embed_dim=embed_dim
         )
-        self.bias_module = SemanticAttentionBias(num_classes, bias_dim=bias_dim)
+        self.bias_module = SemanticAttentionBias(
+            num_classes,
+            bias_dim=bias_dim,
+            initial_log_bias_strength=initial_log_bias_strength,
+            bias_init=bias_init,
+        )
 
         # Decision-level fusion (AGAF-capacity, symmetric). A learned head
         # over the FULL LLM embedding gives an LLM branch as strong as
