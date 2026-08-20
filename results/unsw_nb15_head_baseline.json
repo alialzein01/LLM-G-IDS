@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "role": "llm_only_baseline",
+  "role_note": "The strongest honest LLM-only baseline: a per-fold MLP head trained on the same CySecBERT KG embeddings. This is NOT a rung of the canonical ladder. The canonical architecture uses the whitened-prototype consultant on every rung so the ablation is internally consistent \u2014 see results/unsw_nb15_current.json.",
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "configuration": {
+    "semantic_consultant": "trained_oof_head",
+    "trained_llm_head": true,
+    "top_k_percent": 20.0,
+    "top_k_source": "head_consultant_validation_sweep (15-35, validation-only)",
+    "top_k_retuned_for_trained_head": true,
+    "semantic_confidence_fraction": 0.5,
+    "effective_feedback_percent": 10.0,
+    "agaf_head_fusion": true,
+    "seed": 42,
+    "device": "cpu",
+    "env": {
+      "IDS_FORCE_CPU": "1",
+      "OMP_NUM_THREADS": "1"
+    }
+  },
+  "llm_only_macro_f1": 0.8321241658653257,
+  "llm_only_accuracy": 0.8795731707317073,
+  "full_head_consultant_ladder": {
+    "gnn_alone": 0.5496206583793729,
+    "llm_alone": 0.8321241658653257,
+    "agaf": 0.8330803709964035,
+    "feedback_loop": 0.8268559668786054
+  },
+  "canonical_prototype_ladder": {
+    "gnn": 0.5496206583793729,
+    "llm": 0.7353188026257084,
+    "agaf": 0.7458681287559671,
+    "feedback": 0.7763992869991123
+  },
+  "must_be_reported": [
+    "The trained LLM head alone scores 0.8321, ABOVE the canonical full system's feedback loop at 0.7764. An MLP on CySecBERT embeddings of the KG text outperforms the complete GNN+LLM architecture on UNSW-NB15. This is a genuine weakness of the result and must appear in any report or paper alongside the ladder.",
+    "Under the head consultant the ladder does not hold at any top-k in 15-35: the loop's validation-selected best (n=20, 0.8269) sits below AGAF (0.8331) and below the head it consults (0.8321).",
+    "AGAF-head and LLM-head are separated by 0.0010 (CI [0.0000, 0.0033]) \u2014 AGAF adds essentially nothing over its own consultant."
+  ],
+  "source_experiment": "results/unsw_nb15_trained_head_experiment.json",
+  "generated": "2026-08-20"
+}
