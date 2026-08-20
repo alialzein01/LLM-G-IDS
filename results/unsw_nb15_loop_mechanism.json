@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "experiment": "loop_mechanism_rescue",
+  "generated": "2026-08-20",
+  "question": "todo.md Step 4 names the bidirectional GNN-LLM loop as the core novelty. With --no-output-fusion the LLM reaches the loop ONLY through the attention bias on the flagged top-k edges. Can any in-architecture setting make that path beat not having it?",
+  "verdict": "NO. The attention-feedback mechanism is inert on this graph.",
+  "protocol": {
+    "metric": "pooled_5_fold_oof_macro_f1",
+    "all_runs_use": "--no-output-fusion --top-k-percent 16.0",
+    "seeds": [
+      42,
+      1,
+      2
+    ],
+    "control": "head_only mode: the SAME loop model with the semantic signal structurally absent, so no bias is ever computed. This is the correct control. The bare GNN rung (0.5496) is a DIFFERENT model trained by a different driver; scoring against it confounds 'does feedback help' with 'is this a different network', and would have made strength50 (0.5572) look like a win when it is a 0.0021 loss."
+  },
+  "control_macro_f1": 0.5580333333333333,
+  "results_multi_seed": {
+    "control_headonly": {
+      "mean": 0.5580333333333333,
+      "sd": 0.0027574142476844495,
+      "runs": [
+        0.5578,
+        0.5554,
+        0.5609
+      ],
+      "vs_control": 0.0
+    },
+    "real_baseline": {
+      "mean": 0.5458666666666666,
+      "sd": 0.017995647621948302,
+      "runs": [
+        0.5343,
+        0.5666,
+        0.5367
+      ],
+      "vs_control": -0.012166666666666659
+    },
+    "real_iters6": {
+      "mean": 0.5536333333333333,
+      "sd": 0.007867867140040752,
+      "runs": [
+        0.5604,
+        0.545,
+        0.5555
+      ],
+      "vs_control": -0.0043999999999999595
+    },
+    "real_strength50": {
+      "mean": 0.5559333333333333,
+      "sd": 0.007678758580222024,
+      "runs": [
+        0.5572,
+        0.5629,
+        0.5477
+      ],
+      "vs_control": -0.0020999999999999908
+    },
+    "xavier_init": {
+      "mean": 0.5529666666666667,
+      "sd": 0.0017672954855749087,
+      "runs": [
+        0.5518,
+        0.5521,
+        0.555
+      ],
+      "vs_control": -0.005066666666666553
+    },
+    "xavier_str50": {
+      "mean": 0.5528666666666666,
+      "sd": 0.02105096989056167,
+      "runs": [
+        0.5531,
+        0.5738,
+        0.5317
+      ],
+      "vs_control": -0.005166666666666653
+    }
+  },
+  "results_single_seed_one_factor": {
+    "strength5": 0.5374,
+    "strength15": 0.5277,
+    "strength50": 0.5572,
+    "strength150": 0.55,
+    "biasdim8": 0.5424,
+    "iters6": 0.5604,
+    "iters10": 0.5567,
+    "conf100": 0.5408,
+    "baseline": 0.5343
+  },
+  "mechanism_diagnostics": {
+    "note": "Measured on the trained bias module at the end of each fold. GATv2 attention logits sit on a ~1 nat scale, so a bias much below 1 cannot reorder the attention softmax.",
+    "default_config_per_fold": [
+      {
+        "learned_bias_strength": 1.5014679431915283,
+        "projection_weight_absmean": 0.004718276672065258,
+        "projection_weight_absmax": 0.012731369584798813,
+        "flagged_bias_absmean": 0.018838921561837196,
+        "flagged_bias_absmax": 0.01918145827949047,
+        "n_flagged_edges": 52,
+        "iterations_run": 2,
+        "final_churn": 0.0
+      },
+      {
+        "learned_bias_strength": 1.4993298053741455,
+        "projection_weight_absmean": 0.007507869508117437,
+        "projection_weight_absmax": 0.01765311136841774,
+        "flagged_bias_absmean": 0.006032585632055998,
+        "flagged_bias_absmax": 0.007041448727250099,
+        "n_flagged_edges": 52,
+        "iterations_run": 2,
+        "final_churn": 0.0
+      },
+      {
+        "learned_bias_strength": 1.4821641445159912,
+        "projection_weight_absmean": 0.008925942704081535,
+        "projection_weight_absmax": 0.018389897421002388,
+        "flagged_bias_absmean": 0.008258940652012825,
+        "flagged_bias_absmax": 0.009207922033965588,
+        "n_flagged_edges": 52,
+        "iterations_run": 2,
+        "final_churn": 0.0
+      },
+      {
+        "learned_bias_strength": 1.715622901916504,
+        "projection_weight_absmean": 0.04693436622619629,
+        "projection_weight_absmax": 0.09270928055047989,
+        "flagged_bias_absmean": 0.19639770686626434,
+        "flagged_bias_absmax": 0.2024480253458023,
+        "n_flagged_edges": 52,
+        "iterations_run": 2,
+        "final_churn": 0.0
+      },
+      {
+        "learned_bias_strength": 1.4976742267608643,
+        "projection_weight_absmean": 0.010062635876238346,
+        "projection_weight_absmax": 0.02152162604033947,
+        "flagged_bias_absmean": 0.02114662155508995,
+        "flagged_bias_absmax": 0.02212468720972538,
+        "n_flagged_edges": 52,
+        "iterations_run": 2,
+        "final_churn": 0.0
+      }
+    ],
+    "default_mean_flagged_bias_nats": 0.05013495525345206,
+    "churn_by_config": {
+      "xavier_init": 0.0,
+      "xavier_str50": 0.0
+    },
+    "bias_magnitude_by_config": {
+      "xavier_init": 0.0319,
+      "xavier_str50": 1.2743
+    },
+    "iterations_by_config": {
+      "xavier_init": 2.0,
+      "xavier_str50": 2.066666666666667
+    }
+  },
+  "findings": [
+    "CHURN IS EXACTLY 0.0000 IN EVERY FOLD OF EVERY CONFIGURATION. The biased pass reproduces the unbiased pass prediction for prediction: identical per-class F1, identical mean entropy to 7 decimals. The LLM's judgment flips zero predictions.",
+    "Because churn is 0, the loop always trips its convergence check at iteration 2. 'Repeats until convergence' means 'stops after one inert pass'. Raising --max-iterations to 6 or 10 changes nothing, because zero times more rounds is zero.",
+    "Under the default config the learned bias is ~0.05 nats against ~1 nat attention logits, and the projection weights are still at their zero initialisation after 300 epochs (|w| 0.005-0.047). The learned strength moves from 1.5 to 1.5.",
+    "ROOT CAUSE IS NOT THE ZERO INIT. Starting the projection live (--bias-init xavier, |w|=0.485) lets training drive it back down to 0.025-0.037 nats. The optimiser is actively switching the mechanism off because the bias does not reduce the loss.",
+    "NOR IS IT MAGNITUDE. --bias-init xavier --bias-strength 50 reaches a bias of 1.03-1.46 nats, genuinely the same scale as the attention logits, and churn is STILL 0.0000. A full-scale nudge reorders attention without changing a single classification.",
+    "NO CONFIGURATION BEATS THE CONTROL. Every variant lands at or below no-feedback (0.5580 +/- 0.0028). Best case is 'harmless' (strength50, -0.0021); the shipped default costs -0.0122 while informing nothing.",
+    "FEEDBACK ADDS NOISE, NOT SIGNAL. Seed sd is 0.0028 without feedback and 0.0077-0.0211 with it. The one-factor sweep's apparent winner (iters6, 0.5604 at seed 42) scores 0.5450 at seed 1, below the baseline it 'beat'. Single-seed rankings here are noise."
+  ],
+  "consequences": [
+    "todo.md Step 4's central claim -- bidirectional iterative GNN-LLM interaction -- is not supported on this data. The mechanism does not run.",
+    "The loop's headline UNSW result (0.7764) comes entirely from all-edge output fusion, which is ordinary late fusion and is not the claimed novelty.",
+    "AGAF (Step 3, parallel dual-encoder) remains defensible: on ToN it is the top rung and is significantly above both unimodal baselines (+0.114 vs GNN, +0.162 vs LLM, both CIs exclude zero). That is a real result, but it is Step 3's, not Step 4's."
+  ],
+  "artifacts": {
+    "runs": "data/unsw_nb15/processed/loop_mechanism/",
+    "instrumented_run": "data/unsw_nb15/processed/loop_mechanism/diag/feedback_trace_real.json",
+    "flags_added": [
+      "--bias-strength",
+      "--bias-dim",
+      "--max-iterations",
+      "--bias-init",
+      "--seed"
+    ]
+  }
+}
