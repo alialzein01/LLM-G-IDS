@@ -84,6 +84,13 @@ def _infonce_alignment(
 # learned gate (see AGAFFusionEdgeClassifier.head_fusion). Set in main().
 USE_HEAD_LOGITS = False
 
+# Decouples the two halves of head fusion. With --use-head-logits both are on:
+# the head's logits become the semantic modality AND they are re-injected at the
+# output through a learned gate. Setting this False keeps the better semantic
+# input but removes the output bypass, so the inner gate has to earn the score
+# on its own — the ablation that separates "better input" from "guaranteed floor".
+HEAD_OUTPUT_GATE = True
+
 # Fusion variant under test and its capacity. Defaults reproduce the existing
 # AGAF exactly; everything else is opt-in from the CLI. Set in main().
 FUSION_MODE = "feature_gate"
@@ -102,7 +109,7 @@ def _build_model() -> AGAFFusionEdgeClassifier:
         hidden_dim=ACTIVE_HIDDEN_DIM,
         num_classes=NUM_CLASSES,
         dropout=DROPOUT,
-        head_fusion=USE_HEAD_LOGITS,
+        head_fusion=USE_HEAD_LOGITS and HEAD_OUTPUT_GATE,
         fusion_mode=FUSION_MODE,
         fixed_lambda=FIXED_LAMBDA,
     )
@@ -385,6 +392,7 @@ def main(
     gate_entropy_lambda: float = GATE_ENTROPY_LAMBDA,
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
     use_head_logits: bool = False,
+    head_output_gate: bool = True,
     head_logits_path: str | None = None,
     fusion_mode: str = "feature_gate",
     fixed_lambda: float = 0.5,
@@ -393,10 +401,11 @@ def main(
     proj_dim: int = PROJ_DIM,
     hidden_dim: int = HIDDEN_DIM,
 ) -> None:
-    global USE_HEAD_LOGITS, EVAL_CLASSES
+    global USE_HEAD_LOGITS, HEAD_OUTPUT_GATE, EVAL_CLASSES
     global FUSION_MODE, FIXED_LAMBDA, ALIGN_LAMBDA, ALIGN_TEMPERATURE
     global ACTIVE_PROJ_DIM, ACTIVE_HIDDEN_DIM
     USE_HEAD_LOGITS = use_head_logits
+    HEAD_OUTPUT_GATE = head_output_gate
     FUSION_MODE = fusion_mode
     FIXED_LAMBDA = fixed_lambda
     ALIGN_LAMBDA = align_lambda
@@ -454,7 +463,12 @@ def main(
             f"head logits shape {tuple(head_all.shape)} != "
             f"({len(folds)}, {n_edges}, {NUM_CLASSES})"
         )
-        print("[M3] AGAF semantic modality = LLM head logits + gated output fusion")
+        print(
+            "[M3] AGAF semantic modality = LLM head logits + gated output fusion"
+            if head_output_gate
+            else "[M3] AGAF semantic modality = LLM head logits, OUTPUT GATE "
+            "DISABLED (no bypass; the inner gate must earn the score)"
+        )
 
     fold_results: list[dict[str, object]] = []
     targets = labels.cpu().numpy()
@@ -612,6 +626,13 @@ if __name__ == "__main__":
         help="M3: feed AGAF the trained LLM head's OOF logits as the semantic "
         "modality + gated output fusion (instead of raw 768-d embeddings).",
     )
+    parser.add_argument(
+        "--no-head-output-gate",
+        action="store_true",
+        help="With --use-head-logits, feed the head logits as the semantic modality "
+        "but DISABLE the output re-injection gate, so no bypass guarantees the "
+        "head's score as a floor.",
+    )
     parser.add_argument("--head-logits-path")
     parser.add_argument(
         "--fusion-mode",
@@ -643,6 +664,7 @@ if __name__ == "__main__":
         gate_entropy_lambda=args.gate_entropy_lambda,
         feature_attention_entropy_lambda=args.feature_attention_entropy_lambda,
         use_head_logits=args.use_head_logits,
+        head_output_gate=not args.no_head_output_gate,
         head_logits_path=args.head_logits_path,
         fusion_mode=args.fusion_mode,
         fixed_lambda=args.fixed_lambda,

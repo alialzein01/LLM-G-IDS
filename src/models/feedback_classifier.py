@@ -573,6 +573,8 @@ class FeedbackLoopClassifier(nn.Module):
         random_feedback_seed: int = 12345,
         bias_confidence_frac: float = 1.0,
         use_output_fusion: bool = True,
+        use_no_regret_floor: bool = False,
+        no_regret_bound: float = 3.0,
     ) -> None:
         super().__init__()
         from src.models.gnn_classifier import EDGE_FOCUS_WEIGHTS, VARIANT_NAMES
@@ -587,6 +589,8 @@ class FeedbackLoopClassifier(nn.Module):
         self.random_feedback_seed = random_feedback_seed
         self.bias_confidence_frac = bias_confidence_frac
         self.use_output_fusion = use_output_fusion
+        self.use_no_regret_floor = use_no_regret_floor
+        self.no_regret_bound = no_regret_bound
 
         self.encoders = nn.ModuleDict(
             {
@@ -767,7 +771,23 @@ class FeedbackLoopClassifier(nn.Module):
             g = torch.sigmoid(self.fusion_gate(torch.stack([h_gnn, conf_gnn], dim=-1)))
             llm_p = self.fusion_llm_proj(llm_embeddings)
         fused = torch.cat([(1.0 - g) * gnn_p, g * llm_p], dim=-1)
-        logits = self.fusion_classifier(fused)
+        correction = self.fusion_classifier(fused)
+
+        if self.use_no_regret_floor and head_logits is not None:
+            # No-regret floor (report P3 #2): fused_logits = floor + bounded
+            # correction, correction squashed into [-bound, +bound] nats so the
+            # learned term can refine but never overwhelm the floor. The floor
+            # itself is confidence-routed per edge — whichever of GNN/LLM-head
+            # is more confident on THIS edge — instead of the previous
+            # gate-weighted blend, so a badly calibrated gate can no longer
+            # drag the output below both single branches (the failure mode
+            # observed: real 0.493 < AGAF-head 0.509 < LLM-head 0.511).
+            route_to_llm = (conf_llm > conf_gnn).unsqueeze(-1)
+            floor = torch.where(route_to_llm, head_logits, gnn_logits)
+            bounded_correction = self.no_regret_bound * torch.tanh(correction)
+            return floor + bounded_correction
+
+        logits = correction
         # Direct confidence-routed residual over the two strong classifiers —
         # pushes the fused output toward the per-edge oracle (route to whichever
         # modality is confident). Only when a trained LLM head is available.

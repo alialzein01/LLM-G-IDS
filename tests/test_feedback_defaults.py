@@ -19,6 +19,10 @@ class FeedbackDefaultsTest(unittest.TestCase):
         self.assertEqual(_build_model().selector.top_k_percent, 16.0)
         self.assertEqual(UncertaintySelector().top_k_percent, 16.0)
 
+    def test_build_model_rejects_invalid_confidence_fraction(self) -> None:
+        with self.assertRaises(ValueError):
+            _build_model(bias_confidence_fraction=0.0)
+
     def test_benchmark_summary_records_accuracy_and_configuration(self) -> None:
         labels = torch.tensor([0, 1])
         logits = torch.tensor([[3.0, 0.0], [0.0, 3.0]])
