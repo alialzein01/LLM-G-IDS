@@ -643,6 +643,7 @@ class FeedbackLoopClassifier(nn.Module):
                 torch.tensor(weights, dtype=torch.float).view(1, edge_attr_dim),
             )
 
+        self._last_edge_emb: torch.Tensor | None = None
         self.selector = UncertaintySelector(top_k_percent=top_k_percent)
         self.scorer = WhitenedPrototypeScorer(
             num_classes=num_classes, embed_dim=embed_dim
@@ -750,6 +751,14 @@ class FeedbackLoopClassifier(nn.Module):
         edge_emb = F.dropout(edge_emb, p=self.dropout, training=self.training)
         logits = self.fusion_out(edge_emb)
         return logits, aux_logits, edge_emb
+
+    def classify_repr(self, edge_emb: torch.Tensor) -> torch.Tensor:
+        """Classifier head for already-fused edge embeddings.
+
+        Mirrors `GATEdgeClassifier.classify_repr`. Used to score GraphSMOTE-style
+        synthetic edge representations without touching the graph topology.
+        """
+        return self.fusion_out(edge_emb)
 
     def _output_fusion(
         self,
@@ -930,6 +939,8 @@ class FeedbackLoopClassifier(nn.Module):
             fusion_emb = llm_embeddings
             fusion_head = head_logits
         logits = self._output_fusion(edge_emb, logits, fusion_emb, fusion_head)
+
+        self._last_edge_emb = edge_emb
 
         if collect_trace:
             if trace:

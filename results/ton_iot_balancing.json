@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "experiment": "stratified_balancing",
+  "generated": "2026-08-20",
+  "verdict": "NO BENEFIT. Balancing is left OFF in the canonical configuration.",
+  "question": "ToN-IoT is 1746:3 imbalanced and its rarest training classes have 7 edges. Does GraphSMOTE-style oversampling of minority edge representations lift any rung?",
+  "method": {
+    "technique": "GraphSMOTE-style interpolation of minority EDGE REPRESENTATIONS",
+    "why_embedding_space": "Zhao et al. (GraphSMOTE, WSDM 2021) show that interpolating raw attributes on a graph yields out-of-domain samples; interpolation must happen in the encoder's output space. Graph topology is never modified.",
+    "why_not_knn_smote": "Textbook SMOTE needs k_neighbors < n_samples. ToN's rarest training classes have 7 edges, so k=5 nearest-neighbour SMOTE is unreliable-to-invalid. The implementation interpolates between random same-class pairs instead.",
+    "leakage_control": "TRAIN-fold edges only; validation and test are never augmented.",
+    "class_weights": "Recomputed on the BALANCED distribution. Keeping the original inverse-frequency weights on top of an oversampled batch corrects the same imbalance twice: observed AGAF collapse to 0.0227 macro-F1, predicting xss 1121 times against 12 true instances and zero Benign. See splits.class_weights_from_labels.",
+    "prior_art_on_these_datasets": "LGSMOTE-IDS (Expert Systems with Applications, 2025) reports large minority-class gains with weighted-distance SMOTE on NF-UNSW-NB15, NF-BoT-IoT and NF-ToN-IoT. We do not reproduce a benefit on the AGGREGATED ToN graph."
+  },
+  "ratio_sweep_single_seed": {
+    "0.05": {
+      "gnn": 0.3806452417743636,
+      "llm": 0.27852446280044896,
+      "agaf": 0.3110082392014467,
+      "loop": 0.37591251175770446
+    },
+    "0.10": {
+      "gnn": 0.34477976761176987,
+      "llm": 0.27852446280044896,
+      "agaf": 0.31633552640445745,
+      "loop": 0.3681621285486393
+    },
+    "0.25": {
+      "gnn": 0.3540617744157831,
+      "llm": 0.27852446280044896,
+      "agaf": 0.2886796437994982,
+      "loop": 0.37905589152311386
+    },
+    "0.50": {
+      "gnn": 0.3551187881250616,
+      "llm": 0.27852446280044896,
+      "agaf": 0.2709891092700872,
+      "loop": 0.3693340375491124
+    }
+  },
+  "seed_verified_comparison": {
+    "seeds": [
+      42,
+      1,
+      2
+    ],
+    "ratios_compared": [
+      "0.00",
+      "0.05"
+    ],
+    "note": "0.05 was the single-seed apparent optimum; three seeds were run to test it.",
+    "per_rung": {
+      "GNN": {
+        "off_mean": 0.3495020402387507,
+        "off_sd": 0.021246831200045734,
+        "on_mean": 0.36266751090682936,
+        "on_sd": 0.019574336595338793,
+        "effect": 0.01316547066807866,
+        "off_runs": [
+          0.32711755971083384,
+          0.35199778065134824,
+          0.36939078035407
+        ],
+        "on_runs": [
+          0.3806452417743636,
+          0.3418146011462528,
+          0.36554268979987165
+        ]
+      },
+      "AGAF": {
+        "off_mean": 0.4341175785109183,
+        "off_sd": 0.01127313770120331,
+        "on_mean": 0.3610745972791106,
+        "on_sd": 0.04335873830354565,
+        "effect": -0.07304298123180769,
+        "off_runs": [
+          0.4446525803655099,
+          0.42222860225156056,
+          0.4354715529156845
+        ],
+        "on_runs": [
+          0.3110082392014467,
+          0.3861131526278816,
+          0.3861024000080036
+        ]
+      },
+      "Loop": {
+        "off_mean": 0.3708313477708762,
+        "off_sd": 0.014499303714369555,
+        "on_mean": 0.3680480120965861,
+        "on_sd": 0.00792025982996392,
+        "effect": -0.002783335674290066,
+        "off_runs": [
+          0.3875657812346581,
+          0.36201819305425875,
+          0.36291006902371165
+        ],
+        "on_runs": [
+          0.37591251175770446,
+          0.36815837894144177,
+          0.3600731455906121
+        ]
+      }
+    },
+    "llm": {
+      "off_mean": 0.27852446280044896,
+      "on_mean": 0.27852446280044896,
+      "effect": 0.0,
+      "note": "The prototype scorer fits no parameters and averages each class's embeddings; interpolating between same-class points cannot move that average. Unchanged to 4 decimals at every ratio, as predicted."
+    }
+  },
+  "findings": [
+    "BALANCING DOES NOT HELP THE GNN. The single-seed result (+0.0535 at ratio 0.05) did not survive: across three seeds the effect is +0.0132 with a seed sd of ~0.020, i.e. inside the noise band. An earlier reading of this sweep called the GNN the new best rung; that was a single-seed artifact and is retracted.",
+    "BALANCING CLEARLY HURTS AGAF: -0.0730 across three seeds (0.4341 -> 0.3611), several times the off-balancing seed sd of 0.0113. It also nearly quadruples AGAF's variance (sd 0.0113 -> 0.0434), so balanced AGAF is both worse and less stable.",
+    "The loop is unaffected (-0.0028, inside noise) and the LLM rung is exactly unchanged.",
+    "AGAF WITHOUT BALANCING REMAINS THE BEST RUNG (0.4341 +/- 0.0113 across seeds). No balancing ratio in 0.05-0.50 produces a configuration that beats it.",
+    "Seed variance on this graph is substantial (GNN sd ~0.021, AGAF sd ~0.011 unbalanced). The canonical single-seed contract values are point estimates with that much noise around them, and single-seed comparisons on ToN should not be trusted."
+  ],
+  "decision": "Balancing stays OFF (--oversample-ratio 0.0, the default) in the canonical configuration on every dataset. The flag is retained so the negative result is reproducible, and it is verified inert at 0.0: the full pipeline reproduces the Phase 1 ladder exactly (0.3271 / 0.2785 / 0.4447 / 0.3876).",
+  "artifacts": {
+    "ratio_sweep": "data/ton_iot/processed/balance/",
+    "seed_runs": "data/ton_iot/processed/balance_seeds/",
+    "flag": "--oversample-ratio on train_gnn/build_oof_predictions, train_fusion, train_feedback"
+  }
+}

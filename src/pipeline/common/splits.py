@@ -124,6 +124,23 @@ def eval_macro_f1(
     )
 
 
+def class_weights_from_labels(train_labels: torch.Tensor) -> torch.Tensor:
+    """Inverse-frequency class weights for an explicit label vector.
+
+    Needed when the training set has been augmented: after oversampling, the
+    weights must be recomputed on the BALANCED distribution. Keeping the original
+    inverse-frequency weights on top of an oversampled batch corrects for the same
+    imbalance twice and drives the model to predict almost nothing but the rare
+    classes (observed on ToN-IoT: AGAF predicted `xss` 1121 times against 12 true
+    instances, and zero Benign, collapsing macro-F1 to 0.02).
+    """
+    counts = torch.bincount(train_labels, minlength=NUM_CLASSES).float()
+    safe_counts = torch.where(counts > 0, counts, torch.ones_like(counts))
+    inverse = 1.0 / safe_counts
+    inverse = torch.where(counts > 0, inverse, torch.zeros_like(inverse))
+    return inverse * (NUM_CLASSES / inverse.sum())
+
+
 def get_class_weights(
     edge_label: torch.Tensor, train_mask: torch.Tensor
 ) -> torch.Tensor:

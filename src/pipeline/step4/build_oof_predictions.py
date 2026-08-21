@@ -29,6 +29,8 @@ if __package__ in (None, ""):
 from src.models.gnn_classifier import GATEdgeClassifier, VARIANT_NAMES
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import (
+    oversample_minority_embeddings,
+    class_weights_from_labels,
     NUM_CLASSES,
     FocalLoss,
     get_class_weights,
@@ -73,9 +75,11 @@ def _train_step(
     data: Data,
     train_mask: torch.Tensor,
     criterion: FocalLoss,
+    oversample_ratio: float = 0.0,
+    epoch: int = 0,
 ) -> torch.Tensor:
     model.train()
-    logits, _, aux_logits = model.forward_with_aux(
+    logits, edge_emb, aux_logits = model.forward_with_aux(
         data.x, data.edge_index, data.edge_attr
     )
     labels = data.edge_label[train_mask]
@@ -83,7 +87,32 @@ def _train_step(
     aux_loss = torch.stack(
         [criterion(aux_logits[name][train_mask], labels) for name in VARIANT_NAMES]
     ).mean()
-    return loss + AUXILIARY_DETECTOR_LOSS_WEIGHT * aux_loss
+    total = loss + AUXILIARY_DETECTOR_LOSS_WEIGHT * aux_loss
+
+    # GraphSMOTE-style balancing: interpolate minority EDGE REPRESENTATIONS, never
+    # raw node/edge features, and never the graph topology. Interpolating raw
+    # attributes on a graph produces out-of-domain samples (Zhao et al., WSDM 2021);
+    # interpolating in the encoder's output space keeps synthetic points on the
+    # learned manifold. Only TRAIN-fold edges are augmented, so val/test stay clean.
+    if oversample_ratio > 0.0:
+        aug_repr, aug_labels = oversample_minority_embeddings(
+            edge_emb[train_mask], labels, target_ratio=oversample_ratio,
+            seed=SEED + epoch,
+        )
+        if aug_repr.shape[0] > 0:
+            aug_logits, _ = model.classify_repr(aug_repr)
+            # Score real and synthetic edges under ONE objective whose class weights
+            # are recomputed on the balanced distribution. Reusing the original
+            # inverse-frequency weights here would correct the same imbalance twice.
+            all_logits = torch.cat([logits[train_mask], aug_logits], dim=0)
+            all_labels = torch.cat([labels, aug_labels], dim=0)
+            balanced = FocalLoss(
+                alpha=class_weights_from_labels(all_labels), gamma=FOCAL_GAMMA
+            )
+            total = balanced(all_logits, all_labels) + (
+                AUXILIARY_DETECTOR_LOSS_WEIGHT * aux_loss
+            )
+    return total
 
 
 def _macro_f1(
@@ -108,6 +137,7 @@ def _train_fold_capture_logits(
     data: Data,
     fold: dict[str, torch.Tensor],
     fold_idx: int,
+    oversample_ratio: float = 0.0,
 ) -> torch.Tensor:
     """Retrain one fold and return `[E, C]` logits from the best-val checkpoint.
 
@@ -132,7 +162,10 @@ def _train_fold_capture_logits(
 
     for epoch in range(1, MAX_EPOCHS + 1):
         optimizer.zero_grad()
-        loss = _train_step(model, data, train_mask, criterion)
+        loss = _train_step(
+            model, data, train_mask, criterion,
+            oversample_ratio=oversample_ratio, epoch=epoch,
+        )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         optimizer.step()
@@ -173,7 +206,11 @@ def _train_fold_capture_logits(
     return eval_logits.detach().cpu()
 
 
-def build_oof_logits(dataset: str) -> Path:
+def build_oof_logits(
+    dataset: str, oversample_ratio: float = 0.0, seed: int = SEED
+) -> Path:
+    global SEED
+    SEED = seed
     config = get_dataset_config(dataset)
     data: Data = torch.load(config.graph_path, weights_only=False)
     global IN_DIM
@@ -187,7 +224,9 @@ def build_oof_logits(dataset: str) -> Path:
 
     for fold_idx, fold in enumerate(folds):
         print(f"\n=== Fold {fold_idx} ===")
-        fold_logits = _train_fold_capture_logits(data, fold, fold_idx)
+        fold_logits = _train_fold_capture_logits(
+            data, fold, fold_idx, oversample_ratio=oversample_ratio
+        )
         test_mask = fold["test_mask"]
         oof_logits[test_mask] = fold_logits[test_mask]
 
@@ -222,8 +261,17 @@ def build_oof_logits(dataset: str) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
+    parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument(
+        "--oversample-ratio", type=float, default=0.0,
+        help="GraphSMOTE-style balancing: bring each minority class up to this "
+             "fraction of the majority class by interpolating TRAIN-fold edge "
+             "representations. 0.0 (default) disables it entirely.",
+    )
     args = parser.parse_args()
-    build_oof_logits(args.dataset)
+    build_oof_logits(
+        args.dataset, oversample_ratio=args.oversample_ratio, seed=args.seed
+    )
 
 
 if __name__ == "__main__":
