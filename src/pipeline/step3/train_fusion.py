@@ -25,6 +25,8 @@ from src.pipeline.common.metrics import (
     write_benchmark_summary,
 )
 from src.pipeline.common.splits import (
+    oversample_minority_embeddings,
+    class_weights_from_labels,
     NUM_CLASSES,
     FocalLoss,
     create_edge_splits,
@@ -90,6 +92,10 @@ USE_HEAD_LOGITS = False
 # input but removes the output bypass, so the inner gate has to earn the score
 # on its own — the ablation that separates "better input" from "guaranteed floor".
 HEAD_OUTPUT_GATE = True
+
+# GraphSMOTE-style class balancing on TRAIN edges only. 0.0 disables it and
+# reproduces every existing number bit-for-bit. Set in main().
+OVERSAMPLE_RATIO = 0.0
 
 # Fusion variant under test and its capacity. Defaults reproduce the existing
 # AGAF exactly; everything else is opt-in from the CLI. Set in main().
@@ -160,10 +166,40 @@ def _train_step(
     gate_entropy_lambda: float = GATE_ENTROPY_LAMBDA,
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
     head_raw: torch.Tensor | None = None,
+    oversample_ratio: float = 0.0,
+    epoch: int = 0,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     model.train()
     logits, _, diagnostics = model(gnn_t, llm_t, head_logits=head_raw)
     cls_loss = criterion(logits[train_mask], labels[train_mask])
+
+    # GraphSMOTE-style balancing. AGAF's two inputs ARE the encoder outputs, so the
+    # interpolation already happens in embedding space. The structural and semantic
+    # halves are concatenated before interpolating so both views of a synthetic edge
+    # use the SAME pair and the SAME lambda -- interpolating them independently would
+    # pair one edge's structure with another edge's semantics. TRAIN edges only.
+    if oversample_ratio > 0.0:
+        joint = torch.cat([gnn_t[train_mask], llm_t[train_mask]], dim=1)
+        aug_joint, aug_labels = oversample_minority_embeddings(
+            joint, labels[train_mask], target_ratio=oversample_ratio, seed=SEED + epoch
+        )
+        if aug_joint.shape[0] > 0:
+            aug_gnn = aug_joint[:, : gnn_t.shape[1]]
+            aug_llm = aug_joint[:, gnn_t.shape[1] :]
+            aug_head = None
+            if head_raw is not None:
+                aug_head = head_raw[train_mask].mean(dim=0, keepdim=True).expand(
+                    aug_joint.shape[0], -1
+                )
+            aug_logits, _, _ = model(aug_gnn, aug_llm, head_logits=aug_head)
+            # One objective over real+synthetic, with class weights recomputed on the
+            # balanced distribution (reusing the imbalanced weights double-corrects).
+            all_logits = torch.cat([logits[train_mask], aug_logits], dim=0)
+            all_labels = torch.cat([labels[train_mask], aug_labels], dim=0)
+            balanced = FocalLoss(
+                alpha=class_weights_from_labels(all_labels), gamma=FOCAL_GAMMA
+            )
+            cls_loss = balanced(all_logits, all_labels)
     train_gate = diagnostics["gate"][train_mask]
     gate_entropy = -(
         train_gate * (train_gate + 1e-12).log()
@@ -242,6 +278,8 @@ def _train_one_fold(
             gate_entropy_lambda=gate_entropy_lambda,
             feature_attention_entropy_lambda=feature_attention_entropy_lambda,
             head_raw=head_raw,
+            oversample_ratio=OVERSAMPLE_RATIO,
+            epoch=epoch,
         )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
@@ -368,6 +406,8 @@ def _train_final_model(
             gate_entropy_lambda=gate_entropy_lambda,
             feature_attention_entropy_lambda=feature_attention_entropy_lambda,
             head_raw=head_raw,
+            oversample_ratio=OVERSAMPLE_RATIO,
+            epoch=epoch,
         )
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
@@ -393,6 +433,8 @@ def main(
     feature_attention_entropy_lambda: float = FEATURE_ATTENTION_ENTROPY_LAMBDA,
     use_head_logits: bool = False,
     head_output_gate: bool = True,
+    oversample_ratio: float = 0.0,
+    seed: int = SEED,
     head_logits_path: str | None = None,
     fusion_mode: str = "feature_gate",
     fixed_lambda: float = 0.5,
@@ -401,11 +443,13 @@ def main(
     proj_dim: int = PROJ_DIM,
     hidden_dim: int = HIDDEN_DIM,
 ) -> None:
-    global USE_HEAD_LOGITS, HEAD_OUTPUT_GATE, EVAL_CLASSES
+    global USE_HEAD_LOGITS, HEAD_OUTPUT_GATE, EVAL_CLASSES, OVERSAMPLE_RATIO, SEED
     global FUSION_MODE, FIXED_LAMBDA, ALIGN_LAMBDA, ALIGN_TEMPERATURE
     global ACTIVE_PROJ_DIM, ACTIVE_HIDDEN_DIM
     USE_HEAD_LOGITS = use_head_logits
     HEAD_OUTPUT_GATE = head_output_gate
+    OVERSAMPLE_RATIO = oversample_ratio
+    SEED = seed
     FUSION_MODE = fusion_mode
     FIXED_LAMBDA = fixed_lambda
     ALIGN_LAMBDA = align_lambda
@@ -633,6 +677,13 @@ if __name__ == "__main__":
         "but DISABLE the output re-injection gate, so no bypass guarantees the "
         "head's score as a floor.",
     )
+    parser.add_argument("--seed", type=int, default=SEED)
+    parser.add_argument(
+        "--oversample-ratio", type=float, default=0.0,
+        help="GraphSMOTE-style balancing: bring each minority class up to this "
+             "fraction of the majority class by interpolating TRAIN-fold edge "
+             "embeddings. 0.0 (default) disables it entirely.",
+    )
     parser.add_argument("--head-logits-path")
     parser.add_argument(
         "--fusion-mode",
@@ -665,6 +716,8 @@ if __name__ == "__main__":
         feature_attention_entropy_lambda=args.feature_attention_entropy_lambda,
         use_head_logits=args.use_head_logits,
         head_output_gate=not args.no_head_output_gate,
+        oversample_ratio=args.oversample_ratio,
+        seed=args.seed,
         head_logits_path=args.head_logits_path,
         fusion_mode=args.fusion_mode,
         fixed_lambda=args.fixed_lambda,

@@ -46,6 +46,8 @@ from src.models.feedback_classifier import (
 from src.models.gnn_classifier import VARIANT_NAMES
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import (
+    oversample_minority_embeddings,
+    class_weights_from_labels,
     NUM_CLASSES,
     FocalLoss,
     eval_macro_f1,
@@ -176,6 +178,7 @@ def _train_one_fold(
     bias_dim: int = 1,
     max_iterations: int = MAX_ITERATIONS,
     bias_init: str = "zeros",
+    oversample_ratio: float = 0.0,
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -219,7 +222,29 @@ def _train_one_fold(
         aux_loss = torch.stack(
             [criterion(aux[n][train_mask], labels[train_mask]) for n in VARIANT_NAMES]
         ).mean()
-        (loss + AUX_LOSS_WEIGHT * aux_loss).backward()
+        total_loss = loss + AUX_LOSS_WEIGHT * aux_loss
+        # GraphSMOTE-style balancing on TRAIN-fold edge representations only. The
+        # graph topology is never touched; only the classifier head sees synthetic
+        # points, which is what keeps them on the learned manifold.
+        if oversample_ratio > 0.0 and model._last_edge_emb is not None:
+            aug_repr, aug_labels = oversample_minority_embeddings(
+                model._last_edge_emb[train_mask], labels[train_mask],
+                target_ratio=oversample_ratio, seed=SEED + epoch,
+            )
+            if aug_repr.shape[0] > 0:
+                # One objective over real+synthetic, class weights recomputed on the
+                # balanced distribution (reusing imbalanced weights double-corrects).
+                all_logits = torch.cat(
+                    [logits[train_mask], model.classify_repr(aug_repr)], dim=0
+                )
+                all_labels = torch.cat([labels[train_mask], aug_labels], dim=0)
+                balanced = FocalLoss(
+                    alpha=class_weights_from_labels(all_labels), gamma=2.0
+                )
+                total_loss = (
+                    balanced(all_logits, all_labels) + AUX_LOSS_WEIGHT * aux_loss
+                )
+        total_loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         optimizer.step()
 
@@ -599,6 +624,7 @@ def train_feedback(
     bias_dim: int = 1,
     max_iterations: int = MAX_ITERATIONS,
     bias_init: str = "zeros",
+    oversample_ratio: float = 0.0,
     seed: int = SEED,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
@@ -671,6 +697,7 @@ def train_feedback(
                 bias_dim=bias_dim,
                 max_iterations=max_iterations,
                 bias_init=bias_init,
+                oversample_ratio=oversample_ratio,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -811,6 +838,12 @@ def main() -> None:
     parser.add_argument("--agaf-benchmark-path")
     parser.add_argument("--bias-confidence-fraction", type=float)
     parser.add_argument(
+        "--oversample-ratio", type=float, default=0.0,
+        help="GraphSMOTE-style balancing: bring each minority class up to this "
+             "fraction of the majority class by interpolating TRAIN-fold edge "
+             "representations. 0.0 (default) disables it entirely.",
+    )
+    parser.add_argument(
         "--bias-init", choices=("zeros", "xavier"), default="zeros",
         help="Init for the bias projection. 'zeros' (default) makes the biased GAT "
              "reproduce stock GATv2 exactly but starts the mechanism inert; 'xavier' "
@@ -866,6 +899,7 @@ def main() -> None:
             bias_dim=args.bias_dim,
             max_iterations=args.max_iterations,
             bias_init=args.bias_init,
+            oversample_ratio=args.oversample_ratio,
             seed=args.seed,
         )
 
