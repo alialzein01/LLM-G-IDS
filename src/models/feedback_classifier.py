@@ -538,7 +538,24 @@ class BiasedGATStructuralEncoder(nn.Module):
         return h
 
 
-FEEDBACK_MODES = ("real", "random", "head_only")
+FEEDBACK_MODES = ("real", "random", "shuffled", "head_only")
+
+# Where the semantic advice is delivered.
+#   "attention" — todo.md Step 4 literally: the projected advice is added to
+#     GATv2's unnormalised attention logits. MEASURED INERT on UNSW: churn is
+#     exactly 0.0000 at bias magnitudes up to ~1.4 nats (the scale of the
+#     attention logits themselves), and a shuffled-advice control does not
+#     degrade the score — nothing reaches the decision. The reason is
+#     structural: attention can only speak through node embeddings, and 59% of
+#     UNSW edges share a (src,dst) pair — 100% of the flagged ones do — so the
+#     four node-derived terms of the edge representation are identical for
+#     co-located edges and cannot reorder them.
+#   "edge" — the advice is added to the edge features, which GATv2 attends over
+#     AND which enter the edge representation. This is the only term that
+#     distinguishes co-located edges. Churn becomes 0.0251 and both controls
+#     (shuffled, noise) fall well below real advice.
+# Default stays "attention" so the published contract reproduces bit-for-bit.
+INJECTION_MODES = ("attention", "edge")
 
 
 class FeedbackLoopClassifier(nn.Module):
@@ -562,6 +579,12 @@ class FeedbackLoopClassifier(nn.Module):
     `feedback_mode`:
       - ``"real"``      — semantic logits from `WhitenedPrototypeScorer`;
       - ``"random"``    — semantic logits replaced by fixed per-edge noise
+      - ``"shuffled"``  — REAL semantic logits, permuted across edges: each
+        edge receives the genuine advice computed for a different edge.
+        Distinct from ``"random"``: the advice distribution is untouched, only
+        the edge it is attached to is wrong. This is the control that
+        separates "the model uses semantic content" from "the model uses
+        content matched to THIS edge".
         (the random-feedback ablation the reverted attempt failed);
       - ``"head_only"`` — bias forced to zero every iteration (the loop is
         disabled; equivalent to the plain GNN run `max_iterations` times).
@@ -587,6 +610,8 @@ class FeedbackLoopClassifier(nn.Module):
         use_output_fusion: bool = True,
         use_no_regret_floor: bool = False,
         no_regret_bound: float = 3.0,
+        injection_mode: str = "attention",
+        injection_scale: float = 10.0,
     ) -> None:
         super().__init__()
         from src.models.gnn_classifier import EDGE_FOCUS_WEIGHTS, VARIANT_NAMES
@@ -603,6 +628,20 @@ class FeedbackLoopClassifier(nn.Module):
         self.use_output_fusion = use_output_fusion
         self.use_no_regret_floor = use_no_regret_floor
         self.no_regret_bound = no_regret_bound
+        if injection_mode not in INJECTION_MODES:
+            raise ValueError(
+                f"injection_mode must be one of {INJECTION_MODES}, got {injection_mode!r}"
+            )
+        self.injection_mode = injection_mode
+        self.injection_scale = float(injection_scale)
+        if injection_mode == "edge" and bias_dim != edge_attr_dim:
+            # The advice is ADDED to the edge-feature vector, so the two must be
+            # the same width. Silently broadcasting a 1-wide bias here would apply
+            # one scalar to all five features and quietly change the mechanism.
+            raise ValueError(
+                f"injection_mode='edge' requires bias_dim == edge_attr_dim "
+                f"({edge_attr_dim}), got bias_dim={bias_dim}."
+            )
 
         self.encoders = nn.ModuleDict(
             {
@@ -739,9 +778,20 @@ class FeedbackLoopClassifier(nn.Module):
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         variant_embs = []
         aux_logits: dict[str, torch.Tensor] = {}
+        edge_mode = self.injection_mode == "edge"
+        if edge_mode:
+            # The advice rides on the edge features; the attention-logit bias is
+            # held at zero so the two injection points are never mixed.
+            attn_bias = torch.zeros(
+                edge_index.shape[1], 1, device=x.device, dtype=x.dtype
+            )
         for name in self.variant_names:
             focused = self._focused_edge_attr(name, edge_attr)
-            node_emb = self.encoders[name](x, edge_index, focused, edge_attn_bias)
+            if edge_mode:
+                focused = focused + self.injection_scale * edge_attn_bias
+                node_emb = self.encoders[name](x, edge_index, focused, attn_bias)
+            else:
+                node_emb = self.encoders[name](x, edge_index, focused, edge_attn_bias)
             repr_ = self._build_flow_repr(node_emb, edge_index, focused)
             emb = F.relu(self.variant_embedders[name](repr_))
             variant_embs.append(emb)
@@ -839,6 +889,12 @@ class FeedbackLoopClassifier(nn.Module):
         top = torch.topk(conf, k).indices
         return flagged[top]
 
+    def _shuffle_perm(self, num_edges: int, device: torch.device) -> torch.Tensor:
+        """Fixed permutation used by the `shuffled` control, on both the bias and
+        the fusion branch, so one edge's advice is displaced consistently."""
+        g = torch.Generator().manual_seed(self.random_feedback_seed + 13)
+        return torch.randperm(num_edges, generator=g).to(device)
+
     def _semantic_logits(
         self,
         llm_embeddings: torch.Tensor,
@@ -851,6 +907,14 @@ class FeedbackLoopClassifier(nn.Module):
         if feedback_mode == "real":
             # Prefer a strong trained LLM head over the whitened-prototype scorer.
             return head_logits if head_logits is not None else self.scorer(llm_embeddings)
+        if feedback_mode == "shuffled":
+            # Genuine advice, wrong edge. Same fixed permutation on every forward
+            # (train and eval) so the control is a stable alternative consultant
+            # rather than a per-step noise regulariser.
+            real = (
+                head_logits if head_logits is not None else self.scorer(llm_embeddings)
+            )
+            return real[self._shuffle_perm(real.shape[0], llm_embeddings.device)]
         if feedback_mode == "random":
             # Fixed per-edge noise: sampled with a constant seed so it is
             # identical on every forward (train and eval) — a fixed
@@ -926,6 +990,11 @@ class FeedbackLoopClassifier(nn.Module):
         fusion_head: torch.Tensor | None = None
         if semantic_logits is None:
             fusion_emb = None  # head_only: fusion disabled
+        elif feedback_mode == "shuffled":
+            perm = self._shuffle_perm(num_edges, llm_embeddings.device)
+            fusion_emb = llm_embeddings[perm]
+            if head_logits is not None:
+                fusion_head = head_logits[perm]
         elif feedback_mode == "random":
             # shuffle edges → real-looking but uninformative LLM branch (control)
             perm = torch.randperm(

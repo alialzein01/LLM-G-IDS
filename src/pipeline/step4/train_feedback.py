@@ -135,6 +135,8 @@ def _build_model(
     bias_dim: int = 1,
     max_iterations: int = MAX_ITERATIONS,
     bias_init: str = "zeros",
+    injection_mode: str = "attention",
+    injection_scale: float = 10.0,
 ) -> FeedbackLoopClassifier:
     if not 0.0 < bias_confidence_fraction <= 1.0:
         raise ValueError(
@@ -157,6 +159,8 @@ def _build_model(
         bias_confidence_frac=bias_confidence_fraction,
         use_no_regret_floor=use_no_regret_floor,
         use_output_fusion=use_output_fusion,
+        injection_mode=injection_mode,
+        injection_scale=injection_scale,
     )
 
 
@@ -179,6 +183,8 @@ def _train_one_fold(
     max_iterations: int = MAX_ITERATIONS,
     bias_init: str = "zeros",
     oversample_ratio: float = 0.0,
+    injection_mode: str = "attention",
+    injection_scale: float = 10.0,
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -192,6 +198,8 @@ def _train_one_fold(
         bias_dim=bias_dim,
         max_iterations=max_iterations,
         bias_init=bias_init,
+        injection_mode=injection_mode,
+        injection_scale=injection_scale,
     )
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"]
@@ -626,6 +634,8 @@ def train_feedback(
     bias_init: str = "zeros",
     oversample_ratio: float = 0.0,
     seed: int = SEED,
+    injection_mode: str = "attention",
+    injection_scale: float = 10.0,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     global SEED
@@ -698,6 +708,8 @@ def train_feedback(
                 max_iterations=max_iterations,
                 bias_init=bias_init,
                 oversample_ratio=oversample_ratio,
+                injection_mode=injection_mode,
+                injection_scale=injection_scale,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -814,6 +826,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     parser.add_argument(
+        "--injection-mode", choices=("attention", "edge"), default="attention",
+        help="Where the semantic advice is delivered. 'attention' is todo.md Step 4 "
+             "verbatim and is MEASURED INERT (churn 0.0000); 'edge' puts it on the "
+             "edge features, the only term that separates co-located edges.",
+    )
+    parser.add_argument(
+        "--injection-scale", type=float, default=10.0,
+        help="Multiplier on the advice when --injection-mode edge. Selected on "
+             "validation folds (5/10/20 grid).",
+    )
+    parser.add_argument(
         "--modes", nargs="+", default=list(FEEDBACK_MODES), choices=list(FEEDBACK_MODES)
     )
     parser.add_argument(
@@ -844,10 +867,10 @@ def main() -> None:
              "representations. 0.0 (default) disables it entirely.",
     )
     parser.add_argument(
-        "--bias-init", choices=("zeros", "xavier"), default="zeros",
-        help="Init for the bias projection. 'zeros' (default) makes the biased GAT "
-             "reproduce stock GATv2 exactly but starts the mechanism inert; 'xavier' "
-             "starts it live.",
+        "--bias-init", choices=("zeros", "xavier"), default=None,
+        help="Init for the bias projection. 'zeros' makes the biased GAT reproduce "
+             "stock GATv2 exactly but starts the mechanism inert; 'xavier' starts it "
+             "live. Default: 'zeros' for --injection-mode attention, 'xavier' for edge.",
     )
     parser.add_argument(
         "--seed", type=int, default=SEED,
@@ -861,9 +884,10 @@ def main() -> None:
              "which neighbours the GAT attends to.",
     )
     parser.add_argument(
-        "--bias-dim", type=int, default=1,
-        help="Width of the attention bias: 1 broadcasts one value across all attention "
-             "heads (default); 8 gives each head its own bias.",
+        "--bias-dim", type=int, default=None,
+        help="Width of the bias: 1 broadcasts one value across all attention heads; "
+             "8 gives each head its own. Default: 1 for --injection-mode attention, "
+             f"{EDGE_ATTR_DIM} (edge_attr_dim) for edge, which is required there.",
     )
     parser.add_argument(
         "--max-iterations", type=int, default=MAX_ITERATIONS,
@@ -882,6 +906,13 @@ def main() -> None:
              "score below the better of its two branches on average.",
     )
     args = parser.parse_args()
+    # Edge injection rides on the edge-feature vector, so the bias must be exactly
+    # as wide as edge_attr, and a zero-init projection has nothing to push against
+    # in the first pass. Fill both in unless the caller set them explicitly.
+    if args.bias_dim is None:
+        args.bias_dim = EDGE_ATTR_DIM if args.injection_mode == "edge" else 1
+    if args.bias_init is None:
+        args.bias_init = "xavier" if args.injection_mode == "edge" else "zeros"
     if args.frozen:
         train_feedback_frozen(args.dataset)
     else:
@@ -901,6 +932,8 @@ def main() -> None:
             bias_init=args.bias_init,
             oversample_ratio=args.oversample_ratio,
             seed=args.seed,
+            injection_mode=args.injection_mode,
+            injection_scale=args.injection_scale,
         )
 
 
