@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "experiment": "edge_feature_injection",
+  "generated": "2026-08-25",
+  "status": "comparison_only - the canonical contract in results/unsw_nb15_current.json is still the attention run",
+  "question": "todo.md Step 4 injects the semantic judgement as a bias on GATv2's attention logits. That mechanism is inert (churn 0.0000). Does delivering the same advice to the EDGE FEATURES make it live without breaking the ladder?",
+  "verdict": "YES. Churn 0.0000 -> 0.0251, both advice controls fail, and the ladder still holds. Loop rung costs 0.0061 against the canonical 3-seed mean, inside the +/-0.014 seed spread.",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "why_attention_is_inert": {
+    "head_sensitivity_flip_rate": {
+      "note": "Fraction of predictions that change when one input is perturbed by Gaussian noise at N% of its std. Measured on the trained UNSW GNN, forward passes only.",
+      "node_emb_5pct": 0.0082,
+      "edge_attr_5pct": 0.6878,
+      "node_emb_20pct": 0.0363,
+      "edge_attr_20pct": 0.7518,
+      "node_emb_100pct": 0.4274,
+      "edge_attr_100pct": 0.7777,
+      "reading": "At small perturbations the classifier head is ~84x more sensitive to edge features than to node embeddings. Attention can only speak through node embeddings."
+    },
+    "co_location": {
+      "share_of_all_edges_sharing_a_src_dst_pair": 0.587,
+      "share_of_FLAGGED_edges_sharing_a_src_dst_pair": 1.0,
+      "note": "656 edges over 311 distinct (src,dst) pairs, max 10 edges on one pair. For co-located edges the four node-derived terms of the edge representation are identical, so only edge_attr separates them. Every consulted edge is co-located."
+    },
+    "node_embedding_ablation": {
+      "baseline": 0.5496,
+      "node_emb_zeroed": 0.3481,
+      "edge_attr_zeroed": 0.1304,
+      "note": "Both inputs carry real signal; the graph is NOT decorative. The attention path fails on addressing, not on the GNN being useless."
+    },
+    "attention_only_via_edge_features": {
+      "note": "Advice routed into edge_attr but ONLY where it feeds the attention computation, leaving the classification representation untouched. This is Step 4's sentence word for word, on the live channel.",
+      "churn_by_scale": {
+        "10": 0.0,
+        "20": 0.0,
+        "50": 0.0,
+        "100": 0.0
+      },
+      "macro_f1_prototype": 0.5535,
+      "macro_f1_shuffled": 0.5568,
+      "reading": "Inert at every scale, and shuffled advice does NOT degrade it - nothing reaches the decision. Confirms the bottleneck is that attention's only output is node embeddings, not how the advice enters attention."
+    }
+  },
+  "mechanism_only": {
+    "protocol": "use_output_fusion=False, so the LLM reaches the GNN ONLY through the feedback mechanism. NOT comparable to ladder numbers.",
+    "control_head_only": {
+      "mean": 0.555796190651748,
+      "std": 0.006334098353742753,
+      "runs": [
+        0.5642988597314028,
+        0.5539860989969572,
+        0.5491036132268841
+      ],
+      "mean_churn": 0.0
+    },
+    "edge_prototype": {
+      "mean": 0.5585936715264855,
+      "std": 0.008121548127531497,
+      "runs": [
+        0.5632746087439967,
+        0.5653364807432731,
+        0.5471699250921868
+      ],
+      "mean_churn": 0.04288617894053459
+    },
+    "edge_trained_head": {
+      "mean": 0.5822440376294127,
+      "std": 0.01045519339223592,
+      "runs": [
+        0.5754948373478881,
+        0.5970117420430886,
+        0.5742255334972615
+      ],
+      "mean_churn": 0.09827235639095307
+    },
+    "attention_trained_head": {
+      "mean": 0.5564283186001786,
+      "std": 0.004875145083505691,
+      "runs": [
+        0.5626536749562436,
+        0.5507496585325286,
+        0.5558816223117637
+      ],
+      "mean_churn": 0.002439024330427249
+    },
+    "control_shuffled_advice": {
+      "mean": 0.5261941688422705,
+      "std": 0.014815495447322101,
+      "runs": [
+        0.5456349151505483,
+        0.5097068617253002,
+        0.5232407296509631
+      ],
+      "mean_churn": 0.016056910529732703,
+      "definition": "REAL advice, permuted across edges - wrong edge, real distribution"
+    },
+    "control_noise_advice": {
+      "mean": 0.5112428476842886,
+      "std": 0.010716195719972798,
+      "runs": [
+        0.5172545508703024,
+        0.5202848110245216,
+        0.4961891811580418
+      ],
+      "mean_churn": 0.0712398387491703,
+      "definition": "uniform noise replacing the advice distribution"
+    },
+    "reading": "edge+trained_head beats the no-feedback control by +0.0264 with non-overlapping seeds. Both advice controls fall BELOW the control, so the gain is semantic content, not added capacity. Neither factor works alone: edge+prototype +0.0028, attention+head +0.0006."
+  },
+  "ladder_fusion_on": {
+    "canonical_attention_prototype": {
+      "mean": 0.7671909695663199,
+      "std": 0.012258713623085801,
+      "runs": [
+        0.7763992869991123,
+        0.7753076306773539,
+        0.7498659910224934
+      ],
+      "mean_churn": 0.0
+    },
+    "edge_prototype": {
+      "mean": 0.7610496891752138,
+      "std": 0.01443705710714447,
+      "runs": [
+        0.7735409819886386,
+        0.7408176697662042,
+        0.7687904157707985
+      ],
+      "mean_churn": 0.02510162591934204
+    },
+    "edge_trained_head": {
+      "mean": 0.8257990008271049,
+      "std": 0.013087970823048158,
+      "runs": [
+        0.8281030839032475,
+        0.8405517029613193,
+        0.8087422156167478
+      ],
+      "mean_churn": 0.06819105601559082
+    },
+    "control_shuffled": {
+      "mean": 0.4596757636860928,
+      "std": 0.013276204772990075,
+      "runs": [
+        0.4547685162171365,
+        0.44643462359723285,
+        0.4778241512439091
+      ],
+      "mean_churn": 0.04786585370699564
+    },
+    "fixed_rungs": {
+      "gnn": 0.5496206583793729,
+      "llm_prototype": 0.7353188026257084,
+      "agaf": 0.7458681287559671
+    },
+    "ladder_holds_edge_prototype": true,
+    "reading": "GNN 0.5496 < LLM 0.7353 < AGAF 0.7459 < Loop 0.7610. Ladder holds with a live mechanism."
+  },
+  "top_k_reselection": {
+    "protocol": "selected on validation folds only, edge injection live, fusion on, seed 42",
+    "candidates": {
+      "12.0": {
+        "val": 0.7864378409987498,
+        "test": 0.7733281096278328,
+        "churn": 0.03109756140038371
+      },
+      "16.0": {
+        "val": 0.8044293761309855,
+        "test": 0.7735409819886386,
+        "churn": 0.028658536076545716
+      },
+      "20.0": {
+        "val": 0.7987243382007714,
+        "test": 0.7624175754314193,
+        "churn": 0.036890244111418724
+      },
+      "24.0": {
+        "val": 0.7843582625524289,
+        "test": 0.7322255586669361,
+        "churn": 0.028353658318519593
+      },
+      "28.0": {
+        "val": 0.794097708206003,
+        "test": 0.761747788236948,
+        "churn": 0.02073170691728592
+      },
+      "32.0": {
+        "val": 0.7983991087652648,
+        "test": 0.77296126316424,
+        "churn": 0.03719512149691582
+      }
+    },
+    "selected_top_k_percent": 16.0,
+    "reading": "Unchanged from the canonical value. The live mechanism does not move the optimum, and churn is non-zero (0.021-0.037) at every setting."
+  },
+  "iteration_cap": {
+    "max_iterations_3": {
+      "mean": 0.7610496891752138,
+      "iters": 2.533333333333333
+    },
+    "max_iterations_5": {
+      "mean": 0.7327173121226539,
+      "iters": 3.0666666666666664
+    },
+    "max_iterations_8": {
+      "mean": 0.7501453075399228,
+      "iters": 3.066666666666667
+    },
+    "reading": "Keep 3. More iterations do not help and actual iterations plateau near 3.1."
+  },
+  "oracle_headroom": {
+    "question": "Can any fusion of the GNN and the trained LLM head beat the head alone (0.8321)?",
+    "gnn_oof_macro_f1": 0.5496,
+    "head_oof_macro_f1": 0.8321,
+    "perfect_oracle_macro_f1": 0.8526,
+    "headroom_over_head": 0.0205,
+    "confidence_routed_macro_f1": 0.8017,
+    "edge_counts": {
+      "both_correct": 443,
+      "both_wrong": 70,
+      "head_saves_gnn": 134,
+      "gnn_beats_head": 9
+    },
+    "gnn_beats_head_by_class": {
+      "Normal": 3,
+      "Analysis": 3,
+      "Fuzzers": 2,
+      "Worms": 1
+    },
+    "verdict": "NO. The exploitable pool is 9 of 656 edges (1.4%). A perfect label-aware router reaches only 0.8526, and realistic confidence routing scores 0.8017 - BELOW the head alone. No fusion change (no-regret floor, wider gate, top_k) can lift the loop past 0.8321; the binding constraint is the GNN rung."
+  },
+  "configuration": {
+    "injection_mode": "edge",
+    "injection_scale": 10.0,
+    "injection_scale_source": "validation sweep over 5/10/20",
+    "bias_dim": 5,
+    "bias_dim_note": "must equal edge_attr_dim; enforced in FeedbackLoopClassifier.__init__",
+    "bias_init": "xavier",
+    "top_k_percent": 16.0,
+    "bias_confidence_fraction": 0.5,
+    "semantic_consultant": "whitened_prototype",
+    "trained_llm_head": false,
+    "max_iterations": 3,
+    "churn_tolerance": 0.01,
+    "deterministic_cpu": true
+  },
+  "reproduce": "python -m src.pipeline.step4.train_feedback --dataset unsw_nb15 --injection-mode edge",
+  "limitations": [
+    "The loop rung here (0.7610 +/- 0.0144) is a 3-seed mean; results/unsw_nb15_current.json reports a single-seed point estimate (0.7764). The canonical config's own 3-seed mean is 0.7672 +/- 0.0123, so the two configurations differ by 0.0061 - inside the seed spread.",
+    "Edge injection deviates from todo.md Step 4's wording ('injected back into the GAT as an attention bias'). Two literal implementations were measured inert at up to 100x strength; see why_attention_is_inert.",
+    "Churn 0.0251 is ~16 edges of 656. The mechanism is live and reproducible across seeds, but modest.",
+    "The loop-over-AGAF gap (+0.0151) is inside the seed spread, so the top rung remains an observed ordering, not a significant one. Same caveat as the canonical contract.",
+    "KG discretisation bins are fit globally across all edges including test rows (rank-based, no labels). Mild transductive leakage, disclosed not fixed.",
+    "ToN-IoT has NOT been run with edge injection. The default remains injection_mode='attention' so the cross-dataset architecture contract still holds."
+  ]
+}
