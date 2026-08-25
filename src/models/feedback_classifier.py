@@ -554,7 +554,9 @@ FEEDBACK_MODES = ("real", "random", "shuffled", "head_only")
 #     AND which enter the edge representation. This is the only term that
 #     distinguishes co-located edges. Churn becomes 0.0251 and both controls
 #     (shuffled, noise) fall well below real advice.
-# Default stays "attention" so the published contract reproduces bit-for-bit.
+# The pipeline default is "edge" (see train_feedback); this class keeps
+# "attention" so a bare FeedbackLoopClassifier() still reproduces stock GATv2.
+# Pass --injection-mode attention to reproduce the published 0.7764 contract.
 INJECTION_MODES = ("attention", "edge")
 
 
