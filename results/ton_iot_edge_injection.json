@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "experiment": "edge_injection_and_graph_structure",
+  "generated": "2026-08-25",
+  "status": "comparison_only - the canonical ToN contract is results/ton_iot_current.json",
+  "question": "Edge injection revives the feedback mechanism on UNSW (churn 0.0000 -> 0.0251). Does it transfer to ToN-IoT?",
+  "verdict": "NO. Churn stays ~0.001 and the ladder is unchanged. ToN's mechanism fails for a DIFFERENT structural reason than UNSW's, and edge injection does not address it.",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "eval_classes": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    8,
+    9
+  ],
+  "dropped_classes": [
+    3,
+    7
+  ],
+  "root_cause_in_degree": {
+    "note": "Attention re-weighting is a softmax over a node's incoming edges. On a node with in-degree 1 that softmax is 1.0 no matter what bias is added, so the mechanism is a mathematical no-op there.",
+    "unsw": {
+      "nodes": 49,
+      "edges": 656,
+      "median_in_degree": 10,
+      "mean_in_degree": 13.96,
+      "frac_edges_dst_in_degree_1": 0.011,
+      "frac_edges_dst_in_degree_le_2": 0.02
+    },
+    "ton": {
+      "nodes": 1501,
+      "edges": 2127,
+      "median_in_degree": 1,
+      "mean_in_degree": 1.44,
+      "frac_edges_dst_in_degree_1": 0.628,
+      "frac_edges_dst_in_degree_le_2": 0.701
+    },
+    "reading": "62.8% of ToN edges point at a node with a single incoming edge. Attention has nothing to weigh on the majority of the graph."
+  },
+  "co_location": {
+    "note": "Co-located edges share a (src,dst) pair, so the four node-derived terms of the edge representation are identical and only edge_attr separates them. This is the failure edge injection fixes.",
+    "unsw_colocated_share": 0.587,
+    "ton_colocated_share": 0.079,
+    "ton_distinct_pairs": 2021,
+    "ton_max_edges_on_a_pair": 7,
+    "reading": "ToN barely has the co-location problem, which is why edge injection buys almost nothing there. The two datasets fail for different reasons: UNSW's attention works but cannot separate co-located edges; ToN's attention is inert for lack of neighbours."
+  },
+  "injection_scale_selection": {
+    "protocol": "validation folds only, seed 42, fusion on, top_k=23.0",
+    "candidates": {
+      "5.0": {
+        "val": 0.4476,
+        "churn": 0.0009,
+        "test": 0.3948
+      },
+      "10.0": {
+        "val": 0.437,
+        "churn": 0.0018,
+        "test": 0.3694
+      },
+      "20.0": {
+        "val": 0.4449,
+        "churn": 0.0027,
+        "test": 0.3909
+      }
+    },
+    "selected_scale": 5.0
+  },
+  "ladder_fusion_on": {
+    "canonical_attention": {
+      "mean": 0.3708313477708762,
+      "std": 0.01183863190861542,
+      "runs": [
+        0.3875657812346581,
+        0.36201819305425875,
+        0.36291006902371165
+      ],
+      "mean_churn": 0.00043880270289567614
+    },
+    "edge_injection": {
+      "mean": 0.3771347539406383,
+      "std": 0.019821669048018905,
+      "runs": [
+        0.3948124441453197,
+        0.34945520031806754,
+        0.38713661735852767
+      ],
+      "mean_churn": 0.0009089484616803626
+    },
+    "fixed_rungs": {
+      "gnn": 0.32711755971083384,
+      "llm": 0.27852446280044896,
+      "agaf": 0.4446525803655099
+    },
+    "ladder_holds": false,
+    "reading": "AGAF remains the top ToN rung under both injection modes. Edge injection moves the loop by +0.0063, inside the +/-0.02 seed spread, and churn stays ~0.001."
+  },
+  "expanded_graph_assessment": {
+    "artifact": "data/ton_iot/processed/step1/pyg_data_expanded.pt (built 2026-07-19; its builder was deleted in c004ff6 as off-architecture)",
+    "structure": {
+      "edges": 27070,
+      "nodes": 1501,
+      "distinct_pairs": 2021,
+      "mean_in_degree": 18.32,
+      "frac_edges_dst_in_degree_1": 0.047,
+      "colocated_share": 0.936,
+      "node_feature_dim": 12
+    },
+    "would_it_help": "Structurally yes - it lifts mean in-degree 1.44 -> 18.3 and drops in-degree-1 edges 62.8% -> 4.7%, which is exactly what the mechanism needs, and it rebalances the rare classes (dos 4 -> 2954 sub-edges).",
+    "why_it_is_not_used": {
+      "leakage": "The archived folds are NOT group-aware. 93% of test edges in EVERY fold have a sibling sub-edge from the same (src,dst,attack) triple sitting in train; 256 of 356 multi-chunk triples straddle the split. Sub-edges of a triple share endpoints, label and near-identical attributes, so a model can memorise a triple in training and recall it at test. Any result from these folds is inflated.",
+      "per_fold_test_edges_with_a_train_sibling": {
+        "fold0": 0.93,
+        "fold1": 0.932,
+        "fold2": 0.937,
+        "fold3": 0.926,
+        "fold4": 0.935
+      },
+      "information_ceiling": "Even with group-aware folds the effective sample size stays 2127 triples, not 27070 edges. Chunking buys graph SHAPE, not information, and the rare classes stay rare in triple terms (dos 4 triples, ransomware 3).",
+      "architecture": "The expanded graph carries 12 node features against the canonical 10, and its builder was removed as off-architecture, so it breaks the cross-dataset parity contract on two counts."
+    },
+    "verdict": "Not adopted. Fixing the folds is necessary but not sufficient - it cannot fix ToN's class scarcity."
+  },
+  "limitations": [
+    "Single injection-scale grid (5/10/20) selected on validation at seed 42 only.",
+    "top_k was NOT re-selected for ToN under edge injection; 23.0 was carried from the canonical sweep.",
+    "The ToN ladder does not hold under either injection mode, unchanged from results/ton_iot_current.json."
+  ]
+}
