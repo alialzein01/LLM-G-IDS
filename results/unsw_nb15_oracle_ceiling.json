@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "experiment": "oracle_consultant_ceiling",
+  "generated": "2026-08-25",
+  "status": "DIAGNOSTIC ONLY - DELIBERATELY LEAKY, NEVER REPORTABLE AS A RESULT",
+  "question": "If the semantic consultant were PERFECT, how much could the feedback MECHANISM deliver? This bounds how much any consultant improvement can ever be worth.",
+  "method": "The consultant's class logits are replaced by a one-hot of the TRUE LABEL at +/-4 nats, passed through the same head_logits channel a real consultant uses. This is intentional label leakage: it measures mechanism capacity, not performance.",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "mechanism_only": {
+    "protocol": "use_output_fusion=False, so the oracle reaches the GNN ONLY through the feedback mechanism",
+    "control_head_only": {
+      "mean": 0.5558,
+      "note": "feedback structurally absent"
+    },
+    "real_prototype_edge": {
+      "mean": 0.5585936715264855,
+      "std": 0.008121548127531497,
+      "runs": [
+        0.5632746087439967,
+        0.5653364807432731,
+        0.5471699250921868
+      ],
+      "mean_churn": 0.04288617894053459
+    },
+    "oracle_edge": {
+      "mean": 0.5974600231337691,
+      "std": 0.003985514033691812,
+      "runs": [
+        0.6019042720716821,
+        0.5922357374928356,
+        0.5982400598367896
+      ],
+      "mean_churn": 0.11412601619958877
+    },
+    "oracle_attention": {
+      "mean": 0.5490750236209044,
+      "std": 0.00828575523171855,
+      "runs": [
+        0.5452691033290986,
+        0.5605757354665151,
+        0.5413802320670996
+      ],
+      "mean_churn": 0.0016260162616769473
+    }
+  },
+  "with_output_fusion": {
+    "oracle_edge": {
+      "mean": 0.9935370116403877,
+      "std": 0.0021423532974372754,
+      "runs": [
+        0.9942652742304945,
+        0.9957197886036837,
+        0.9906259720869848
+      ],
+      "mean_churn": 0.085264228656888
+    },
+    "note": "0.9935 is pure leakage by construction - the oracle bypasses the mechanism and enters output fusion directly. It confirms the label signal is intact and says NOTHING about the loop."
+  },
+  "findings": [
+    "TOTAL MECHANISM HEADROOM IS +0.0417. A perfect consultant lifts the mechanism from 0.5558 to 0.5975. That is the ceiling on everything the feedback path can ever contribute.",
+    "The trained head already captures +0.0264 of that, about 63%. The prototype captures +0.0028. Improving the consultant further is competing for at most ~0.015.",
+    "THE ATTENTION PATH IS DEAD EVEN WITH A PERFECT ORACLE: 0.5491 +/- 0.0083, BELOW the no-feedback control, churn 0.0016. Hand it the correct answer at full confidence and nothing arrives. This is the strongest available statement that todo.md Step 4's literal mechanism cannot work on this graph.",
+    "The mechanism is capacity-limited, not consultant-limited. Privileged-information training, richer KG text, and stronger LLM heads are all bounded by the same +0.0417."
+  ],
+  "reproduce": "scratchpad experiment; oracle logits = one-hot(true label) * 8 nats through the head_logits channel, top_k=16, bias_confidence=0.5, injection_scale=10"
+}
