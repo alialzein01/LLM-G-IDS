@@ -629,15 +629,22 @@ def train_feedback(
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
     bias_strength: float = DEFAULT_BIAS_STRENGTH,
-    bias_dim: int = 1,
+    bias_dim: int | None = None,
     max_iterations: int = MAX_ITERATIONS,
-    bias_init: str = "zeros",
+    bias_init: str | None = None,
     oversample_ratio: float = 0.0,
     seed: int = SEED,
-    injection_mode: str = "attention",
+    injection_mode: str = "edge",
     injection_scale: float = 10.0,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
+    # Edge injection needs a bias exactly as wide as edge_attr and a live
+    # projection; attention injection wants the 1-wide zero-init bias that
+    # reproduces stock GATv2. Resolve from the mode unless the caller was explicit.
+    if bias_dim is None:
+        bias_dim = EDGE_ATTR_DIM if injection_mode == "edge" else 1
+    if bias_init is None:
+        bias_init = "xavier" if injection_mode == "edge" else "zeros"
     global SEED
     SEED = seed
     config = get_dataset_config(dataset)
@@ -826,8 +833,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
     parser.add_argument(
-        "--injection-mode", choices=("attention", "edge"), default="attention",
-        help="Where the semantic advice is delivered. 'attention' is todo.md Step 4 "
+        "--injection-mode", choices=("attention", "edge"), default="edge",
+        help="Where the semantic advice is delivered. 'edge' (default) puts the "
+             "advice on the edge features. 'attention' is todo.md Step 4 "
              "verbatim and is MEASURED INERT (churn 0.0000); 'edge' puts it on the "
              "edge features, the only term that separates co-located edges.",
     )
