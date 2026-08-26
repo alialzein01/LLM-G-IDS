@@ -68,7 +68,9 @@ def _train_fold_capture_embeddings(data: Data, fold: dict, fold_idx: int) -> tor
     torch.manual_seed(SEED + fold_idx)
     np.random.seed(SEED + fold_idx)
     model = GATEdgeClassifier(
-        IN_DIM, HIDDEN_DIM, EDGE_ATTR_DIM, NUM_CLASSES, HEADS, DROPOUT
+        IN_DIM, HIDDEN_DIM, EDGE_ATTR_DIM, NUM_CLASSES, HEADS, DROPOUT,
+        **({} if getattr(data, "num_protocols", None) is None
+           else {"num_protocols": data.num_protocols, "num_ports": data.num_ports}),
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
     train_mask, val_mask, labels = fold["train_mask"], fold["val_mask"], data.edge_label

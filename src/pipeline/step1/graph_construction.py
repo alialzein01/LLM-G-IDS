@@ -50,6 +50,49 @@ LABEL_MAPPING = {
 }
 
 
+EDGE_ATTR_ENCODING = "v2_log_cont_cat_idx"
+
+
+def _encode_edge_attr(data: Data) -> None:
+    """Encode `edge_attr` by column type.
+
+    Columns 0-2 (`flow_count`, `total_bytes`, `avg_duration`) are heavy-tailed
+    counts: log1p first, then Z-score. Columns 3-4 (`most_common_protocol`,
+    `most_common_port`) are *categorical* -- port 443 is not "more" than port 80 --
+    so they are rewritten as contiguous vocabulary indices for an embedding table
+    to consume. They are deliberately NOT scaled; scaling an index is meaningless.
+
+    The previous encoding Z-scored only `[:, :3]` and passed protocol and port
+    through raw, which put `most_common_port` into the network at ~11,000x the
+    scale of every normalized column and let it dominate the representation.
+    """
+    cont = torch.log1p(data.edge_attr[:, :3].clamp(min=0))
+    data.edge_attr_mean = cont.mean(dim=0)
+    data.edge_attr_std = cont.std(dim=0, unbiased=False)
+    data.edge_attr[:, :3] = (cont - data.edge_attr_mean) / (data.edge_attr_std + 1e-8)
+
+    vocabs = {}
+    for col, name in ((3, "protocol"), (4, "port")):
+        values = data.edge_attr[:, col].round().long()
+        uniq = torch.unique(values, sorted=True)
+        lookup = {int(v): i for i, v in enumerate(uniq.tolist())}
+        data.edge_attr[:, col] = torch.tensor(
+            [lookup[int(v)] for v in values], dtype=data.edge_attr.dtype
+        )
+        vocabs[name] = lookup
+
+    data.protocol_vocab = vocabs["protocol"]
+    data.port_vocab = vocabs["port"]
+    data.num_protocols = len(vocabs["protocol"])
+    data.num_ports = len(vocabs["port"])
+    data.edge_attr_encoding = EDGE_ATTR_ENCODING
+    print(
+        f"Edge attributes encoded ({EDGE_ATTR_ENCODING}): "
+        f"3 log-scaled continuous, {data.num_protocols} protocols, "
+        f"{data.num_ports} ports as embedding indices."
+    )
+
+
 def _mode_first(series: pd.Series) -> int:
     mode_values = series.mode(dropna=False)
     return int(mode_values.iloc[0])
@@ -187,12 +230,7 @@ def run_step1(
     data.idx_to_node = idx_to_node
     data.label_mapping = label_mapping.copy()
 
-    normalization_slice = data.edge_attr[:, :3]
-    data.edge_attr_mean = normalization_slice.mean(dim=0)
-    data.edge_attr_std = normalization_slice.std(dim=0, unbiased=False)
-    data.edge_attr[:, :3] = (
-        normalization_slice - data.edge_attr_mean
-    ) / (data.edge_attr_std + 1e-8)
+    _encode_edge_attr(data)
 
     assert data.x.shape[1] == 10
     assert data.edge_index.shape[0] == 2

@@ -597,6 +597,10 @@ class FeedbackLoopClassifier(nn.Module):
         in_dim: int = 10,
         hidden_dim: int = 64,
         edge_attr_dim: int = 5,
+        num_protocols: int | None = None,
+        num_ports: int | None = None,
+        proto_emb_dim: int = 4,
+        port_emb_dim: int = 32,
         num_classes: int = 10,
         heads: int = 8,
         dropout: float = 0.2,
@@ -616,10 +620,33 @@ class FeedbackLoopClassifier(nn.Module):
         injection_scale: float = 10.0,
     ) -> None:
         super().__init__()
-        from src.models.gnn_classifier import EDGE_FOCUS_WEIGHTS, VARIANT_NAMES
+        from src.models.gnn_classifier import (
+            DEFAULT_PORT_EMB_DIM,
+            DEFAULT_PROTO_EMB_DIM,
+            EDGE_FOCUS_WEIGHTS,
+            VARIANT_NAMES,
+            EdgeFeatureEncoder,
+            expand_focus_weights,
+        )
 
         self.variant_names = VARIANT_NAMES
         self.hidden_dim = hidden_dim
+        # Mirror gnn_classifier: a v2-encoded graph carries protocol/port as
+        # vocabulary indices that must be embedded before they reach the GAT or the
+        # injection point. `edge_attr_dim` becomes the ENCODED width, which is also
+        # what `bias_dim` must match for injection_mode='edge'.
+        if num_protocols is not None and num_ports is not None:
+            self.edge_encoder = EdgeFeatureEncoder(
+                num_protocols, num_ports, proto_emb_dim, port_emb_dim
+            )
+            edge_attr_dim = self.edge_encoder.out_dim
+            focus_weights = {
+                name: expand_focus_weights(w, proto_emb_dim, port_emb_dim)
+                for name, w in EDGE_FOCUS_WEIGHTS.items()
+            }
+        else:
+            self.edge_encoder = None
+            focus_weights = EDGE_FOCUS_WEIGHTS
         self.edge_attr_dim = edge_attr_dim
         self.num_classes = num_classes
         self.dropout = dropout
@@ -636,6 +663,10 @@ class FeedbackLoopClassifier(nn.Module):
             )
         self.injection_mode = injection_mode
         self.injection_scale = float(injection_scale)
+        if injection_mode == "edge" and bias_dim in (None, 5) and edge_attr_dim != 5:
+            # A v2-encoded graph widens edge_attr to the embedded width; the caller's
+            # 5 is the pre-encoding default, so resolve it rather than rejecting it.
+            bias_dim = edge_attr_dim
         if injection_mode == "edge" and bias_dim != edge_attr_dim:
             # The advice is ADDED to the edge-feature vector, so the two must be
             # the same width. Silently broadcasting a 1-wide bias here would apply
@@ -678,7 +709,7 @@ class FeedbackLoopClassifier(nn.Module):
         self.fusion_hidden = nn.Linear(hidden_dim * len(VARIANT_NAMES), hidden_dim)
         self.fusion_out = nn.Linear(hidden_dim, num_classes)
 
-        for name, weights in EDGE_FOCUS_WEIGHTS.items():
+        for name, weights in focus_weights.items():
             self.register_buffer(
                 f"{name}_edge_focus",
                 torch.tensor(weights, dtype=torch.float).view(1, edge_attr_dim),
@@ -945,6 +976,8 @@ class FeedbackLoopClassifier(nn.Module):
         generator: torch.Generator | None = None,
         head_logits: torch.Tensor | None = None,
     ):
+        if self.edge_encoder is not None:
+            edge_attr = self.edge_encoder(edge_attr)
         num_edges = edge_index.shape[1]
         bias = torch.zeros(
             num_edges, self.bias_module.bias_dim, device=x.device, dtype=x.dtype

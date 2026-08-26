@@ -12,6 +12,8 @@ DEFAULT_EDGE_ATTR_DIM = 5
 DEFAULT_NUM_CLASSES = 10
 DEFAULT_HEADS = 8
 DEFAULT_DROPOUT = 0.2
+DEFAULT_PROTO_EMB_DIM = 4
+DEFAULT_PORT_EMB_DIM = 32
 VARIANT_NAMES = ("temporal", "content", "behavioral")
 
 
@@ -21,6 +23,53 @@ EDGE_FOCUS_WEIGHTS = {
     "content": (0.50, 1.50, 0.50, 1.00, 1.25),
     "behavioral": (1.25, 0.75, 1.00, 0.75, 1.50),
 }
+
+
+def expand_focus_weights(
+    weights: tuple[float, ...], proto_dim: int, port_dim: int
+) -> tuple[float, ...]:
+    """Stretch the 5 per-feature focus weights onto an embedded edge encoding.
+
+    The protocol weight applies across the whole protocol embedding block and the
+    port weight across the port block, so each detector variant keeps the same
+    relative emphasis it had on the raw 5-column features.
+    """
+    return tuple(weights[:3]) + (weights[3],) * proto_dim + (weights[4],) * port_dim
+
+
+class EdgeFeatureEncoder(nn.Module):
+    """Turn the 5-column `edge_attr` into a dense, correctly-scaled edge vector.
+
+    Columns 0-2 are already log-scaled and Z-scored by Step 1 and pass through.
+    Columns 3-4 are *vocabulary indices* for protocol and port, and are looked up
+    in learned embedding tables. Passing them as raw magnitudes -- the previous
+    behaviour -- put port into the network at ~11,000x the scale of every other
+    column and cost the GNN rung ~0.22 macro-F1 on UNSW-NB15.
+    """
+
+    def __init__(
+        self,
+        num_protocols: int,
+        num_ports: int,
+        proto_dim: int = DEFAULT_PROTO_EMB_DIM,
+        port_dim: int = DEFAULT_PORT_EMB_DIM,
+    ) -> None:
+        super().__init__()
+        self.emb_protocol = nn.Embedding(num_protocols, proto_dim)
+        self.emb_port = nn.Embedding(num_ports, port_dim)
+        self.proto_dim = proto_dim
+        self.port_dim = port_dim
+        self.out_dim = 3 + proto_dim + port_dim
+
+    def forward(self, edge_attr: torch.Tensor) -> torch.Tensor:
+        return torch.cat(
+            [
+                edge_attr[:, :3],
+                self.emb_protocol(edge_attr[:, 3].round().long()),
+                self.emb_port(edge_attr[:, 4].round().long()),
+            ],
+            dim=1,
+        )
 
 
 class GATStructuralEncoder(nn.Module):
@@ -97,11 +146,31 @@ class GATEdgeClassifier(nn.Module):
         num_classes: int = DEFAULT_NUM_CLASSES,
         heads: int = DEFAULT_HEADS,
         dropout: float = DEFAULT_DROPOUT,
+        num_protocols: int | None = None,
+        num_ports: int | None = None,
+        proto_emb_dim: int = DEFAULT_PROTO_EMB_DIM,
+        port_emb_dim: int = DEFAULT_PORT_EMB_DIM,
     ) -> None:
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.edge_attr_dim = edge_attr_dim
         self.dropout = dropout
+
+        # `num_protocols`/`num_ports` come from `data.num_protocols`/`data.num_ports`
+        # on a v2-encoded graph. Omitting them keeps the legacy raw-column path so
+        # older artifacts still load.
+        if num_protocols is not None and num_ports is not None:
+            self.edge_encoder = EdgeFeatureEncoder(
+                num_protocols, num_ports, proto_emb_dim, port_emb_dim
+            )
+            focus_weights = {
+                name: expand_focus_weights(w, proto_emb_dim, port_emb_dim)
+                for name, w in EDGE_FOCUS_WEIGHTS.items()
+            }
+            edge_attr_dim = self.edge_encoder.out_dim
+        else:
+            self.edge_encoder = None
+            focus_weights = EDGE_FOCUS_WEIGHTS
+        self.edge_attr_dim = edge_attr_dim
 
         self.encoders = nn.ModuleDict(
             {
@@ -135,7 +204,7 @@ class GATEdgeClassifier(nn.Module):
         self.fusion_hidden = nn.Linear(hidden_dim * len(VARIANT_NAMES), hidden_dim)
         self.fusion_out = nn.Linear(hidden_dim, num_classes)
 
-        for name, weights in EDGE_FOCUS_WEIGHTS.items():
+        for name, weights in focus_weights.items():
             self.register_buffer(
                 f"{name}_edge_focus",
                 torch.tensor(weights, dtype=torch.float).view(1, edge_attr_dim),
@@ -168,6 +237,8 @@ class GATEdgeClassifier(nn.Module):
     def encode_edges_by_variant(
         self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
     ) -> dict[str, torch.Tensor]:
+        if self.edge_encoder is not None:
+            edge_attr = self.edge_encoder(edge_attr)
         edge_reprs: dict[str, torch.Tensor] = {}
         for name, encoder in self.encoders.items():
             focused_edge_attr = self._focused_edge_attr(name, edge_attr)
