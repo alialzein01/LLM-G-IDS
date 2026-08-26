@@ -118,7 +118,25 @@ class FeedbackTopKSweepTest(unittest.TestCase):
 
             self.assertEqual(payload["source"], "validation_sweep")
             self.assertEqual(payload["top_k_percent"], 18.0)
+            self.assertEqual(payload["gate_mode"], "confidence")
             self.assertFalse(payload["selection_uses_test_labels"])
+
+    def test_selected_feedback_config_records_gate_mode(self) -> None:
+        selected = {
+            "top_k_percent": 31,
+            "mean_best_val_macro_f1": 0.75,
+            "std_best_val_macro_f1": 0.01,
+            "pooled_oof_test_macro_f1": 0.74,
+        }
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            write_selected_feedback_config(
+                "unsw_nb15", selected, root=tmp, gate_mode="disagreement"
+            )
+            payload = load_feedback_config("unsw_nb15", root=tmp)
+
+        self.assertEqual(payload["gate_mode"], "disagreement")
 
     def test_selected_feedback_config_records_trained_head(self) -> None:
         selected = {

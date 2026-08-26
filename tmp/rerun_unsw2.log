@@ -1,0 +1,803 @@
+
+--- skipping preprocess ---
+
+--- skipping step1 ---
+
+--- skipping features ---
+
+--- skipping step2 ---
+
+--- skipping splits ---
+
+--- skipping verify ---
+
+--- skipping gnn ---
+
+--- skipping oof_emb ---
+
+--- skipping encode ---
+
+--- skipping fusion ---
+
+--- skipping baselines ---
+
+--- skipping oof ---
+
+--- skipping llm_heads ---
+
+--- skipping prototypes ---
+
+========================================================================
+=== TOP_K_SWEEP
+========================================================================
+
+$ /Users/ali/Desktop/ids-framework/.venv/bin/python -u -m src.pipeline.step4.sweep_top_k --dataset unsw_nb15 --min-percent 15 --max-percent 35
+Top-k entropy sweep: dataset=unsw_nb15, candidates=[15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35], semantic_consultant=whitened_prototype_scorer
+
+===== TOP_K_PERCENT=15 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5283 val_f1=0.5665
+    [real] fold 0 epoch 120 loss=0.2441 val_f1=0.6671
+    [real] fold 0 DONE best_val=0.7416 test=0.7186 iters=2 bias|.|=1.12e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4591 val_f1=0.6027
+    [real] fold 1 epoch 120 loss=0.1882 val_f1=0.6809
+    [real] fold 1 epoch 180 loss=0.1127 val_f1=0.7792
+    [real] fold 1 DONE best_val=0.8110 test=0.7208 iters=3 bias|.|=1.57e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5095 val_f1=0.6415
+    [real] fold 2 epoch 120 loss=0.1741 val_f1=0.7917
+    [real] fold 2 DONE best_val=0.8226 test=0.7735 iters=3 bias|.|=7.56e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5104 val_f1=0.5798
+    [real] fold 3 epoch 120 loss=0.2178 val_f1=0.6678
+    [real] fold 3 epoch 180 loss=0.1227 val_f1=0.7476
+    [real] fold 3 epoch 240 loss=0.0997 val_f1=0.7344
+    [real] fold 3 DONE best_val=0.7679 test=0.8066 iters=2 bias|.|=1.87e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5541 val_f1=0.6081
+    [real] fold 4 epoch 120 loss=0.2409 val_f1=0.7004
+    [real] fold 4 DONE best_val=0.7299 test=0.6910 iters=2 bias|.|=4.75e-02
+[n=15] mean best-val macro-F1=0.7746; pooled OOF test macro-F1=0.7457
+
+===== TOP_K_PERCENT=16 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5583 val_f1=0.5723
+    [real] fold 0 epoch 120 loss=0.2432 val_f1=0.6147
+    [real] fold 0 epoch 180 loss=0.1320 val_f1=0.7312
+    [real] fold 0 DONE best_val=0.7968 test=0.7596 iters=2 bias|.|=1.24e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4468 val_f1=0.5832
+    [real] fold 1 epoch 120 loss=0.1876 val_f1=0.7356
+    [real] fold 1 epoch 180 loss=0.1248 val_f1=0.7674
+    [real] fold 1 epoch 240 loss=0.0785 val_f1=0.7806
+    [real] fold 1 DONE best_val=0.8202 test=0.7505 iters=3 bias|.|=2.20e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.4989 val_f1=0.6533
+    [real] fold 2 epoch 120 loss=0.1830 val_f1=0.7752
+    [real] fold 2 DONE best_val=0.8255 test=0.7748 iters=3 bias|.|=8.68e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5024 val_f1=0.5115
+    [real] fold 3 epoch 120 loss=0.2133 val_f1=0.6932
+    [real] fold 3 epoch 180 loss=0.1286 val_f1=0.7437
+    [real] fold 3 DONE best_val=0.7952 test=0.8169 iters=2 bias|.|=2.11e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5684 val_f1=0.6103
+    [real] fold 4 epoch 120 loss=0.2401 val_f1=0.6980
+    [real] fold 4 epoch 180 loss=0.1454 val_f1=0.6910
+    [real] fold 4 epoch 240 loss=0.0990 val_f1=0.7435
+    [real] fold 4 epoch 300 loss=0.0710 val_f1=0.7784
+    [real] fold 4 DONE best_val=0.7845 test=0.7555 iters=2 bias|.|=2.28e-01
+[n=16] mean best-val macro-F1=0.8044; pooled OOF test macro-F1=0.7735
+
+===== TOP_K_PERCENT=17 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5730 val_f1=0.5771
+    [real] fold 0 epoch 120 loss=0.2405 val_f1=0.7235
+    [real] fold 0 epoch 180 loss=0.1239 val_f1=0.7399
+    [real] fold 0 DONE best_val=0.7992 test=0.7311 iters=2 bias|.|=9.12e-02
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4482 val_f1=0.5842
+    [real] fold 1 epoch 120 loss=0.1926 val_f1=0.7503
+    [real] fold 1 epoch 180 loss=0.1216 val_f1=0.7416
+    [real] fold 1 epoch 240 loss=0.0863 val_f1=0.7897
+    [real] fold 1 DONE best_val=0.8057 test=0.7404 iters=2 bias|.|=1.97e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5148 val_f1=0.6262
+    [real] fold 2 epoch 120 loss=0.1810 val_f1=0.7368
+    [real] fold 2 DONE best_val=0.8174 test=0.7903 iters=3 bias|.|=7.43e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5137 val_f1=0.6021
+    [real] fold 3 epoch 120 loss=0.2123 val_f1=0.6947
+    [real] fold 3 epoch 180 loss=0.1614 val_f1=0.7346
+    [real] fold 3 epoch 240 loss=0.0884 val_f1=0.7750
+    [real] fold 3 DONE best_val=0.7832 test=0.8195 iters=2 bias|.|=2.06e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5745 val_f1=0.5573
+    [real] fold 4 epoch 120 loss=0.2362 val_f1=0.7102
+    [real] fold 4 epoch 180 loss=0.1513 val_f1=0.7512
+    [real] fold 4 DONE best_val=0.7633 test=0.7448 iters=2 bias|.|=7.22e-02
+[n=17] mean best-val macro-F1=0.7938; pooled OOF test macro-F1=0.7686
+
+===== TOP_K_PERCENT=18 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5816 val_f1=0.5702
+    [real] fold 0 epoch 120 loss=0.2301 val_f1=0.6954
+    [real] fold 0 DONE best_val=0.7740 test=0.7032 iters=2 bias|.|=9.73e-02
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4622 val_f1=0.5800
+    [real] fold 1 epoch 120 loss=0.1832 val_f1=0.7423
+    [real] fold 1 epoch 180 loss=0.1105 val_f1=0.7418
+    [real] fold 1 DONE best_val=0.8072 test=0.6942 iters=2 bias|.|=1.71e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5158 val_f1=0.6465
+    [real] fold 2 epoch 120 loss=0.1775 val_f1=0.7611
+    [real] fold 2 epoch 180 loss=0.1114 val_f1=0.8157
+    [real] fold 2 DONE best_val=0.8312 test=0.7629 iters=3 bias|.|=8.81e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5004 val_f1=0.5600
+    [real] fold 3 epoch 120 loss=0.2229 val_f1=0.6905
+    [real] fold 3 epoch 180 loss=0.1309 val_f1=0.6988
+    [real] fold 3 DONE best_val=0.7767 test=0.7712 iters=2 bias|.|=1.95e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5655 val_f1=0.5581
+    [real] fold 4 epoch 120 loss=0.2304 val_f1=0.6991
+    [real] fold 4 epoch 180 loss=0.1479 val_f1=0.7128
+    [real] fold 4 DONE best_val=0.7454 test=0.7273 iters=2 bias|.|=6.18e-02
+[n=18] mean best-val macro-F1=0.7869; pooled OOF test macro-F1=0.7382
+
+===== TOP_K_PERCENT=19 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5741 val_f1=0.5683
+    [real] fold 0 epoch 120 loss=0.2401 val_f1=0.7066
+    [real] fold 0 epoch 180 loss=0.1379 val_f1=0.7446
+    [real] fold 0 epoch 240 loss=0.0989 val_f1=0.7363
+    [real] fold 0 DONE best_val=0.7851 test=0.7206 iters=2 bias|.|=1.43e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4540 val_f1=0.6391
+    [real] fold 1 epoch 120 loss=0.1888 val_f1=0.7118
+    [real] fold 1 epoch 180 loss=0.1112 val_f1=0.7808
+    [real] fold 1 DONE best_val=0.8202 test=0.7492 iters=3 bias|.|=2.15e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5167 val_f1=0.5849
+    [real] fold 2 epoch 120 loss=0.1808 val_f1=0.7779
+    [real] fold 2 epoch 180 loss=0.1178 val_f1=0.8024
+    [real] fold 2 DONE best_val=0.8215 test=0.7870 iters=3 bias|.|=9.54e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5050 val_f1=0.5030
+    [real] fold 3 DONE best_val=0.6467 test=0.6531 iters=2 bias|.|=7.57e-02
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5820 val_f1=0.5937
+    [real] fold 4 epoch 120 loss=0.2315 val_f1=0.6839
+    [real] fold 4 epoch 180 loss=0.1373 val_f1=0.7404
+    [real] fold 4 epoch 240 loss=0.0888 val_f1=0.7511
+    [real] fold 4 DONE best_val=0.7736 test=0.7430 iters=2 bias|.|=1.21e-01
+[n=19] mean best-val macro-F1=0.7694; pooled OOF test macro-F1=0.7429
+
+===== TOP_K_PERCENT=20 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5426 val_f1=0.5501
+    [real] fold 0 epoch 120 loss=0.2452 val_f1=0.6888
+    [real] fold 0 DONE best_val=0.7730 test=0.7165 iters=2 bias|.|=1.01e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4519 val_f1=0.6387
+    [real] fold 1 epoch 120 loss=0.1944 val_f1=0.7150
+    [real] fold 1 epoch 180 loss=0.1146 val_f1=0.7652
+    [real] fold 1 DONE best_val=0.8240 test=0.7405 iters=3 bias|.|=2.35e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5046 val_f1=0.6469
+    [real] fold 2 epoch 120 loss=0.1780 val_f1=0.7580
+    [real] fold 2 epoch 180 loss=0.1134 val_f1=0.8211
+    [real] fold 2 DONE best_val=0.8325 test=0.7820 iters=3 bias|.|=1.33e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5128 val_f1=0.4938
+    [real] fold 3 epoch 120 loss=0.2269 val_f1=0.7095
+    [real] fold 3 epoch 180 loss=0.1361 val_f1=0.7213
+    [real] fold 3 epoch 240 loss=0.0901 val_f1=0.7718
+    [real] fold 3 DONE best_val=0.7930 test=0.7965 iters=2 bias|.|=1.97e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5554 val_f1=0.6400
+    [real] fold 4 epoch 120 loss=0.2421 val_f1=0.6937
+    [real] fold 4 epoch 180 loss=0.1521 val_f1=0.6663
+    [real] fold 4 epoch 240 loss=0.0959 val_f1=0.7421
+    [real] fold 4 DONE best_val=0.7711 test=0.7425 iters=2 bias|.|=1.55e-01
+[n=20] mean best-val macro-F1=0.7987; pooled OOF test macro-F1=0.7624
+
+===== TOP_K_PERCENT=21 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5658 val_f1=0.5368
+    [real] fold 0 epoch 120 loss=0.2275 val_f1=0.7538
+    [real] fold 0 epoch 180 loss=0.1273 val_f1=0.7238
+    [real] fold 0 DONE best_val=0.8138 test=0.7522 iters=2 bias|.|=1.34e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4616 val_f1=0.5884
+    [real] fold 1 epoch 120 loss=0.1834 val_f1=0.6690
+    [real] fold 1 epoch 180 loss=0.1215 val_f1=0.7676
+    [real] fold 1 DONE best_val=0.8048 test=0.7237 iters=3 bias|.|=2.05e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5226 val_f1=0.6070
+    [real] fold 2 epoch 120 loss=0.1753 val_f1=0.7635
+    [real] fold 2 epoch 180 loss=0.1151 val_f1=0.8167
+    [real] fold 2 epoch 240 loss=0.0655 val_f1=0.8441
+    [real] fold 2 DONE best_val=0.8441 test=0.7883 iters=3 bias|.|=2.40e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5238 val_f1=0.5842
+    [real] fold 3 epoch 120 loss=0.2240 val_f1=0.6768
+    [real] fold 3 epoch 180 loss=0.1396 val_f1=0.7456
+    [real] fold 3 epoch 240 loss=0.1009 val_f1=0.7646
+    [real] fold 3 DONE best_val=0.8032 test=0.8087 iters=2 bias|.|=2.31e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5562 val_f1=0.5882
+    [real] fold 4 epoch 120 loss=0.2421 val_f1=0.7001
+    [real] fold 4 epoch 180 loss=0.1497 val_f1=0.6855
+    [real] fold 4 DONE best_val=0.7621 test=0.7519 iters=2 bias|.|=8.58e-02
+[n=21] mean best-val macro-F1=0.8056; pooled OOF test macro-F1=0.7686
+
+===== TOP_K_PERCENT=22 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5908 val_f1=0.5711
+    [real] fold 0 epoch 120 loss=0.2308 val_f1=0.6823
+    [real] fold 0 epoch 180 loss=0.1238 val_f1=0.7336
+    [real] fold 0 DONE best_val=0.7944 test=0.7406 iters=2 bias|.|=1.24e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4636 val_f1=0.6273
+    [real] fold 1 epoch 120 loss=0.1879 val_f1=0.6873
+    [real] fold 1 epoch 180 loss=0.1153 val_f1=0.7652
+    [real] fold 1 DONE best_val=0.8050 test=0.7409 iters=3 bias|.|=2.25e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5089 val_f1=0.6317
+    [real] fold 2 epoch 120 loss=0.1761 val_f1=0.7897
+    [real] fold 2 epoch 180 loss=0.1178 val_f1=0.8399
+    [real] fold 2 DONE best_val=0.8399 test=0.7813 iters=3 bias|.|=1.35e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5211 val_f1=0.4670
+    [real] fold 3 epoch 120 loss=0.2217 val_f1=0.7001
+    [real] fold 3 epoch 180 loss=0.1426 val_f1=0.7332
+    [real] fold 3 DONE best_val=0.7589 test=0.7769 iters=2 bias|.|=1.83e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5708 val_f1=0.6228
+    [real] fold 4 epoch 120 loss=0.2352 val_f1=0.7004
+    [real] fold 4 epoch 180 loss=0.1464 val_f1=0.6999
+    [real] fold 4 epoch 240 loss=0.1032 val_f1=0.7220
+    [real] fold 4 DONE best_val=0.7622 test=0.7639 iters=2 bias|.|=1.49e-01
+[n=22] mean best-val macro-F1=0.7921; pooled OOF test macro-F1=0.7634
+
+===== TOP_K_PERCENT=23 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5654 val_f1=0.5402
+    [real] fold 0 epoch 120 loss=0.2352 val_f1=0.7248
+    [real] fold 0 epoch 180 loss=0.1316 val_f1=0.7530
+    [real] fold 0 epoch 240 loss=0.0994 val_f1=0.7844
+    [real] fold 0 DONE best_val=0.7856 test=0.7237 iters=2 bias|.|=1.68e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4560 val_f1=0.6220
+    [real] fold 1 epoch 120 loss=0.1868 val_f1=0.7325
+    [real] fold 1 epoch 180 loss=0.1155 val_f1=0.7642
+    [real] fold 1 DONE best_val=0.7937 test=0.7336 iters=2 bias|.|=1.88e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5082 val_f1=0.6415
+    [real] fold 2 epoch 120 loss=0.1763 val_f1=0.7703
+    [real] fold 2 DONE best_val=0.8255 test=0.7621 iters=2 bias|.|=7.39e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5061 val_f1=0.5868
+    [real] fold 3 epoch 120 loss=0.2175 val_f1=0.6794
+    [real] fold 3 epoch 180 loss=0.1366 val_f1=0.7102
+    [real] fold 3 DONE best_val=0.7834 test=0.7723 iters=2 bias|.|=2.23e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5482 val_f1=0.6021
+    [real] fold 4 epoch 120 loss=0.2521 val_f1=0.7078
+    [real] fold 4 epoch 180 loss=0.1618 val_f1=0.7177
+    [real] fold 4 epoch 240 loss=0.1051 val_f1=0.7460
+    [real] fold 4 DONE best_val=0.7780 test=0.7520 iters=2 bias|.|=1.56e-01
+[n=23] mean best-val macro-F1=0.7932; pooled OOF test macro-F1=0.7534
+
+===== TOP_K_PERCENT=24 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5522 val_f1=0.5796
+    [real] fold 0 epoch 120 loss=0.2300 val_f1=0.6563
+    [real] fold 0 epoch 180 loss=0.1270 val_f1=0.7448
+    [real] fold 0 DONE best_val=0.7924 test=0.7176 iters=2 bias|.|=1.50e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4610 val_f1=0.6022
+    [real] fold 1 epoch 120 loss=0.1917 val_f1=0.7128
+    [real] fold 1 DONE best_val=0.7937 test=0.7114 iters=3 bias|.|=1.97e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5200 val_f1=0.6137
+    [real] fold 2 epoch 120 loss=0.1718 val_f1=0.7843
+    [real] fold 2 epoch 180 loss=0.1104 val_f1=0.7891
+    [real] fold 2 DONE best_val=0.8270 test=0.7738 iters=3 bias|.|=9.25e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.4831 val_f1=0.6029
+    [real] fold 3 epoch 120 loss=0.2046 val_f1=0.7162
+    [real] fold 3 epoch 180 loss=0.1182 val_f1=0.7908
+    [real] fold 3 DONE best_val=0.8088 test=0.7664 iters=2 bias|.|=2.64e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5802 val_f1=0.5766
+    [real] fold 4 epoch 120 loss=0.2392 val_f1=0.6759
+    [real] fold 4 DONE best_val=0.6998 test=0.6751 iters=2 bias|.|=5.54e-02
+[n=24] mean best-val macro-F1=0.7844; pooled OOF test macro-F1=0.7322
+
+===== TOP_K_PERCENT=25 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5604 val_f1=0.5589
+    [real] fold 0 epoch 120 loss=0.2350 val_f1=0.6744
+    [real] fold 0 epoch 180 loss=0.1510 val_f1=0.7308
+    [real] fold 0 DONE best_val=0.7991 test=0.7444 iters=2 bias|.|=1.68e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4501 val_f1=0.6082
+    [real] fold 1 epoch 120 loss=0.1833 val_f1=0.6706
+    [real] fold 1 epoch 180 loss=0.1109 val_f1=0.7679
+    [real] fold 1 epoch 240 loss=0.0771 val_f1=0.8118
+    [real] fold 1 DONE best_val=0.8321 test=0.7656 iters=3 bias|.|=2.63e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5126 val_f1=0.6195
+    [real] fold 2 epoch 120 loss=0.1734 val_f1=0.7497
+    [real] fold 2 epoch 180 loss=0.1096 val_f1=0.8098
+    [real] fold 2 epoch 240 loss=0.0656 val_f1=0.8286
+    [real] fold 2 DONE best_val=0.8340 test=0.8011 iters=3 bias|.|=1.68e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5031 val_f1=0.5896
+    [real] fold 3 epoch 120 loss=0.2088 val_f1=0.7086
+    [real] fold 3 DONE best_val=0.7701 test=0.7691 iters=2 bias|.|=1.90e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5823 val_f1=0.5747
+    [real] fold 4 epoch 120 loss=0.2320 val_f1=0.6614
+    [real] fold 4 epoch 180 loss=0.1427 val_f1=0.6988
+    [real] fold 4 epoch 240 loss=0.0965 val_f1=0.7499
+    [real] fold 4 DONE best_val=0.7778 test=0.7520 iters=2 bias|.|=1.26e-01
+[n=25] mean best-val macro-F1=0.8026; pooled OOF test macro-F1=0.7693
+
+===== TOP_K_PERCENT=26 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5851 val_f1=0.5745
+    [real] fold 0 epoch 120 loss=0.2203 val_f1=0.6999
+    [real] fold 0 epoch 180 loss=0.1309 val_f1=0.7834
+    [real] fold 0 DONE best_val=0.7834 test=0.7417 iters=2 bias|.|=2.05e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4566 val_f1=0.6273
+    [real] fold 1 epoch 120 loss=0.1826 val_f1=0.7012
+    [real] fold 1 epoch 180 loss=0.1041 val_f1=0.8098
+    [real] fold 1 DONE best_val=0.8210 test=0.7276 iters=3 bias|.|=2.60e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5048 val_f1=0.6228
+    [real] fold 2 epoch 120 loss=0.1692 val_f1=0.8116
+    [real] fold 2 epoch 180 loss=0.1139 val_f1=0.7990
+    [real] fold 2 DONE best_val=0.8215 test=0.7720 iters=3 bias|.|=7.60e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5167 val_f1=0.6056
+    [real] fold 3 epoch 120 loss=0.2118 val_f1=0.6764
+    [real] fold 3 epoch 180 loss=0.1241 val_f1=0.7761
+    [real] fold 3 DONE best_val=0.7846 test=0.8048 iters=3 bias|.|=2.19e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5622 val_f1=0.5375
+    [real] fold 4 epoch 120 loss=0.2326 val_f1=0.7142
+    [real] fold 4 epoch 180 loss=0.1438 val_f1=0.7119
+    [real] fold 4 epoch 240 loss=0.0999 val_f1=0.7663
+    [real] fold 4 epoch 300 loss=0.0748 val_f1=0.7718
+    [real] fold 4 DONE best_val=0.7930 test=0.7480 iters=2 bias|.|=1.30e-01
+[n=26] mean best-val macro-F1=0.8007; pooled OOF test macro-F1=0.7618
+
+===== TOP_K_PERCENT=27 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5617 val_f1=0.6079
+    [real] fold 0 epoch 120 loss=0.2382 val_f1=0.6971
+    [real] fold 0 epoch 180 loss=0.1301 val_f1=0.7344
+    [real] fold 0 DONE best_val=0.7737 test=0.7229 iters=2 bias|.|=1.80e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4559 val_f1=0.5773
+    [real] fold 1 epoch 120 loss=0.1928 val_f1=0.6873
+    [real] fold 1 epoch 180 loss=0.1142 val_f1=0.7418
+    [real] fold 1 epoch 240 loss=0.0795 val_f1=0.8104
+    [real] fold 1 DONE best_val=0.8210 test=0.7292 iters=3 bias|.|=2.68e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5103 val_f1=0.6320
+    [real] fold 2 epoch 120 loss=0.1746 val_f1=0.7691
+    [real] fold 2 epoch 180 loss=0.1100 val_f1=0.8142
+    [real] fold 2 DONE best_val=0.8238 test=0.7887 iters=3 bias|.|=1.02e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5215 val_f1=0.6314
+    [real] fold 3 epoch 120 loss=0.2079 val_f1=0.6964
+    [real] fold 3 epoch 180 loss=0.1297 val_f1=0.7411
+    [real] fold 3 DONE best_val=0.7975 test=0.7959 iters=3 bias|.|=2.47e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5406 val_f1=0.5762
+    [real] fold 4 epoch 120 loss=0.2397 val_f1=0.6869
+    [real] fold 4 epoch 180 loss=0.1473 val_f1=0.7136
+    [real] fold 4 DONE best_val=0.7470 test=0.7670 iters=2 bias|.|=9.00e-02
+[n=27] mean best-val macro-F1=0.7926; pooled OOF test macro-F1=0.7639
+
+===== TOP_K_PERCENT=28 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.6179 val_f1=0.5741
+    [real] fold 0 epoch 120 loss=0.2470 val_f1=0.7044
+    [real] fold 0 epoch 180 loss=0.1330 val_f1=0.7275
+    [real] fold 0 DONE best_val=0.7628 test=0.6828 iters=2 bias|.|=2.20e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4571 val_f1=0.5857
+    [real] fold 1 epoch 120 loss=0.1830 val_f1=0.7482
+    [real] fold 1 epoch 180 loss=0.1120 val_f1=0.7581
+    [real] fold 1 DONE best_val=0.7963 test=0.7462 iters=3 bias|.|=2.23e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5201 val_f1=0.6241
+    [real] fold 2 epoch 120 loss=0.1809 val_f1=0.7899
+    [real] fold 2 epoch 180 loss=0.1113 val_f1=0.8009
+    [real] fold 2 DONE best_val=0.8329 test=0.7905 iters=3 bias|.|=1.04e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5658 val_f1=0.6314
+    [real] fold 3 epoch 120 loss=0.2141 val_f1=0.6696
+    [real] fold 3 epoch 180 loss=0.1319 val_f1=0.7290
+    [real] fold 3 epoch 240 loss=0.0929 val_f1=0.7682
+    [real] fold 3 DONE best_val=0.8070 test=0.8197 iters=2 bias|.|=2.49e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5799 val_f1=0.6017
+    [real] fold 4 epoch 120 loss=0.2338 val_f1=0.6684
+    [real] fold 4 epoch 180 loss=0.1415 val_f1=0.7142
+    [real] fold 4 epoch 240 loss=0.0939 val_f1=0.7600
+    [real] fold 4 DONE best_val=0.7715 test=0.7523 iters=2 bias|.|=1.41e-01
+[n=28] mean best-val macro-F1=0.7941; pooled OOF test macro-F1=0.7617
+
+===== TOP_K_PERCENT=29 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5764 val_f1=0.5760
+    [real] fold 0 epoch 120 loss=0.2210 val_f1=0.7145
+    [real] fold 0 DONE best_val=0.7899 test=0.7464 iters=2 bias|.|=1.40e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4481 val_f1=0.5924
+    [real] fold 1 epoch 120 loss=0.1918 val_f1=0.7377
+    [real] fold 1 epoch 180 loss=0.1033 val_f1=0.7674
+    [real] fold 1 epoch 240 loss=0.0807 val_f1=0.7935
+    [real] fold 1 DONE best_val=0.8118 test=0.7336 iters=3 bias|.|=2.92e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5097 val_f1=0.6320
+    [real] fold 2 epoch 120 loss=0.1801 val_f1=0.7753
+    [real] fold 2 epoch 180 loss=0.1126 val_f1=0.8043
+    [real] fold 2 epoch 240 loss=0.0685 val_f1=0.8318
+    [real] fold 2 DONE best_val=0.8340 test=0.7955 iters=3 bias|.|=1.98e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5345 val_f1=0.4497
+    [real] fold 3 epoch 120 loss=0.2249 val_f1=0.6614
+    [real] fold 3 epoch 180 loss=0.1355 val_f1=0.7304
+    [real] fold 3 epoch 240 loss=0.1020 val_f1=0.7591
+    [real] fold 3 DONE best_val=0.8096 test=0.7771 iters=2 bias|.|=2.58e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5674 val_f1=0.5898
+    [real] fold 4 epoch 120 loss=0.2412 val_f1=0.6628
+    [real] fold 4 epoch 180 loss=0.1522 val_f1=0.7543
+    [real] fold 4 epoch 240 loss=0.0965 val_f1=0.7522
+    [real] fold 4 DONE best_val=0.7690 test=0.7520 iters=2 bias|.|=1.38e-01
+[n=29] mean best-val macro-F1=0.8029; pooled OOF test macro-F1=0.7648
+
+===== TOP_K_PERCENT=30 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5550 val_f1=0.5771
+    [real] fold 0 epoch 120 loss=0.2326 val_f1=0.7384
+    [real] fold 0 epoch 180 loss=0.1303 val_f1=0.7510
+    [real] fold 0 DONE best_val=0.8198 test=0.7533 iters=2 bias|.|=1.57e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4489 val_f1=0.6430
+    [real] fold 1 epoch 120 loss=0.1799 val_f1=0.7345
+    [real] fold 1 epoch 180 loss=0.1142 val_f1=0.7584
+    [real] fold 1 epoch 240 loss=0.0675 val_f1=0.8057
+    [real] fold 1 epoch 300 loss=0.0518 val_f1=0.7880
+    [real] fold 1 DONE best_val=0.8118 test=0.7241 iters=3 bias|.|=3.42e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5258 val_f1=0.6224
+    [real] fold 2 epoch 120 loss=0.1792 val_f1=0.7978
+    [real] fold 2 DONE best_val=0.8268 test=0.7619 iters=3 bias|.|=8.85e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5014 val_f1=0.4844
+    [real] fold 3 epoch 120 loss=0.2035 val_f1=0.6751
+    [real] fold 3 epoch 180 loss=0.1283 val_f1=0.7717
+    [real] fold 3 epoch 240 loss=0.0950 val_f1=0.7777
+    [real] fold 3 DONE best_val=0.8109 test=0.7726 iters=2 bias|.|=2.62e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5748 val_f1=0.5925
+    [real] fold 4 epoch 120 loss=0.2368 val_f1=0.6274
+    [real] fold 4 epoch 180 loss=0.1548 val_f1=0.7261
+    [real] fold 4 DONE best_val=0.7900 test=0.7441 iters=2 bias|.|=1.31e-01
+[n=30] mean best-val macro-F1=0.8119; pooled OOF test macro-F1=0.7554
+
+===== TOP_K_PERCENT=31 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5557 val_f1=0.5828
+    [real] fold 0 epoch 120 loss=0.2498 val_f1=0.7395
+    [real] fold 0 epoch 180 loss=0.1271 val_f1=0.7180
+    [real] fold 0 DONE best_val=0.7866 test=0.7489 iters=2 bias|.|=1.79e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4567 val_f1=0.6199
+    [real] fold 1 epoch 120 loss=0.1858 val_f1=0.6937
+    [real] fold 1 epoch 180 loss=0.1065 val_f1=0.7711
+    [real] fold 1 DONE best_val=0.7958 test=0.7446 iters=3 bias|.|=2.50e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5238 val_f1=0.6374
+    [real] fold 2 epoch 120 loss=0.1762 val_f1=0.7629
+    [real] fold 2 epoch 180 loss=0.1144 val_f1=0.8043
+    [real] fold 2 DONE best_val=0.8312 test=0.7629 iters=3 bias|.|=8.90e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5207 val_f1=0.6329
+    [real] fold 3 epoch 120 loss=0.2056 val_f1=0.6841
+    [real] fold 3 epoch 180 loss=0.1233 val_f1=0.7246
+    [real] fold 3 epoch 240 loss=0.1019 val_f1=0.7880
+    [real] fold 3 DONE best_val=0.8109 test=0.7944 iters=2 bias|.|=2.52e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5728 val_f1=0.6016
+    [real] fold 4 epoch 120 loss=0.2345 val_f1=0.6822
+    [real] fold 4 epoch 180 loss=0.1443 val_f1=0.7115
+    [real] fold 4 DONE best_val=0.7718 test=0.7459 iters=2 bias|.|=1.02e-01
+[n=31] mean best-val macro-F1=0.7992; pooled OOF test macro-F1=0.7635
+
+===== TOP_K_PERCENT=32 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5717 val_f1=0.5827
+    [real] fold 0 epoch 120 loss=0.2521 val_f1=0.6614
+    [real] fold 0 epoch 180 loss=0.1268 val_f1=0.7097
+    [real] fold 0 DONE best_val=0.7985 test=0.7113 iters=2 bias|.|=2.11e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4530 val_f1=0.6329
+    [real] fold 1 epoch 120 loss=0.1780 val_f1=0.7277
+    [real] fold 1 epoch 180 loss=0.1074 val_f1=0.7563
+    [real] fold 1 epoch 240 loss=0.0696 val_f1=0.7935
+    [real] fold 1 DONE best_val=0.8181 test=0.7659 iters=3 bias|.|=3.13e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5147 val_f1=0.6029
+    [real] fold 2 epoch 120 loss=0.1761 val_f1=0.7969
+    [real] fold 2 epoch 180 loss=0.1140 val_f1=0.8083
+    [real] fold 2 DONE best_val=0.8180 test=0.7779 iters=3 bias|.|=8.82e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5215 val_f1=0.5475
+    [real] fold 3 epoch 120 loss=0.2178 val_f1=0.6912
+    [real] fold 3 epoch 180 loss=0.1280 val_f1=0.7455
+    [real] fold 3 DONE best_val=0.7679 test=0.7876 iters=2 bias|.|=1.79e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5505 val_f1=0.6015
+    [real] fold 4 epoch 120 loss=0.2312 val_f1=0.6954
+    [real] fold 4 epoch 180 loss=0.1570 val_f1=0.7012
+    [real] fold 4 epoch 240 loss=0.0837 val_f1=0.7460
+    [real] fold 4 epoch 300 loss=0.0663 val_f1=0.7637
+    [real] fold 4 DONE best_val=0.7895 test=0.7947 iters=2 bias|.|=1.18e-01
+[n=32] mean best-val macro-F1=0.7984; pooled OOF test macro-F1=0.7730
+
+===== TOP_K_PERCENT=33 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5632 val_f1=0.5913
+    [real] fold 0 epoch 120 loss=0.2528 val_f1=0.7085
+    [real] fold 0 epoch 180 loss=0.1367 val_f1=0.7328
+    [real] fold 0 DONE best_val=0.8156 test=0.7292 iters=2 bias|.|=2.09e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4531 val_f1=0.6025
+    [real] fold 1 epoch 120 loss=0.1870 val_f1=0.6873
+    [real] fold 1 epoch 180 loss=0.1133 val_f1=0.7801
+    [real] fold 1 DONE best_val=0.7955 test=0.7295 iters=3 bias|.|=2.09e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5111 val_f1=0.6211
+    [real] fold 2 epoch 120 loss=0.1725 val_f1=0.7505
+    [real] fold 2 epoch 180 loss=0.1131 val_f1=0.7973
+    [real] fold 2 DONE best_val=0.8312 test=0.7670 iters=3 bias|.|=9.67e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5229 val_f1=0.5676
+    [real] fold 3 epoch 120 loss=0.2179 val_f1=0.6631
+    [real] fold 3 epoch 180 loss=0.1537 val_f1=0.7227
+    [real] fold 3 epoch 240 loss=0.0922 val_f1=0.7673
+    [real] fold 3 epoch 300 loss=0.0713 val_f1=0.7731
+    [real] fold 3 DONE best_val=0.8058 test=0.8170 iters=2 bias|.|=2.42e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.6084 val_f1=0.5605
+    [real] fold 4 epoch 120 loss=0.2347 val_f1=0.6784
+    [real] fold 4 epoch 180 loss=0.1588 val_f1=0.6959
+    [real] fold 4 epoch 240 loss=0.0937 val_f1=0.7383
+    [real] fold 4 DONE best_val=0.7715 test=0.7659 iters=2 bias|.|=1.22e-01
+[n=33] mean best-val macro-F1=0.8039; pooled OOF test macro-F1=0.7680
+
+===== TOP_K_PERCENT=34 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5753 val_f1=0.5661
+    [real] fold 0 epoch 120 loss=0.2360 val_f1=0.6461
+    [real] fold 0 epoch 180 loss=0.1376 val_f1=0.6708
+    [real] fold 0 DONE best_val=0.7887 test=0.7326 iters=2 bias|.|=1.82e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4469 val_f1=0.6220
+    [real] fold 1 epoch 120 loss=0.1932 val_f1=0.7176
+    [real] fold 1 epoch 180 loss=0.1144 val_f1=0.7694
+    [real] fold 1 DONE best_val=0.8076 test=0.7068 iters=3 bias|.|=2.82e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5032 val_f1=0.5938
+    [real] fold 2 epoch 120 loss=0.1741 val_f1=0.8042
+    [real] fold 2 epoch 180 loss=0.1133 val_f1=0.8178
+    [real] fold 2 DONE best_val=0.8255 test=0.7704 iters=3 bias|.|=9.01e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5153 val_f1=0.6504
+    [real] fold 3 epoch 120 loss=0.2161 val_f1=0.7180
+    [real] fold 3 epoch 180 loss=0.1263 val_f1=0.7707
+    [real] fold 3 epoch 240 loss=0.0886 val_f1=0.7911
+    [real] fold 3 DONE best_val=0.8048 test=0.7899 iters=2 bias|.|=2.61e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5801 val_f1=0.5875
+    [real] fold 4 epoch 120 loss=0.2538 val_f1=0.6542
+    [real] fold 4 epoch 180 loss=0.1711 val_f1=0.7117
+    [real] fold 4 epoch 240 loss=0.1089 val_f1=0.7315
+    [real] fold 4 DONE best_val=0.7760 test=0.7523 iters=2 bias|.|=1.15e-01
+[n=34] mean best-val macro-F1=0.8005; pooled OOF test macro-F1=0.7548
+
+===== TOP_K_PERCENT=35 =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5781 val_f1=0.5764
+    [real] fold 0 epoch 120 loss=0.2300 val_f1=0.7330
+    [real] fold 0 epoch 180 loss=0.1265 val_f1=0.7225
+    [real] fold 0 epoch 240 loss=0.0924 val_f1=0.7627
+    [real] fold 0 DONE best_val=0.7941 test=0.7382 iters=2 bias|.|=1.93e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4571 val_f1=0.6220
+    [real] fold 1 epoch 120 loss=0.1868 val_f1=0.6662
+    [real] fold 1 epoch 180 loss=0.1100 val_f1=0.7387
+    [real] fold 1 DONE best_val=0.7963 test=0.6873 iters=3 bias|.|=1.99e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5163 val_f1=0.6119
+    [real] fold 2 epoch 120 loss=0.1759 val_f1=0.8004
+    [real] fold 2 epoch 180 loss=0.1126 val_f1=0.7834
+    [real] fold 2 epoch 240 loss=0.0690 val_f1=0.8168
+    [real] fold 2 DONE best_val=0.8340 test=0.8092 iters=3 bias|.|=1.43e-01
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5127 val_f1=0.5299
+    [real] fold 3 epoch 120 loss=0.2184 val_f1=0.6634
+    [real] fold 3 epoch 180 loss=0.1290 val_f1=0.7726
+    [real] fold 3 DONE best_val=0.7886 test=0.7773 iters=2 bias|.|=2.51e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.6037 val_f1=0.5746
+    [real] fold 4 epoch 120 loss=0.2605 val_f1=0.6984
+    [real] fold 4 epoch 180 loss=0.1589 val_f1=0.6594
+    [real] fold 4 epoch 240 loss=0.0989 val_f1=0.7455
+    [real] fold 4 DONE best_val=0.7713 test=0.7634 iters=2 bias|.|=1.05e-01
+[n=35] mean best-val macro-F1=0.7969; pooled OOF test macro-F1=0.7605
+
+=== VALIDATION RANKING ===
+ 1. n=30 val=0.8119±0.0124 test=0.7554
+ 2. n=21 val=0.8056±0.0263 test=0.7686
+ 3. n=16 val=0.8044±0.0157 test=0.7735
+ 4. n=33 val=0.8039±0.0200 test=0.7680
+ 5. n=29 val=0.8029±0.0220 test=0.7648
+ 6. n=25 val=0.8026±0.0266 test=0.7693
+ 7. n=26 val=0.8007±0.0171 test=0.7618
+ 8. n=34 val=0.8005±0.0169 test=0.7548
+ 9. n=31 val=0.7992±0.0204 test=0.7635
+10. n=20 val=0.7987±0.0254 test=0.7624
+11. n=32 val=0.7984±0.0189 test=0.7730
+12. n=35 val=0.7969±0.0205 test=0.7605
+13. n=28 val=0.7941±0.0252 test=0.7617
+14. n=17 val=0.7938±0.0188 test=0.7686
+15. n=23 val=0.7932±0.0169 test=0.7534
+16. n=27 val=0.7926±0.0291 test=0.7639
+17. n=22 val=0.7921±0.0298 test=0.7634
+18. n=18 val=0.7869±0.0295 test=0.7382
+19. n=24 val=0.7844±0.0441 test=0.7322
+20. n=15 val=0.7746±0.0368 test=0.7457
+21. n=19 val=0.7694±0.0642 test=0.7429
+
+Selected n=30 by validation macro-F1; pooled OOF test macro-F1=0.7554
+Selected feedback config -> data/unsw_nb15/processed/step4_feedback/selected_feedback_config.json
+
+========================================================================
+=== FEEDBACK
+========================================================================
+
+$ /Users/ali/Desktop/ids-framework/.venv/bin/python -u -m src.pipeline.step4.train_feedback --dataset unsw_nb15 --modes real random head_only
+Semantic consultant: whitened-prototype scorer (no trained head)
+
+===== MODE: real =====
+    [real] fold 0 epoch   1 loss=2.4884 val_f1=0.0186
+    [real] fold 0 epoch  60 loss=0.5550 val_f1=0.5771
+    [real] fold 0 epoch 120 loss=0.2326 val_f1=0.7384
+    [real] fold 0 epoch 180 loss=0.1303 val_f1=0.7510
+    [real] fold 0 DONE best_val=0.8198 test=0.7533 iters=2 bias|.|=1.57e-01
+    [real] fold 1 epoch   1 loss=2.2616 val_f1=0.0870
+    [real] fold 1 epoch  60 loss=0.4489 val_f1=0.6430
+    [real] fold 1 epoch 120 loss=0.1799 val_f1=0.7345
+    [real] fold 1 epoch 180 loss=0.1142 val_f1=0.7584
+    [real] fold 1 epoch 240 loss=0.0675 val_f1=0.8057
+    [real] fold 1 epoch 300 loss=0.0518 val_f1=0.7880
+    [real] fold 1 DONE best_val=0.8118 test=0.7241 iters=3 bias|.|=3.42e-01
+    [real] fold 2 epoch   1 loss=1.7329 val_f1=0.0588
+    [real] fold 2 epoch  60 loss=0.5258 val_f1=0.6224
+    [real] fold 2 epoch 120 loss=0.1792 val_f1=0.7978
+    [real] fold 2 DONE best_val=0.8268 test=0.7619 iters=3 bias|.|=8.85e-02
+    [real] fold 3 epoch   1 loss=1.5211 val_f1=0.1281
+    [real] fold 3 epoch  60 loss=0.5014 val_f1=0.4844
+    [real] fold 3 epoch 120 loss=0.2035 val_f1=0.6751
+    [real] fold 3 epoch 180 loss=0.1283 val_f1=0.7717
+    [real] fold 3 epoch 240 loss=0.0950 val_f1=0.7777
+    [real] fold 3 DONE best_val=0.8109 test=0.7726 iters=2 bias|.|=2.62e-01
+    [real] fold 4 epoch   1 loss=1.6550 val_f1=0.0589
+    [real] fold 4 epoch  60 loss=0.5748 val_f1=0.5925
+    [real] fold 4 epoch 120 loss=0.2368 val_f1=0.6274
+    [real] fold 4 epoch 180 loss=0.1548 val_f1=0.7261
+    [real] fold 4 DONE best_val=0.7900 test=0.7441 iters=2 bias|.|=1.31e-01
+[real] pooled CV macro-F1 = 0.7554
+
+===== MODE: random =====
+    [random] fold 0 epoch   1 loss=2.4891 val_f1=0.0191
+    [random] fold 0 epoch  60 loss=0.5846 val_f1=0.4555
+    [random] fold 0 DONE best_val=0.5139 test=0.5032 iters=3 bias|.|=1.92e+00
+    [random] fold 1 epoch   1 loss=2.2628 val_f1=0.0820
+    [random] fold 1 epoch  60 loss=0.5522 val_f1=0.4608
+    [random] fold 1 DONE best_val=0.5462 test=0.5032 iters=3 bias|.|=3.75e+00
+    [random] fold 2 epoch   1 loss=1.7337 val_f1=0.0588
+    [random] fold 2 epoch  60 loss=0.5709 val_f1=0.4469
+    [random] fold 2 epoch 120 loss=0.3879 val_f1=0.5264
+    [random] fold 2 DONE best_val=0.6082 test=0.4885 iters=2 bias|.|=1.86e+00
+    [random] fold 3 epoch   1 loss=1.5244 val_f1=0.1075
+    [random] fold 3 epoch  60 loss=0.5986 val_f1=0.3968
+    [random] fold 3 epoch 120 loss=0.4328 val_f1=0.4412
+    [random] fold 3 DONE best_val=0.5561 test=0.5375 iters=3 bias|.|=3.74e+00
+    [random] fold 4 epoch   1 loss=1.6555 val_f1=0.0633
+    [random] fold 4 epoch  60 loss=0.6130 val_f1=0.4737
+    [random] fold 4 epoch 120 loss=0.4188 val_f1=0.4326
+    [random] fold 4 epoch 180 loss=0.3793 val_f1=0.4690
+    [random] fold 4 DONE best_val=0.5013 test=0.4508 iters=3 bias|.|=2.72e+00
+[random] pooled CV macro-F1 = 0.4969
+
+===== MODE: head_only =====
+    [head_only] fold 0 epoch   1 loss=3.9683 val_f1=0.0649
+    [head_only] fold 0 epoch  60 loss=0.5429 val_f1=0.4485
+    [head_only] fold 0 epoch 120 loss=0.4323 val_f1=0.5024
+    [head_only] fold 0 DONE best_val=0.5741 test=0.5361 iters=2
+    [head_only] fold 1 epoch   1 loss=15.3572 val_f1=0.0319
+    [head_only] fold 1 epoch  60 loss=0.5864 val_f1=0.4802
+    [head_only] fold 1 epoch 120 loss=0.4068 val_f1=0.5545
+    [head_only] fold 1 DONE best_val=0.5627 test=0.5511 iters=2
+    [head_only] fold 2 epoch   1 loss=12.8017 val_f1=0.0343
+    [head_only] fold 2 epoch  60 loss=0.5681 val_f1=0.5411
+    [head_only] fold 2 epoch 120 loss=0.4504 val_f1=0.6158
+    [head_only] fold 2 DONE best_val=0.6383 test=0.5335 iters=2
+    [head_only] fold 3 epoch   1 loss=11.1701 val_f1=0.0592
+    [head_only] fold 3 epoch  60 loss=0.6122 val_f1=0.3802
+    [head_only] fold 3 epoch 120 loss=0.4481 val_f1=0.4625
+    [head_only] fold 3 epoch 180 loss=0.3871 val_f1=0.4732
+    [head_only] fold 3 DONE best_val=0.6225 test=0.6359 iters=2
+    [head_only] fold 4 epoch   1 loss=10.4473 val_f1=0.0783
+    [head_only] fold 4 epoch  60 loss=0.6293 val_f1=0.4244
+    [head_only] fold 4 epoch 120 loss=0.4715 val_f1=0.4321
+    [head_only] fold 4 DONE best_val=0.5678 test=0.5424 iters=2
+[head_only] pooled CV macro-F1 = 0.5643
+
+=== SUMMARY ===
+  real       pooled CV macro-F1 = 0.7554
+  random     pooled CV macro-F1 = 0.4969
+  head_only  pooled CV macro-F1 = 0.5643
+  real - random: Δ=+0.2584 CI[+0.2207, +0.2952] P(>0)=1.000
+
+========================================================================
+=== LADDER
+========================================================================
+
+$ /Users/ali/Desktop/ids-framework/.venv/bin/python -u -m src.pipeline.step4.assemble_ladder --dataset unsw_nb15
+
+=== UNSW-NB15 LADDER (pooled OOF macro-F1, 10 classes) ===
+  GNN-alone: 0.5496
+  LLM-alone: 0.7353
+  AGAF     : 0.7459
+  Loop     : 0.7554
+  Ladder order holds: True
+  loop-AGAF: Δ=+0.0090 CI[-0.0251,+0.0417] P=0.689
+  AGAF-LLM: Δ=+0.0109 CI[-0.0168,+0.0391] P=0.790
+  AGAF-GNN: Δ=+0.1965 CI[+0.1549,+0.2389] P=1.000
+
+Wrote data/unsw_nb15/processed/step4_feedback/ladder_summary.json
+Wrote data/unsw_nb15/processed/step4_feedback/STEP4_UNSW_NB15_RESULTS.md
+
+--- skipping validate ---
+
+========================================================================
+Pipeline complete. Manifest -> data/unsw_nb15/processed/run_manifest_structural10.json
+{
+  "dataset": "unsw_nb15",
+  "feature_profile": "structural10",
+  "seed": 42,
+  "git_sha": "02a1e25-dirty",
+  "started_at": "2026-08-25T20:34:02.302201+00:00",
+  "dry_run": false,
+  "stages": {
+    "top_k_sweep": 710.7,
+    "feedback": 85.8,
+    "ladder": 18.2
+  },
+  "finished_at": "2026-08-25T20:47:36.975831+00:00"
+}

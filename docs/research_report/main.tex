@@ -1,0 +1,61 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,margin=2.7cm]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}}
+\onehalfspacing
+\setlength{\parindent}{1.25em}
+\setlength{\parskip}{0.25em}
+
+\newcommand{\reporttitle}{LLM-Enhanced Graph-Based Intrusion Detection}
+\newcommand{\reportsubtitle}{A Parallel GNN--LLM Framework with Bidirectional Refinement}
+\newcommand{\reportauthor}{Ali Alzein}
+\newcommand{\reportsupervisor}{Fouad Al Tfaily}
+\newcommand{\reportinstitutions}{CESI LINEACT / Lebanese University}
+
+\begin{document}
+
+\begin{titlepage}
+    \centering
+    \vspace*{2.5cm}
+    {\Large Master 2 Research Report\par}
+    \vspace{1.5cm}
+    {\huge\bfseries \reporttitle\par}
+    \vspace{0.5cm}
+    {\Large \reportsubtitle\par}
+    \vfill
+    {\large \reportauthor\par}
+    \vspace{0.8cm}
+    {\large Supervised by \reportsupervisor\par}
+    \vspace{0.3cm}
+    {\large \reportinstitutions\par}
+    \vfill
+    {\large 2026\par}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+% Sections are added to the compiled report only after their review is complete.
+\input{sections/01_introduction}
+
+\clearpage
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

@@ -8,6 +8,7 @@ DEFAULT_TOP_K_PERCENT = 16.0
 DEFAULT_BIAS_CONFIDENCE_FRAC = 0.5
 DEFAULT_MAX_ITERATIONS = 3
 DEFAULT_CHURN_TOLERANCE = 0.01
+DEFAULT_GATE_MODE = "confidence"
 SELECTED_CONFIG_FILE = "selected_feedback_config.json"
 
 
@@ -28,6 +29,7 @@ def default_feedback_config(dataset: str) -> dict[str, Any]:
         "selection_metric": "mean_best_val_macro_f1",
         "top_k_percent": DEFAULT_TOP_K_PERCENT,
         "bias_confidence_fraction": DEFAULT_BIAS_CONFIDENCE_FRAC,
+        "gate_mode": DEFAULT_GATE_MODE,
         "effective_feedback_percent": DEFAULT_TOP_K_PERCENT * DEFAULT_BIAS_CONFIDENCE_FRAC,
         "max_feedback_iterations": DEFAULT_MAX_ITERATIONS,
         "churn_tolerance": DEFAULT_CHURN_TOLERANCE,
@@ -45,6 +47,8 @@ def write_selected_feedback_config(
     trained_llm_head: bool = False,
     bias_confidence_fraction: float = DEFAULT_BIAS_CONFIDENCE_FRAC,
     selection_parameter: str = "top_k_percent",
+    injection_mode: str = "edge",
+    gate_mode: str = DEFAULT_GATE_MODE,
 ) -> Path:
     top_k = float(selected["top_k_percent"])
     payload = default_feedback_config(dataset)
@@ -61,6 +65,10 @@ def write_selected_feedback_config(
             "sweep_summary_path": selected.get("sweep_summary_path"),
             "semantic_consultant": semantic_consultant,
             "trained_llm_head": trained_llm_head,
+            # The mechanism this top_k was selected under. A top_k chosen against the
+            # inert attention path does not transfer to an edge-injection run.
+            "injection_mode": injection_mode,
+            "gate_mode": gate_mode,
         }
     )
     path = selected_config_path(dataset, root)

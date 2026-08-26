@@ -1,12 +1,12 @@
 {
-  "schema_version": 4,
+  "schema_version": 3,
   "dataset": "NF-ToN-IoT",
   "dataset_key": "ton_iot",
   "graph_scope": "aggregated",
   "feature_profile": "structural10",
   "metric_protocol": "pooled five-fold out-of-fold evaluation",
   "primary_metric": "macro_f1",
-  "generated": "2026-08-26",
+  "generated": "2026-08-20",
   "eval_classes": [
     0,
     1,
@@ -24,15 +24,13 @@
   "n_eval_classes": 8,
   "architecture": "shared canonical architecture (identical to UNSW-NB15)",
   "configuration": {
-    "top_k_percent": 18.0,
+    "top_k_percent": 23.0,
     "top_k_source": "validation_sweep 15-35, prototype consultant, no test labels",
     "semantic_confidence_fraction": 0.5,
-    "effective_feedback_percent": 9.0,
+    "effective_feedback_percent": 11.5,
     "semantic_consultant": "whitened_prototype",
     "trained_llm_head": false,
     "agaf_head_fusion": false,
-    "injection_mode": "edge",
-    "injection_scale": 10.0,
     "max_feedback_iterations": 3,
     "churn_tolerance": 0.01,
     "seed": 42,
@@ -52,30 +50,19 @@
       "macro_f1": 0.4446525803655099
     },
     "feedback": {
-      "accuracy": 0.8613070051716032,
-      "macro_f1": 0.3767039979181709
+      "accuracy": 0.8758815232722144,
+      "macro_f1": 0.3875657812346581
     }
   },
   "weighted_f1": {
     "gnn_alone": 0.8119142356125352,
     "llm_alone": 0.6071204993819181,
     "agaf": 0.8086304970360911,
-    "feedback_loop": 0.8907997950447277
+    "feedback_loop": 0.8983276496908241
   },
   "ladder_order_holds": false,
-  "observed_order": "LLM 0.2785 < GNN 0.3271 < Loop 0.3767 < AGAF 0.4447",
+  "observed_order": "LLM 0.2785 < GNN 0.3271 < Loop 0.3876 < AGAF 0.4447",
   "llm_below_gnn": true,
-  "selection": {
-    "criterion": "mean validation macro_f1",
-    "selected_top_k_percent": 18.0,
-    "mean_validation_macro_f1": 0.459092471126849,
-    "validation_macro_f1_std": 0.024380783489000513,
-    "sweep_range": [
-      15,
-      35
-    ],
-    "swept_under_injection_mode": "edge"
-  },
   "statistical_comparisons": {
     "agaf_vs_gnn": {
       "mean_diff": 0.11398186559958294,
@@ -90,22 +77,22 @@
       "prob_positive": 1.0
     },
     "loop_vs_agaf": {
-      "mean_diff": -0.0650217664829728,
-      "ci_low": -0.13339634905968611,
-      "ci_high": -4.231251484650671e-05,
-      "prob_positive": 0.025
-    },
-    "loop_vs_gnn": {
-      "mean_diff": 0.04896009911661015,
-      "ci_low": 0.013352463775535615,
-      "ci_high": 0.08503697034711315,
-      "prob_positive": 0.9955
+      "mean_diff": -0.05472296154801156,
+      "ci_low": -0.127309966086274,
+      "ci_high": 0.013891093633857791,
+      "prob_positive": 0.0585
     },
     "loop_vs_llm": {
-      "mean_diff": 0.09652953406721056,
-      "ci_low": 0.06266600793774585,
-      "ci_high": 0.1332814323174209,
+      "mean_diff": 0.1068283390021718,
+      "ci_low": 0.07057198125256535,
+      "ci_high": 0.14609224159595532,
       "prob_positive": 1.0
+    },
+    "loop_vs_gnn": {
+      "mean_diff": 0.05925890405157139,
+      "ci_low": 0.022189242248968448,
+      "ci_high": 0.09719723310434689,
+      "prob_positive": 0.998
     }
   },
   "source_artifacts": {
@@ -115,32 +102,10 @@
     "command": "python -m src.pipeline.common.run_pipeline --dataset ton_iot --only fusion oof prototypes top_k_sweep feedback ladder"
   },
   "supersedes": {
-    "schema_version": 3,
-    "reason": "Schema 3 was produced under injection_mode='attention'. The default is now 'edge' injection; schema 4 records injection_mode explicitly. The earlier non-reproducing prototype ladder note is retained below.",
-    "schema_3_values": {
-      "gnn": {
-        "accuracy": 0.7606958157028679,
-        "macro_f1": 0.32711755971083384
-      },
-      "llm": {
-        "accuracy": 0.4978843441466855,
-        "macro_f1": 0.27852446280044896
-      },
-      "agaf": {
-        "accuracy": 0.7244945933239304,
-        "macro_f1": 0.4446525803655099
-      },
-      "feedback": {
-        "accuracy": 0.8758815232722144,
-        "macro_f1": 0.3875657812346581
-      }
-    },
-    "earlier": {
-      "files": [
-        "results/ton_iot_prototype_comparison.json"
-      ],
-      "reason": "The previous ToN prototype ladder (GNN 0.3398, LLM 0.2785, AGAF 0.4447, Loop 0.4538, 'ladder holds') does not reproduce. Re-running the unchanged code on the unchanged graph, folds and seed yields GNN 0.3271 and Loop 0.3876. The LLM and AGAF rungs reproduce to 4 decimals; only the two rungs that made the ladder hold do not. The Aug-13 oof_logits.pt artifact preserved in processed_aug06_backup/ also scores 0.3271, so 0.3398 was never obtainable from the stored artifacts."
-    }
+    "files": [
+      "results/ton_iot_prototype_comparison.json"
+    ],
+    "reason": "The previous ToN prototype ladder (GNN 0.3398, LLM 0.2785, AGAF 0.4447, Loop 0.4538, 'ladder holds') does not reproduce. Re-running the unchanged code on the unchanged graph, folds and seed yields GNN 0.3271 and Loop 0.3876. The LLM and AGAF rungs reproduce to 4 decimals; only the two rungs that made the ladder hold do not. The Aug-13 oof_logits.pt artifact preserved in processed_aug06_backup/ also scores 0.3271, so 0.3398 was never obtainable from the stored artifacts."
   },
   "limitations": [
     "THE LADDER DOES NOT HOLD. AGAF is the top rung; the feedback loop sits below it (-0.0547, CI [-0.1273, +0.0139], P(>0)=0.059). The gap is not significant, but the point estimate is negative and the loop is not above AGAF.",

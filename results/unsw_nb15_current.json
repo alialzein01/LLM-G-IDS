@@ -1,15 +1,20 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
   "metric_protocol": "pooled five-fold out-of-fold evaluation",
   "primary_metric": "macro_f1",
-  "ladder_order_holds": true,
+  "generated": "2026-08-26",
+  "architecture": "shared canonical architecture (identical to NF-ToN-IoT)",
   "configuration": {
-    "top_k_percent": 16.0,
+    "top_k_percent": 30.0,
+    "top_k_source": "validation_sweep 15-35, prototype consultant, no test labels",
     "semantic_confidence_fraction": 0.5,
-    "effective_feedback_percent": 8.0,
+    "effective_feedback_percent": 15.0,
     "semantic_consultant": "whitened_prototype",
     "trained_llm_head": false,
+    "injection_mode": "edge",
+    "injection_scale": 10.0,
     "max_feedback_iterations": 3,
     "churn_tolerance": 0.01,
     "seed": 42,
@@ -29,50 +34,59 @@
       "macro_f1": 0.7458681287559671
     },
     "feedback": {
-      "accuracy": 0.8185975609756098,
-      "macro_f1": 0.7763992869991123
+      "accuracy": 0.8079268292682927,
+      "macro_f1": 0.7554348621596525
     }
   },
+  "weighted_f1": {
+    "gnn_alone": 0.6930010010040122,
+    "llm_alone": 0.791444466569956,
+    "agaf": 0.7848778001798644,
+    "feedback_loop": 0.8180430931660618
+  },
+  "ladder_order_holds": true,
+  "observed_order": "GNN 0.5496 < LLM 0.7353 < AGAF 0.7459 < Loop 0.7554",
   "feedback_ablations": {
     "random": {
-      "macro_f1": 0.5154504698774403
+      "macro_f1": 0.4969012446006623
     },
     "head_only": {
-      "macro_f1": 0.5578377548169227
+      "macro_f1": 0.5642988597314028
     },
     "real_vs_random": {
-      "mean_macro_f1_difference": 0.2611797390255267,
+      "mean_macro_f1_difference": 0.2584069776691967,
       "ci_95": [
-        0.2242796209921046,
-        0.29886290350844164
+        0.2206724480840631,
+        0.29520187970464135
       ]
     },
     "real_vs_head_only": {
-      "mean_macro_f1_difference": 0.21793342275044025,
+      "mean_macro_f1_difference": 0.1910289730252421,
       "ci_95": [
-        0.1838155508200146,
-        0.2515183882625681
+        0.15415292609623324,
+        0.22943315918055043
       ]
     }
   },
   "selection": {
     "criterion": "mean validation macro_f1",
-    "selected_top_k_percent": 16,
-    "mean_validation_macro_f1": 0.7936625064182524,
-    "validation_macro_f1_std": 0.027611411108727897,
+    "selected_top_k_percent": 30.0,
+    "mean_validation_macro_f1": 0.8118505229147963,
+    "validation_macro_f1_std": 0.012393486480689726,
     "sweep_range": [
       15,
       35
-    ]
+    ],
+    "swept_under_injection_mode": "edge"
   },
   "statistical_comparisons": {
-    "feedback_vs_agaf": {
-      "mean_macro_f1_difference": 0.03014139084321895,
+    "loop_vs_agaf": {
+      "mean_macro_f1_difference": 0.00904033802549516,
       "ci_95": [
-        -0.0025424770390930357,
-        0.06307520573151591
+        -0.02510278416586268,
+        0.0416707328325428
       ],
-      "bootstrap_probability_positive": 0.965
+      "bootstrap_probability_positive": 0.6885
     },
     "agaf_vs_llm": {
       "mean_macro_f1_difference": 0.01091766087080694,
@@ -81,6 +95,50 @@
         0.03908988188219918
       ],
       "bootstrap_probability_positive": 0.79
+    },
+    "agaf_vs_gnn": {
+      "mean_macro_f1_difference": 0.19651444739495388,
+      "ci_95": [
+        0.15488811430873545,
+        0.23887659442243248
+      ],
+      "bootstrap_probability_positive": 1.0
+    },
+    "loop_vs_gnn": {
+      "mean_macro_f1_difference": 0.20555478542044903,
+      "ci_95": [
+        0.16968615022718747,
+        0.24210238684903027
+      ],
+      "bootstrap_probability_positive": 1.0
+    }
+  },
+  "source_artifacts": {
+    "ladder": "data/unsw_nb15/processed/step4_feedback/ladder_summary.json",
+    "ablation": "data/unsw_nb15/processed/step4_feedback/ablation_summary.json",
+    "top_k_sweep": "data/unsw_nb15/processed/step4_feedback/top_k_sweep/summary.json",
+    "command": "python -m src.pipeline.common.run_pipeline --dataset unsw_nb15 --only fusion oof prototypes top_k_sweep feedback ladder"
+  },
+  "supersedes": {
+    "schema_version": 1,
+    "reason": "Schema 1 was produced under injection_mode='attention', the mechanism measured inert (churn 0.0000). The default is now 'edge' injection, so a default canonical run no longer reproduced schema 1. Schema 2 records injection_mode explicitly. Schema 1 values are preserved below.",
+    "schema_1_values": {
+      "gnn": {
+        "accuracy": 0.6890243902439024,
+        "macro_f1": 0.5496206583793729
+      },
+      "llm": {
+        "accuracy": 0.7789634146341463,
+        "macro_f1": 0.7353188026257084
+      },
+      "agaf": {
+        "accuracy": 0.7637195121951219,
+        "macro_f1": 0.7458681287559671
+      },
+      "feedback": {
+        "accuracy": 0.8185975609756098,
+        "macro_f1": 0.7763992869991123
+      }
     }
   },
   "limitations": [

@@ -40,6 +40,7 @@ if __package__ in (None, ""):
 
 from src.models.feedback_classifier import (
     FEEDBACK_MODES,
+    GATE_MODES,
     FeedbackLoopClassifier,
     WhitenedPrototypeScorer,
 )
@@ -57,6 +58,7 @@ from src.pipeline.common.splits import (
 from src.pipeline.step4.feedback_config import (
     DEFAULT_BIAS_CONFIDENCE_FRAC,
     DEFAULT_CHURN_TOLERANCE,
+    DEFAULT_GATE_MODE,
     DEFAULT_MAX_ITERATIONS,
     DEFAULT_TOP_K_PERCENT,
     load_feedback_config,
@@ -129,6 +131,7 @@ def _macro_f1(
 def _build_model(
     top_k_percent: float = TOP_K_PERCENT,
     bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
+    gate_mode: str = DEFAULT_GATE_MODE,
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
     bias_strength: float = DEFAULT_BIAS_STRENGTH,
@@ -167,6 +170,7 @@ def _build_model(
         initial_log_bias_strength=math.log(bias_strength),
         bias_init=bias_init,
         bias_confidence_frac=bias_confidence_fraction,
+        gate_mode=gate_mode,
         use_no_regret_floor=use_no_regret_floor,
         use_output_fusion=use_output_fusion,
         injection_mode=injection_mode,
@@ -186,6 +190,7 @@ def _train_one_fold(
     head_logits: torch.Tensor | None = None,
     top_k_percent: float = TOP_K_PERCENT,
     bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
+    gate_mode: str = DEFAULT_GATE_MODE,
     eval_classes: tuple[int, ...] | list[int] | None = None,
     dropped_classes: tuple[int, ...] | list[int] = (),
     use_no_regret_floor: bool = False,
@@ -204,6 +209,7 @@ def _train_one_fold(
     model = _build_model(
         top_k_percent=top_k_percent,
         bias_confidence_fraction=bias_confidence_fraction,
+        gate_mode=gate_mode,
         use_no_regret_floor=use_no_regret_floor,
         use_output_fusion=use_output_fusion,
         bias_strength=bias_strength,
@@ -314,6 +320,8 @@ def _train_one_fold(
                 "iter": t["iter"],
                 "churn": t["churn"],
                 "mean_entropy": t["mean_entropy"],
+                "mean_disagreement": t["mean_disagreement"],
+                "flagged_overlap": t["flagged_overlap"],
                 "test_macro_f1": _macro_f1(
                     it_logits, labels, test_mask, eval_classes, dropped_classes
                 ),
@@ -338,7 +346,7 @@ def _train_one_fold(
         else:
             probs = eval_logits.softmax(dim=-1)
             flagged = model.selector(probs).nonzero(as_tuple=False).squeeze(-1)
-            flagged = model._gate_by_confidence(flagged, semantic)
+            flagged = model._gate_flagged(flagged, semantic, probs)
             full_bias = bm(semantic[flagged], flagged, data.edge_index.shape[1])
             fb = full_bias[flagged]
             bias_diag = {
@@ -449,7 +457,8 @@ def _train_loop(
 
 
 def _train_one_fold_frozen(
-    data, emb, fold, fold_state, fold_idx, eval_classes=None, dropped_classes=()
+    data, emb, fold, fold_state, fold_idx, eval_classes=None, dropped_classes=(),
+    gate_mode: str = DEFAULT_GATE_MODE,
 ):
     """Two-phase frozen training:
       Phase 1 — train the GAT backbone alone (feedback off) → the canonical
@@ -458,7 +467,7 @@ def _train_one_fold_frozen(
                 top (attention bias + LLM fusion), a pure residual correction.
     Returns (gnn_alone_logits, frozen_feedback_logits), both full-graph."""
     _set_seed(SEED + fold_idx)
-    model = _build_model(data=data)
+    model = _build_model(data=data, gate_mode=gate_mode)
     model.load_fold_state(fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"])
     labels = data.edge_label
     criterion = FocalLoss(alpha=get_class_weights(labels, fold["train_mask"]), gamma=2.0)
@@ -511,7 +520,9 @@ def _llm_alone_oof(data, emb, folds, protos):
     return oof
 
 
-def train_feedback_frozen(dataset: str) -> Path:
+def train_feedback_frozen(
+    dataset: str, gate_mode: str = DEFAULT_GATE_MODE
+) -> Path:
     """Run the frozen-backbone ladder: GNN alone · LLM alone · AGAF · frozen loop."""
     config = get_dataset_config(dataset)
     eval_classes = config.eval_classes
@@ -533,6 +544,7 @@ def train_feedback_frozen(dataset: str) -> Path:
         g, f = _train_one_fold_frozen(
             data, emb, fold, protos["folds"][fi], fi,
             eval_classes=eval_classes, dropped_classes=dropped_classes,
+            gate_mode=gate_mode,
         )
         gnn_oof[fold["test_mask"]] = g[fold["test_mask"]]
         fb_oof[fold["test_mask"]] = f[fold["test_mask"]]
@@ -560,6 +572,7 @@ def train_feedback_frozen(dataset: str) -> Path:
         "feedback_loop_frozen": pooled(fb_oof),
         "eval_classes": list(eval_classes),
         "dropped_classes": list(dropped_classes),
+        "gate_mode": gate_mode,
         "vs_agaf_bootstrap": _bootstrap_ci(
             labels.numpy(),
             _preds_from_logits(fb_oof, dropped_classes).numpy(),
@@ -593,9 +606,11 @@ def _build_benchmark_summary(
     selected_config: dict | None = None,
     use_llm_head: bool = False,
     bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
+    gate_mode: str = DEFAULT_GATE_MODE,
     use_output_fusion: bool = True,
     injection_mode: str = "edge",
     injection_scale: float = 10.0,
+    trace_summary_by_mode: dict[str, dict[str, float]] | None = None,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
     pooled_accuracy = {
@@ -605,16 +620,41 @@ def _build_benchmark_summary(
         )
         for mode, logits in oof_by_mode.items()
     }
+    eval_labels = (
+        list(eval_classes) if eval_classes is not None else list(range(NUM_CLASSES))
+    )
+    label_mask = np.isin(labels.cpu().numpy(), eval_labels)
+    pooled_weighted_f1 = {
+        mode: float(
+            f1_score(
+                labels.cpu().numpy()[label_mask],
+                _preds_from_logits(logits, dropped_classes).cpu().numpy()[label_mask],
+                average="weighted",
+                labels=eval_labels,
+                zero_division=0,
+            )
+        )
+        for mode, logits in oof_by_mode.items()
+    }
+    trace_summary_by_mode = trace_summary_by_mode or {}
     return {
         "dataset": dataset,
         "eval_classes": list(eval_classes) if eval_classes is not None else list(range(NUM_CLASSES)),
         "dropped_classes": list(dropped_classes),
         "pooled_cv_macro_f1": pooled_f1.get("real"),
         "pooled_cv_accuracy": pooled_accuracy.get("real"),
+        "pooled_cv_weighted_f1": pooled_weighted_f1.get("real"),
         "per_mode_pooled_macro_f1": pooled_f1,
         "per_mode_pooled_accuracy": pooled_accuracy,
+        "per_mode_pooled_weighted_f1": pooled_weighted_f1,
+        "mean_churn": trace_summary_by_mode.get("real", {}).get("mean_churn"),
+        "mean_disagreement": trace_summary_by_mode.get("real", {}).get(
+            "mean_disagreement"
+        ),
+        "per_mode_trace_summary": trace_summary_by_mode,
         "top_k_percent": top_k_percent,
         "bias_confidence_fraction": bias_confidence_fraction,
+        "gate_mode": gate_mode,
         "effective_feedback_percent": top_k_percent * bias_confidence_fraction,
         "semantic_consultant": (
             "trained_llm_head" if use_llm_head else "whitened_prototype_scorer"
@@ -642,6 +682,7 @@ def train_feedback(
     head_logits_path: str | Path | None = None,
     agaf_benchmark_path: str | Path | None = None,
     bias_confidence_fraction: float | None = None,
+    gate_mode: str = DEFAULT_GATE_MODE,
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
     bias_strength: float = DEFAULT_BIAS_STRENGTH,
@@ -712,6 +753,7 @@ def train_feedback(
 
     oof_by_mode: dict[str, torch.Tensor] = {}
     pooled_f1: dict[str, float] = {}
+    trace_summary_by_mode: dict[str, dict[str, float]] = {}
 
     for mode in modes:
         print(f"\n===== MODE: {mode} =====")
@@ -723,6 +765,7 @@ def train_feedback(
                 data, emb, fold, protos["folds"][fold_idx], fold_idx, mode,
                 head_logits=fold_head, top_k_percent=resolved_top_k,
                 bias_confidence_fraction=resolved_confidence_fraction,
+                gate_mode=gate_mode,
                 eval_classes=eval_classes, dropped_classes=dropped_classes,
                 use_no_regret_floor=use_no_regret_floor,
                 use_output_fusion=use_output_fusion,
@@ -749,6 +792,21 @@ def train_feedback(
         preds = _preds_from_logits(oof, dropped_classes)
         pooled = eval_macro_f1(labels, preds, eval_classes)
         pooled_f1[mode] = pooled
+        trace_summary_by_mode[mode] = {}
+        for metric, summary_key in (
+            ("churn", "mean_churn"),
+            ("mean_disagreement", "mean_disagreement"),
+            ("flagged_overlap", "mean_flagged_overlap"),
+        ):
+            values = [
+                float(row[metric])
+                for fold_row in trace_by_fold
+                for row in fold_row["iterations"]
+                if math.isfinite(float(row[metric]))
+            ]
+            trace_summary_by_mode[mode][summary_key] = (
+                float(np.mean(values)) if values else float("nan")
+            )
         torch.save(oof, root / f"feedback_oof_{mode}.pt")
         with open(root / f"feedback_trace_{mode}.json", "w") as f:
             json.dump({
@@ -758,7 +816,9 @@ def train_feedback(
                 "dropped_classes": list(dropped_classes),
                 "top_k_percent": resolved_top_k,
                 "bias_confidence_fraction": resolved_confidence_fraction,
+                "gate_mode": gate_mode,
                 "pooled_cv_macro_f1": pooled,
+                "trace_summary": trace_summary_by_mode[mode],
                 "folds": trace_by_fold,
             }, f, indent=2)
         print(f"[{mode}] pooled CV macro-F1 = {pooled:.4f}")
@@ -788,9 +848,11 @@ def train_feedback(
         selected_config=selected_config,
         use_llm_head=use_llm_head,
         bias_confidence_fraction=resolved_confidence_fraction,
+        gate_mode=gate_mode,
         use_output_fusion=use_output_fusion,
         injection_mode=injection_mode,
         injection_scale=injection_scale,
+        trace_summary_by_mode=trace_summary_by_mode,
     )
     with open(root / "benchmark_summary.json", "w") as f:
         json.dump(benchmark, f, indent=2)
@@ -801,6 +863,7 @@ def train_feedback(
         "dropped_classes": list(dropped_classes),
         "top_k_percent": resolved_top_k,
         "bias_confidence_fraction": resolved_confidence_fraction,
+        "gate_mode": gate_mode,
         "per_mode_pooled_macro_f1": pooled_f1,
     }
     if "real" in oof_by_mode and "random" in oof_by_mode:
@@ -887,6 +950,11 @@ def main() -> None:
     parser.add_argument("--agaf-benchmark-path")
     parser.add_argument("--bias-confidence-fraction", type=float)
     parser.add_argument(
+        "--gate-mode", choices=GATE_MODES, default=DEFAULT_GATE_MODE,
+        help="Rank entropy-flagged edges by LLM confidence, GNN/LLM "
+             "disagreement, or their product before keeping the configured fraction.",
+    )
+    parser.add_argument(
         "--oversample-ratio", type=float, default=0.0,
         help="GraphSMOTE-style balancing: bring each minority class up to this "
              "fraction of the majority class by interpolating TRAIN-fold edge "
@@ -940,7 +1008,7 @@ def main() -> None:
     if args.bias_init is None:
         args.bias_init = "xavier" if args.injection_mode == "edge" else "zeros"
     if args.frozen:
-        train_feedback_frozen(args.dataset)
+        train_feedback_frozen(args.dataset, gate_mode=args.gate_mode)
     else:
         train_feedback(
             args.dataset, args.modes, use_llm_head=args.use_llm_head,
@@ -950,6 +1018,7 @@ def main() -> None:
             head_logits_path=args.head_logits_path,
             agaf_benchmark_path=args.agaf_benchmark_path,
             bias_confidence_fraction=args.bias_confidence_fraction,
+            gate_mode=args.gate_mode,
             use_no_regret_floor=args.no_regret_floor,
             use_output_fusion=not args.no_output_fusion,
             bias_strength=args.bias_strength,

@@ -1,35 +1,32 @@
 {
-  "schema_version": 3,
+  "schema_version": 2,
   "metric_protocol": "pooled five-fold out-of-fold evaluation",
   "primary_metric": "macro_f1",
   "feature_profile": "structural10",
-  "generated": "2026-08-26",
+  "generated": "2026-08-20",
   "architecture": {
     "shared": true,
     "semantic_consultant": "whitened_prototype",
     "trained_llm_head": false,
     "agaf_head_fusion": false,
-    "injection_mode": "edge",
-    "injection_scale": 10.0,
-    "note": "Both datasets run the identical architecture, including the injection mechanism. The only per-dataset quantity is top_k_percent, which is selected on validation folds under that same mechanism and must never be carried across datasets."
+    "note": "Both datasets now run the identical architecture. The only per-dataset quantity is top_k_percent, which is selected on validation folds for each dataset separately and must never be carried across datasets."
   },
   "notes": [
     "Absolute macro-F1 levels are not interchangeable across datasets because eval-class counts differ (UNSW 10 vs ToN 8).",
-    "The ladder holds on UNSW-NB15 and does NOT hold on ToN-IoT. On ToN the loop sits below AGAF - now significantly (P(>0)=0.025) - and the LLM rung sits below the GNN rung.",
-    "Trained-head LLM-only baselines are reported separately in results/{unsw_nb15,ton_iot}_head_baseline.json. On both datasets that baseline matches or beats the full system, which must be stated in any write-up.",
-    "Schema 3 re-runs both datasets under injection_mode='edge', the current default. Schema 2 was produced under the inert 'attention' mechanism and its top_k values (UNSW 16.0, ToN 23.0) were selected against a mechanism that never fired."
+    "The ladder holds on UNSW-NB15 and does NOT hold on ToN-IoT. On ToN the loop sits below AGAF and the LLM rung sits below the GNN rung.",
+    "Trained-head LLM-only baselines are reported separately in results/{unsw_nb15,ton_iot}_head_baseline.json. On both datasets that baseline matches or beats the full system, which must be stated in any write-up."
   ],
   "datasets": {
     "unsw_nb15": {
       "contract": "results/unsw_nb15_current.json",
       "n_eval_classes": 10,
-      "top_k_percent": 30.0,
+      "top_k_percent": 16.0,
       "ladder_order_holds": true,
       "macro_f1": {
         "gnn": 0.5496206583793729,
         "llm": 0.7353188026257084,
         "agaf": 0.7458681287559671,
-        "feedback": 0.7554348621596525
+        "feedback": 0.7763992869991123
       },
       "head_baseline_contract": "results/unsw_nb15_head_baseline.json",
       "llm_only_trained_head_macro_f1": 0.8321241658653257
@@ -41,13 +38,13 @@
         "dos",
         "ransomware"
       ],
-      "top_k_percent": 18.0,
+      "top_k_percent": 23.0,
       "ladder_order_holds": false,
       "macro_f1": {
         "gnn": 0.32711755971083384,
         "llm": 0.27852446280044896,
         "agaf": 0.4446525803655099,
-        "feedback": 0.3767039979181709
+        "feedback": 0.3875657812346581
       },
       "llm_below_gnn": true,
       "head_baseline_contract": "results/ton_iot_head_baseline.json",

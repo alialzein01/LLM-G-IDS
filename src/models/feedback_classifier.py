@@ -558,6 +558,7 @@ FEEDBACK_MODES = ("real", "random", "shuffled", "head_only")
 # "attention" so a bare FeedbackLoopClassifier() still reproduces stock GATv2.
 # Pass --injection-mode attention to reproduce the published 0.7764 contract.
 INJECTION_MODES = ("attention", "edge")
+GATE_MODES = ("confidence", "disagreement", "both")
 
 
 class FeedbackLoopClassifier(nn.Module):
@@ -613,6 +614,7 @@ class FeedbackLoopClassifier(nn.Module):
         bias_init: str = "zeros",
         random_feedback_seed: int = 12345,
         bias_confidence_frac: float = 1.0,
+        gate_mode: str = "confidence",
         use_output_fusion: bool = True,
         use_no_regret_floor: bool = False,
         no_regret_bound: float = 3.0,
@@ -654,6 +656,11 @@ class FeedbackLoopClassifier(nn.Module):
         self.churn_tol = churn_tol
         self.random_feedback_seed = random_feedback_seed
         self.bias_confidence_frac = bias_confidence_frac
+        if gate_mode not in GATE_MODES:
+            raise ValueError(
+                f"gate_mode must be one of {GATE_MODES}, got {gate_mode!r}"
+            )
+        self.gate_mode = gate_mode
         self.use_output_fusion = use_output_fusion
         self.use_no_regret_floor = use_no_regret_floor
         self.no_regret_bound = no_regret_bound
@@ -904,23 +911,69 @@ class FeedbackLoopClassifier(nn.Module):
             logits = logits + (1.0 - g) * gnn_logits + g * head_logits
         return logits
 
-    def _gate_by_confidence(
-        self, flagged: torch.Tensor, semantic_logits: torch.Tensor
+    def _gate_flagged(
+        self,
+        flagged: torch.Tensor,
+        semantic_logits: torch.Tensor,
+        gnn_probs: torch.Tensor,
     ) -> torch.Tensor:
-        """Keep only the most-confident flagged edges (top
-        `bias_confidence_frac` by the LLM's max class probability).
+        """Rank entropy-flagged edges and keep the configured top fraction.
 
-        A weak consultant verdict is worse than none — biasing attention on
-        edges the LLM is unsure about was regressing Generic/Reconnaissance
-        and letting the loop overfit. Restricting to confident verdicts
-        keeps the high-value nudges and drops the noisy ones.
+        ``confidence`` preserves the original ranking exactly. ``disagreement``
+        prefers edges where the LLM assigns little probability to the GNN's
+        chosen class, and ``both`` requires disagreement backed by a confident
+        LLM verdict.
         """
         if self.bias_confidence_frac >= 1.0 or flagged.numel() == 0:
             return flagged
-        conf = semantic_logits[flagged].softmax(dim=-1).max(dim=-1).values
+        llm_probs = semantic_logits[flagged].softmax(dim=-1)
+        confidence = llm_probs.max(dim=-1).values
+        if self.gate_mode == "confidence":
+            score = confidence
+        else:
+            gnn_argmax = gnn_probs[flagged].argmax(dim=-1)
+            disagreement = 1.0 - llm_probs.gather(
+                1, gnn_argmax.unsqueeze(-1)
+            ).squeeze(-1)
+            score = disagreement if self.gate_mode == "disagreement" else (
+                confidence * disagreement
+            )
         k = max(1, int(round(self.bias_confidence_frac * flagged.numel())))
-        top = torch.topk(conf, k).indices
+        top = torch.topk(score, k).indices
         return flagged[top]
+
+    def _gate_diagnostics(
+        self,
+        flagged: torch.Tensor,
+        semantic_logits: torch.Tensor,
+        gnn_probs: torch.Tensor,
+    ) -> tuple[float, float]:
+        """Return disagreement strength and confidence/disagreement overlap.
+
+        Mean disagreement is measured over all entropy-flagged candidates.
+        Overlap compares equal-sized second-stage selections and is normalized
+        by the disagreement-selected count.
+        """
+        if flagged.numel() == 0:
+            return float("nan"), float("nan")
+        with torch.no_grad():
+            llm_probs = semantic_logits[flagged].softmax(dim=-1)
+            confidence = llm_probs.max(dim=-1).values
+            gnn_argmax = gnn_probs[flagged].argmax(dim=-1)
+            disagreement = 1.0 - llm_probs.gather(
+                1, gnn_argmax.unsqueeze(-1)
+            ).squeeze(-1)
+            k = (
+                flagged.numel()
+                if self.bias_confidence_frac >= 1.0
+                else max(1, int(round(self.bias_confidence_frac * flagged.numel())))
+            )
+            confidence_selected = flagged[torch.topk(confidence, k).indices]
+            disagreement_selected = flagged[torch.topk(disagreement, k).indices]
+            overlap = torch.isin(
+                disagreement_selected, confidence_selected
+            ).float().mean()
+        return float(disagreement.mean()), float(overlap)
 
     def _shuffle_perm(self, num_edges: int, device: torch.device) -> torch.Tensor:
         """Fixed permutation used by the `shuffled` control, on both the bias and
@@ -1002,11 +1055,22 @@ class FeedbackLoopClassifier(nn.Module):
                 churn = float((pred != prev_pred).float().mean())
             if collect_trace:
                 ent = self.selector.entropy(probs.detach())
+                mean_disagreement = float("nan")
+                flagged_overlap = float("nan")
+                if semantic_logits is not None:
+                    diagnostic_flagged = self.selector(probs).nonzero(
+                        as_tuple=False
+                    ).squeeze(-1)
+                    mean_disagreement, flagged_overlap = self._gate_diagnostics(
+                        diagnostic_flagged, semantic_logits, probs
+                    )
                 trace.append(
                     {
                         "iter": it + 1,
                         "churn": churn,
                         "mean_entropy": float(ent.mean()),
+                        "mean_disagreement": mean_disagreement,
+                        "flagged_overlap": flagged_overlap,
                         "logits": logits.detach().clone(),
                     }
                 )
@@ -1019,7 +1083,7 @@ class FeedbackLoopClassifier(nn.Module):
 
             mask = self.selector(probs)
             flagged = mask.nonzero(as_tuple=False).squeeze(-1)
-            flagged = self._gate_by_confidence(flagged, semantic_logits)
+            flagged = self._gate_flagged(flagged, semantic_logits, probs)
             bias = self.bias_module(semantic_logits[flagged], flagged, num_edges)
 
         fusion_head: torch.Tensor | None = None
