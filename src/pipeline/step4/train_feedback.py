@@ -132,12 +132,22 @@ def _build_model(
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
     bias_strength: float = DEFAULT_BIAS_STRENGTH,
-    bias_dim: int = 1,
+    bias_dim: int | None = None,
     max_iterations: int = MAX_ITERATIONS,
-    bias_init: str = "zeros",
-    injection_mode: str = "attention",
+    bias_init: str | None = None,
+    injection_mode: str = "edge",
     injection_scale: float = 10.0,
+    data=None,
 ) -> FeedbackLoopClassifier:
+    # Single source of truth for the mode-dependent bias shape. Edge injection needs a
+    # bias exactly as wide as edge_attr and a live projection; attention injection wants
+    # the 1-wide zero-init bias that reproduces stock GATv2. Callers that do not resolve
+    # these themselves (sweep_top_k) would otherwise silently sweep under a different
+    # mechanism than the one the feedback stage then trains with.
+    if bias_dim is None:
+        bias_dim = EDGE_ATTR_DIM if injection_mode == "edge" else 1
+    if bias_init is None:
+        bias_init = "xavier" if injection_mode == "edge" else "zeros"
     if not 0.0 < bias_confidence_fraction <= 1.0:
         raise ValueError(
             "bias_confidence_fraction must be in (0, 1], got "
@@ -161,6 +171,8 @@ def _build_model(
         use_output_fusion=use_output_fusion,
         injection_mode=injection_mode,
         injection_scale=injection_scale,
+        **({} if data is None or getattr(data, "num_protocols", None) is None
+           else {"num_protocols": data.num_protocols, "num_ports": data.num_ports}),
     )
 
 
@@ -179,11 +191,11 @@ def _train_one_fold(
     use_no_regret_floor: bool = False,
     use_output_fusion: bool = True,
     bias_strength: float = DEFAULT_BIAS_STRENGTH,
-    bias_dim: int = 1,
+    bias_dim: int | None = None,
     max_iterations: int = MAX_ITERATIONS,
-    bias_init: str = "zeros",
+    bias_init: str | None = None,
     oversample_ratio: float = 0.0,
-    injection_mode: str = "attention",
+    injection_mode: str = "edge",
     injection_scale: float = 10.0,
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
@@ -200,6 +212,7 @@ def _train_one_fold(
         bias_init=bias_init,
         injection_mode=injection_mode,
         injection_scale=injection_scale,
+        data=data,
     )
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"]
@@ -445,7 +458,7 @@ def _train_one_fold_frozen(
                 top (attention bias + LLM fusion), a pure residual correction.
     Returns (gnn_alone_logits, frozen_feedback_logits), both full-graph."""
     _set_seed(SEED + fold_idx)
-    model = _build_model()
+    model = _build_model(data=data)
     model.load_fold_state(fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"])
     labels = data.edge_label
     criterion = FocalLoss(alpha=get_class_weights(labels, fold["train_mask"]), gamma=2.0)
@@ -581,6 +594,8 @@ def _build_benchmark_summary(
     use_llm_head: bool = False,
     bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
     use_output_fusion: bool = True,
+    injection_mode: str = "edge",
+    injection_scale: float = 10.0,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
     pooled_accuracy = {
@@ -606,10 +621,11 @@ def _build_benchmark_summary(
         ),
         "trained_llm_head": use_llm_head,
         "use_output_fusion": use_output_fusion,
+        "injection_mode": injection_mode,
+        "injection_scale": injection_scale,
         "llm_access": (
-            "attention_bias_on_flagged_edges + output_fusion_on_all_edges"
-            if use_output_fusion
-            else "attention_bias_on_flagged_edges_only"
+            f"{injection_mode}_injection_on_flagged_edges"
+            + (" + output_fusion_on_all_edges" if use_output_fusion else "_only")
         ),
         "target_agaf": target_agaf,
         "selected_config": selected_config,
@@ -773,6 +789,8 @@ def train_feedback(
         use_llm_head=use_llm_head,
         bias_confidence_fraction=resolved_confidence_fraction,
         use_output_fusion=use_output_fusion,
+        injection_mode=injection_mode,
+        injection_scale=injection_scale,
     )
     with open(root / "benchmark_summary.json", "w") as f:
         json.dump(benchmark, f, indent=2)

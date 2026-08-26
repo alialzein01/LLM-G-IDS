@@ -59,7 +59,17 @@ def _set_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
-def _build_model() -> GATEdgeClassifier:
+def _encoder_kwargs(data) -> dict:
+    """Vocabulary sizes for the protocol/port embedding tables.
+
+    Empty on a v1 graph, which keeps the legacy raw-column path.
+    """
+    if getattr(data, "num_protocols", None) is None:
+        return {}
+    return {"num_protocols": data.num_protocols, "num_ports": data.num_ports}
+
+
+def _build_model(data=None) -> GATEdgeClassifier:
     return GATEdgeClassifier(
         in_dim=IN_DIM,
         hidden_dim=HIDDEN_DIM,
@@ -67,6 +77,7 @@ def _build_model() -> GATEdgeClassifier:
         num_classes=NUM_CLASSES,
         heads=HEADS,
         dropout=DROPOUT,
+        **(_encoder_kwargs(data) if data is not None else {}),
     )
 
 
@@ -145,7 +156,7 @@ def _train_fold_capture_logits(
     tensor keeps the caller simple.
     """
     _set_seed(SEED + fold_idx)
-    model = _build_model()
+    model = _build_model(data)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
