@@ -99,6 +99,15 @@ def assemble_ladder(
     )
     top_k_percent = float(feedback_config["top_k_percent"])
     confidence_fraction = float(feedback_config["bias_confidence_fraction"])
+    feedback_benchmark_path = root / "benchmark_summary.json"
+    feedback_benchmark = (
+        json.loads(feedback_benchmark_path.read_text())
+        if feedback_benchmark_path.exists()
+        else {}
+    )
+    gate_mode = feedback_benchmark.get(
+        "gate_mode", feedback_config.get("gate_mode", "confidence")
+    )
 
     data = torch.load(config.graph_path, weights_only=False)
     labels = data.edge_label
@@ -204,9 +213,11 @@ def assemble_ladder(
         "configuration": {
             "top_k_percent": top_k_percent,
             "bias_confidence_fraction": confidence_fraction,
+            "gate_mode": gate_mode,
             "effective_feedback_percent": top_k_percent * confidence_fraction,
             "semantic_consultant": llm_head_used,
             "trained_llm_head": use_llm_head,
+            "injection_mode": (feedback_config or {}).get("injection_mode"),
             "selected_feedback_config": feedback_config,
         },
     }

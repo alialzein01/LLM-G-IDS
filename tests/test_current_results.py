@@ -20,27 +20,41 @@ class CurrentResultsContractTest(unittest.TestCase):
         payload = json.loads(UNSW_RESULTS_PATH.read_text())
         results = payload["results"]
 
-        self.assertEqual(payload["configuration"]["top_k_percent"], 16.0)
+        self.assertEqual(payload["configuration"]["top_k_percent"], 30.0)
         self.assertEqual(payload["configuration"]["semantic_consultant"], "whitened_prototype")
         self.assertEqual(payload["configuration"]["trained_llm_head"], False)
+        # The mechanism must be declared. A contract that omits it gets misread as
+        # whatever the CLI default happens to be on the day it is read.
+        self.assertEqual(payload["configuration"]["injection_mode"], "edge")
+        self.assertEqual(
+            payload["selection"]["swept_under_injection_mode"],
+            payload["configuration"]["injection_mode"],
+            "top_k must be selected under the same mechanism the loop trains with",
+        )
 
         macro_f1 = [results[name]["macro_f1"] for name in ("gnn", "llm", "agaf", "feedback")]
         self.assertEqual(macro_f1, sorted(macro_f1))
         self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.5496206583793729)
         self.assertAlmostEqual(results["llm"]["macro_f1"], 0.735318802626)
         self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.7458681287559671)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.7763992869991123)
-        self.assertAlmostEqual(results["feedback"]["accuracy"], 0.8185975609756098)
+        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.7554348621596525)
+        self.assertAlmostEqual(results["feedback"]["accuracy"], 0.8079268292682927)
+
+        # The ladder holds by ORDER only. The loop-AGAF gap is +0.0090 with a CI that
+        # crosses zero, so it must never be described as a significant separation.
+        loop_agaf = payload["statistical_comparisons"]["loop_vs_agaf"]
+        self.assertGreater(loop_agaf["mean_macro_f1_difference"], 0.0)
+        self.assertLess(loop_agaf["ci_95"][0], 0.0)
 
     def test_reproduction_uses_authoritative_manifest(self) -> None:
         expected = load_expected_ladder()
         self.assertAlmostEqual(expected["gnn_alone"], 0.5496206583793729)
         self.assertAlmostEqual(expected["llm_alone"], 0.735318802626)
         self.assertAlmostEqual(expected["agaf"], 0.7458681287559671)
-        self.assertAlmostEqual(expected["feedback_loop"], 0.7763992869991123)
+        self.assertAlmostEqual(expected["feedback_loop"], 0.7554348621596525)
 
         accuracy = load_expected_accuracy()
-        self.assertAlmostEqual(accuracy["feedback_loop"], 0.8185975609756098)
+        self.assertAlmostEqual(accuracy["feedback_loop"], 0.8079268292682927)
 
     def test_authoritative_ton_iot_aggregated_ladder(self) -> None:
         """ToN runs the SAME architecture as UNSW, and the ladder does not hold there."""
@@ -58,7 +72,9 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.32711755971083384)
         self.assertAlmostEqual(results["llm"]["macro_f1"], 0.27852446280044896)
         self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.4446525803655099)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.3875657812346581)
+        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.3767039979181709)
+        self.assertEqual(payload["configuration"]["top_k_percent"], 18.0)
+        self.assertEqual(payload["configuration"]["injection_mode"], "edge")
 
         # The ladder does NOT hold on ToN: AGAF is the top rung, the loop sits below it,
         # and the LLM rung sits below the GNN rung. All three facts must stay declared.
@@ -67,11 +83,12 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertLess(results["llm"]["macro_f1"], results["gnn"]["macro_f1"])
         self.assertLess(results["feedback"]["macro_f1"], results["agaf"]["macro_f1"])
 
-        # The loop-AGAF gap is negative but not significant; the CI must still cross zero.
+        # Under edge injection the loop-AGAF gap is negative AND the CI no longer
+        # crosses zero: AGAF is now significantly above the loop on ToN (P(>0)=0.025).
         loop_agaf = payload["statistical_comparisons"]["loop_vs_agaf"]
         self.assertLess(loop_agaf["mean_diff"], 0.0)
-        self.assertLess(loop_agaf["ci_low"], 0.0)
-        self.assertGreater(loop_agaf["ci_high"], 0.0)
+        self.assertLess(loop_agaf["ci_high"], 0.0)
+        self.assertLess(loop_agaf["prob_positive"], 0.05)
 
         # AGAF is clearly above both unimodal rungs; that separation IS significant.
         self.assertGreater(payload["statistical_comparisons"]["agaf_vs_gnn"]["ci_low"], 0.0)
@@ -91,6 +108,9 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertEqual(
             unsw["semantic_confidence_fraction"], ton["semantic_confidence_fraction"]
         )
+        # The mechanism is part of the shared architecture, not a per-dataset knob.
+        self.assertEqual(unsw["injection_mode"], ton["injection_mode"])
+        self.assertEqual(unsw["injection_scale"], ton["injection_scale"])
         # top_k_percent is the one quantity allowed to differ: it is selected per dataset
         # on validation folds and must never be carried across datasets.
         self.assertIn("top_k_percent", unsw)

@@ -84,8 +84,16 @@ def run_top_k_sweep(
     output_dir: str | Path | None = None,
     use_llm_head: bool = False,
     head_logits_path: str | Path | None = None,
+    injection_mode: str = "edge",
+    injection_scale: float = 10.0,
+    gate_mode: str = feedback_training.DEFAULT_GATE_MODE,
 ) -> Path:
-    """Train, persist, and validation-rank all requested entropy percentages."""
+    """Train, persist, and validation-rank all requested entropy percentages.
+
+    ``injection_mode`` must match the mechanism the feedback stage will train with.
+    Sweeping under ``attention`` (measured inert) and then training under ``edge``
+    selects top_k against a mechanism that never fires.
+    """
     _validate_candidates(candidates)
     config = get_dataset_config(dataset)
     root = Path(output_dir or f"data/{dataset}/processed/step4_feedback/top_k_sweep")
@@ -162,6 +170,9 @@ def run_top_k_sweep(
                 top_k_percent=float(candidate),
                 eval_classes=eval_classes,
                 dropped_classes=dropped_classes,
+                injection_mode=injection_mode,
+                injection_scale=injection_scale,
+                gate_mode=gate_mode,
             )
             oof[fold["test_mask"]] = result.logits[fold["test_mask"]]
             fold_rows.append(
@@ -224,6 +235,9 @@ def run_top_k_sweep(
         "semantic_consultant": semantic_consultant,
         "trained_llm_head": use_llm_head,
         "bias_confidence_fraction": feedback_training.BIAS_CONFIDENCE_FRAC,
+        "injection_mode": injection_mode,
+        "injection_scale": injection_scale,
+        "gate_mode": gate_mode,
         "selected": selected,
         "candidates": rows,
         "caveat": (
@@ -241,6 +255,8 @@ def run_top_k_sweep(
         root=feedback_root,
         semantic_consultant=semantic_consultant,
         trained_llm_head=use_llm_head,
+        injection_mode=injection_mode,
+        gate_mode=gate_mode,
     )
 
     print("\n=== VALIDATION RANKING ===")
@@ -276,6 +292,16 @@ def main() -> None:
     parser.add_argument("--output-dir")
     parser.add_argument("--use-llm-head", action="store_true")
     parser.add_argument("--head-logits-path")
+    parser.add_argument(
+        "--injection-mode", choices=("attention", "edge"), default="edge",
+        help="Must match the mechanism the feedback stage trains with.",
+    )
+    parser.add_argument("--injection-scale", type=float, default=10.0)
+    parser.add_argument(
+        "--gate-mode",
+        choices=feedback_training.GATE_MODES,
+        default=feedback_training.DEFAULT_GATE_MODE,
+    )
     args = parser.parse_args()
     if args.min_percent > args.max_percent:
         parser.error("--min-percent must be less than or equal to --max-percent")
@@ -290,6 +316,9 @@ def main() -> None:
         output_dir=args.output_dir,
         use_llm_head=args.use_llm_head,
         head_logits_path=args.head_logits_path,
+        injection_mode=args.injection_mode,
+        injection_scale=args.injection_scale,
+        gate_mode=args.gate_mode,
     )
 
 

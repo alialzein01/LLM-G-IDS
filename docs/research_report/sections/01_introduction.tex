@@ -1,0 +1,158 @@
+\section{Introduction and Context}
+\label{sec:introduction}
+
+Intrusion detection is an operational problem as well as a classification problem.
+Missed attacks can leave harmful activity unchallenged, while false alarms consume
+analyst attention and make genuine incidents harder to prioritise. Practical guidance
+therefore treats alert validation, false-positive identification, and threat
+prioritisation as central parts of intrusion monitoring~\citep{scarfone2007idps}.
+
+Modern networks also produce a continuous stream of connections whose meaning is rarely
+contained in a single record. A destination port, a packet count, or a flow duration can
+be informative, but the surrounding communication pattern often matters just as much.
+A distributed denial-of-service attack may appear as many sources converging on one
+destination, whereas a scan may appear as one source contacting many hosts or services.
+This relational character makes network traffic a natural candidate for graph-based
+analysis. At the same time, network events also carry semantic cues: protocol and port
+combinations, traffic magnitudes, and recurring behavioural descriptions can suggest
+what an interaction represents. An intrusion detection system that sees only one of
+these views is therefore working with an incomplete account of the traffic.
+
+This report investigates whether structural and semantic evidence can be combined in a
+single edge-level intrusion detection framework using NF-UNSW-NB15. One experimental
+boundary must be stated from the outset: the current graph construction aggregates flows
+by source IP, destination IP, and attack class. Ground-truth labels therefore participate
+in defining edge identity, even though the attack name is excluded from the model's input
+features and generated text. The consequence is explicit: the resulting scores compare
+representations and interaction mechanisms under a controlled protocol, but they are not
+deployment-valid estimates of detection performance on unseen, unlabelled traffic.
+
+The original UNSW-NB15 benchmark was created from a mixture of normal activity and
+contemporary attacks in the UNSW Canberra Cyber Range
+Laboratory~\citep{moustafa2015unsw}. Its NetFlow derivative expresses that traffic
+through a compact, practically relevant feature set intended to support reproducible
+intrusion-detection research~\citep{sarhan2021netflow}. This study uses that dataset to
+examine what each branch learns, whether their combination is useful, and whether
+semantic feedback improves the graph representation rather than merely changing the
+final classifier.
+
+\subsection{Why combine graph and language representations?}
+
+Graph neural networks (GNNs) provide a direct way to represent communication structure.
+In this work, IP addresses form the nodes of a directed graph and aggregated flows form
+labelled edges. A graph-attention encoder propagates information between communicating
+hosts and produces a structural representation for each edge. This branch can learn
+patterns that are difficult to express as independent rows in a conventional feature
+table. It does not, however, possess an explicit vocabulary for interpreting the traffic.
+The graph tells the model \emph{who communicated with whom} and how that interaction is
+positioned in the network; it does not automatically explain what a high-frequency TCP
+connection to a particular service may signify.
+
+A pretrained cybersecurity language encoder offers a complementary view. The same
+aggregated flow can be written as a short, controlled sentence describing its endpoints,
+protocol, port, frequency, volume, and duration. A language encoder can then map that
+description into a semantic embedding. The implementation uses CySecBERT, a BERT model adapted to
+cybersecurity text and evaluated by its authors on domain-specific representation and
+classification tasks~\citep{bayer2022cysecbert}. Throughout this report, this component
+is called the \emph{semantic branch}. The deployed encoder is a BERT-class pretrained
+language model rather than a generative large language model; the more precise term
+prevents the project shorthand ``LLM'' from overstating its role.
+
+Neither representation is assumed to be superior in every case. The central idea is
+instead to let them challenge and complement one another. Phase~1 runs the graph and
+semantic encoders in parallel and combines their edge embeddings through Adaptive Gated
+Attention Fusion (AGAF). Phase~2 adds uncertainty-guided semantic feedback: edges with
+high-entropy GNN predictions are selected for semantic consultation, and the resulting
+signal is reintroduced as a bias in the next graph-attention update. In intuitive terms,
+the graph branch indicates where it is uncertain, while the semantic branch supplies an
+additional judgement for those cases.
+
+This general dual-stream idea is not novel by itself. Parallel BERT and graph encoders
+with attention-based fusion have already been studied outside network security, for
+example in misinformation detection~\citep{moorthy2025dualstream}. Work in network
+intrusion detection has also combined GNNs and generative language models, but sometimes
+for a different purpose. XG-NID, for instance, performs intrusion classification with a
+heterogeneous GNN and uses an LLM after classification to generate explanations and
+remedial guidance~\citep{farrukh2024xgnid}. The gap addressed here is narrower and more
+testable: a shared NetFlow pipeline in which a graph encoder and a cybersecurity language
+encoder both contribute directly to edge classification, followed by an explicit test of
+whether iterative semantic feedback improves the classifier beyond late fusion alone.
+
+\subsection{Research problem and questions}
+
+The research problem is not simply whether adding a language embedding raises a score.
+If one branch is already a strong classifier, a fusion module can appear successful while
+doing little more than copying that branch. Likewise, a feedback loop can improve the
+final output because semantic features are fused at the classifier, even when the claimed
+attention re-entry mechanism contributes nothing. The evaluation must therefore separate
+the value of the two modalities, the fusion mechanism, the uncertainty-selection policy,
+and the iterative update itself.
+
+The study is organised around four research questions:
+
+\begin{description}
+    \item[RQ1.] How do the structural GNN branch and the semantic branch
+    perform individually on NF-UNSW-NB15 under the same five-fold out-of-fold evaluation
+    protocol?
+
+    \item[RQ2.] Does AGAF outperform both single-branch baselines on NF-UNSW-NB15, and
+    are the observed differences supported by uncertainty estimates and robust
+    comparisons?
+
+    \item[RQ3.] Does uncertainty-guided semantic feedback add value beyond static
+    fusion? If so, does the gain come from semantic re-entry into graph attention or from
+    final-output fusion?
+
+    \item[RQ4.] How do graph topology, repeated endpoint pairs, class imbalance, and the
+    strength of the semantic consultant affect fusion and feedback on NF-UNSW-NB15?
+\end{description}
+
+These questions deliberately allow a negative answer. The purpose of the experiments is
+to determine when the proposed interaction works, when it does not, and why. This matters
+because a model ladder---GNN, semantic encoder, fusion, then feedback---is only meaningful
+if each higher rung is compared fairly with the strongest relevant lower rung.
+
+\subsection{Objectives and contributions}
+
+The practical objective is to build one reproducible pipeline that transforms
+NF-UNSW-NB15 NetFlow records into two aligned views and evaluates every stage under one
+consistent protocol. The work makes four contributions.
+
+\begin{enumerate}
+    \item It implements a directed, edge-classification graph pipeline in which flows are
+    aggregated by source IP, destination IP, and attack class, with centrality-based node
+    features and statistical edge attributes.
+
+    \item It constructs a corresponding internal knowledge representation and serialises
+    each edge as controlled natural language. The text supplied to the encoder is kept
+    label-free by an explicit validation guard, preventing the semantic branch from seeing
+    the target attack name or a synonymous relation label.
+
+    \item It implements and compares two multimodal stages: AGAF for parallel structural--
+    semantic fusion, and uncertainty-guided semantic feedback that injects semantic
+    evidence into graph attention for uncertain edges.
+
+    \item It provides a controlled evaluation on NF-UNSW-NB15, including unimodal
+    baselines, fusion comparisons, uncertainty-selection ablations, trained-head
+    baselines, and mechanism-isolation tests. It reports both positive and negative
+    results to show which components carry the measured gain.
+\end{enumerate}
+
+The contribution is therefore not presented as a universal improvement over existing
+intrusion detectors. It is an implementation and controlled evaluation of a particular
+form of structural--semantic cooperation, together with evidence about its limits.
+Deployment-valid evaluation remains open and requires graph construction in which edge
+identity can be determined without access to the target class.
+
+\subsection{Report structure}
+
+The remainder of the report follows four stages. The next section reviews graph-based
+intrusion detection, cybersecurity language encoders, and the main ways graph and language
+representations have been combined. The methodology section then describes the datasets,
+graph and text construction, the two encoders, AGAF, semantic feedback, and the evaluation
+protocol in enough detail to reproduce the experiments. The results section presents the
+NF-UNSW-NB15 performance ladder, statistical comparisons, ablations, and verified
+negative results. The final
+section interprets those findings, distinguishes supported conclusions from open claims,
+and identifies the experiments needed to move from an offline research prototype toward
+a deployment-valid intrusion detection system.
