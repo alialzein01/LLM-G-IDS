@@ -558,6 +558,10 @@ FEEDBACK_MODES = ("real", "random", "shuffled", "head_only")
 # "attention" so a bare FeedbackLoopClassifier() still reproduces stock GATv2.
 # Pass --injection-mode attention to reproduce the published 0.7764 contract.
 INJECTION_MODES = ("attention", "edge")
+
+# Matches src/pipeline/step3/train_fusion.PROJ_DIM so the loop's output-fusion
+# branch has the same capacity as the AGAF rung it is compared against.
+DEFAULT_FUSION_DIM = 128
 GATE_MODES = ("confidence", "disagreement", "both")
 
 
@@ -620,6 +624,7 @@ class FeedbackLoopClassifier(nn.Module):
         no_regret_bound: float = 3.0,
         injection_mode: str = "attention",
         injection_scale: float = 10.0,
+        fusion_dim: int | None = None,
     ) -> None:
         super().__init__()
         from src.models.gnn_classifier import (
@@ -742,7 +747,13 @@ class FeedbackLoopClassifier(nn.Module):
         # pushes above a static fusion. LayerNorm puts both logit vectors on
         # the same scale before mixing.
         self.embed_dim = embed_dim
-        fusion_dim = hidden_dim
+        # Fusion width is NOT the GNN's hidden width. Tying them made the loop's
+        # own fusion branch half of AGAF's (fusion_llm_proj 768->64 = 49,152 params
+        # vs AGAF's 768->128 = 98,304), and AGAF is measured capacity-limited:
+        # cutting its proj_dim 128->64 costs 0.084 macro-F1. The loop's fusion was
+        # running at exactly the width that handicaps AGAF, so the two rungs were
+        # not comparable. Default matches train_fusion.PROJ_DIM.
+        fusion_dim = fusion_dim or DEFAULT_FUSION_DIM
         # Embedding-level fusion (AGAF-capacity, but the loop's OWN, and the
         # GNN branch is the end-to-end-trained, LLM-refined edge embedding —
         # not a frozen precomputed one like AGAF's). A per-edge gate driven by
@@ -877,15 +888,22 @@ class FeedbackLoopClassifier(nn.Module):
         gnn_p = self.fusion_gnn_proj(edge_emb)
         # Prefer the trained LLM head's class logits (strong) over raw embeddings.
         if head_logits is not None:
-            lprobs = head_logits.softmax(dim=-1)
-            h_llm = self.selector.entropy(lprobs)
-            conf_llm = lprobs.max(dim=-1).values
-            g = torch.sigmoid(self.fusion_gate_conf(
-                torch.stack([h_gnn, conf_gnn, h_llm, conf_llm], dim=-1)))
+            semantic = head_logits
             llm_p = self.fusion_head_proj(head_logits)
         else:
-            g = torch.sigmoid(self.fusion_gate(torch.stack([h_gnn, conf_gnn], dim=-1)))
+            # Prototype path. Previously this used `fusion_gate`, which sees only
+            # [gnn_entropy, gnn_confidence] — so the loop's gate was blind to how
+            # confident the LLM was, while AGAF's gate sees both modalities. Score
+            # the embeddings with the same consultant the feedback path uses and
+            # route through the 4-input confidence gate, so both rungs' gates get
+            # the same information.
+            semantic = self.scorer(llm_embeddings)
             llm_p = self.fusion_llm_proj(llm_embeddings)
+        lprobs = semantic.softmax(dim=-1)
+        h_llm = self.selector.entropy(lprobs)
+        conf_llm = lprobs.max(dim=-1).values
+        g = torch.sigmoid(self.fusion_gate_conf(
+            torch.stack([h_gnn, conf_gnn, h_llm, conf_llm], dim=-1)))
         fused = torch.cat([(1.0 - g) * gnn_p, g * llm_p], dim=-1)
         correction = self.fusion_classifier(fused)
 
