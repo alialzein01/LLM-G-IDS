@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "dataset": "UNSW-NB15",
+  "dataset_key": "unsw_nb15",
+  "experiment": "edge_feature_injection_mechanism_only",
+  "generated": "2026-08-27",
+  "edge_attr_encoding": "v2_log_cont_cat_idx",
+  "status": "mechanism_only - use_output_fusion=False in every arm, so the LLM reaches the GNN ONLY through the consultative feedback path. NOT comparable to results/unsw_nb15_current.json (fusion on).",
+  "question": "Does edge injection (--injection-mode edge, the canonical default) still causally use the LLM's advice under v2 encoding and the canonical top_k/scale (31.0/2.0), now that the loop-fusion fairness fix has landed? Supersedes results/unsw_nb15_edge_injection.json, which was measured pre-v2 under a different mechanism-only variant.",
+  "verdict": "YES. real > control_head_only > control_shuffled > control_random, on both UNSW and ToN-IoT. The gain is small (+0.0064 UNSW, +0.0026 ToN) and sits inside one seed's noise band, so treat it as directional, not decisive -- but the 4-arm ordering is clean on both datasets, including ToN, where the pre-v2 mechanism-only test did not separate real from random advice.",
+  "primary_metric": "pooled_5_fold_oof_macro_f1",
+  "seeds": [42, 1, 2],
+  "configuration": {
+    "injection_mode": "edge",
+    "use_output_fusion": false,
+    "unsw_nb15": {"top_k_percent": 31.0, "injection_scale": 2.0},
+    "ton_iot": {"top_k_percent": 25.0, "injection_scale": 20.0}
+  },
+  "arms": {
+    "control_head_only": "feedback structurally absent (bias term not added); the correct no-mechanism baseline, never the bare GNN rung",
+    "real": "true whitened-prototype advice delivered to the consulted edge",
+    "control_shuffled": "real advice delivered to the WRONG edge",
+    "control_random": "fixed uniform noise in place of advice"
+  },
+  "results": {
+    "unsw_nb15": {
+      "control_head_only": {"mean": 0.7279572435839329, "std": 0.011321372261653547, "runs": [0.7325, 0.739, 0.7124], "churn": 0.0},
+      "real":              {"mean": 0.7343612388572686, "std": 0.014074188233150126, "runs": [0.7243, 0.7543, 0.7245], "churn": 0.009908536542207002},
+      "control_shuffled":  {"mean": 0.7181325312720176, "std": 0.02159778659839613,  "runs": [0.7121, 0.7471, 0.6952], "churn": 0.014481707227726778},
+      "control_random":    {"mean": 0.6761525435586071, "std": 0.01872804732945539,  "runs": [0.6498, 0.6916, 0.6871], "churn": 0.04186991895548999},
+      "real_minus_control": 0.006404,
+      "shuffled_minus_control": -0.009825,
+      "random_minus_control": -0.051805
+    },
+    "ton_iot": {
+      "control_head_only": {"mean": 0.43594923014999515, "std": 0.026824862725430783, "runs": [0.3983, 0.451, 0.4586], "churn": 0.0},
+      "real":              {"mean": 0.4385635221904088,  "std": 0.02033823925867586,  "runs": [0.4128, 0.4404, 0.4625], "churn": 0.014809591144633788},
+      "control_shuffled":  {"mean": 0.4131331578140421,  "std": 0.011858473741166699, "runs": [0.4018, 0.4082, 0.4295], "churn": 0.014010343126331766},
+      "control_random":    {"mean": 0.376651079101549,   "std": 0.01167360431235561,  "runs": [0.3827, 0.387, 0.3603],  "churn": 0.10872903913259507},
+      "real_minus_control": 0.002614,
+      "shuffled_minus_control": -0.022816,
+      "random_minus_control": -0.059298
+    }
+  },
+  "pass_criterion": "real > control_head_only AND both advice controls <= control_head_only. Met on both datasets.",
+  "reproduce": "scratchpad script mechanism_only_v2.py (session-local, not checked into the repo); raw per-arm output preserved at mechanism_only_v2.json alongside it.",
+  "supersedes": {
+    "file": "results/unsw_nb15_edge_injection.json",
+    "reason": "That file measured a different mechanism-only variant (edge_prototype/edge_trained_head/attention arms, pre-v2 encoding, injection_scale swept 10-100) and is not re-verified on v2. This file is the v2, canonical-top_k/scale, 4-control-arm re-run, on both datasets."
+  },
+  "caveats": [
+    "3-seed means; std 0.01-0.03 on both datasets, so the real-vs-control point gain (+0.006 UNSW, +0.003 ToN) is smaller than one seed's noise band. The ordering across all 4 arms, not the magnitude of the top gap, is the load-bearing evidence here.",
+    "control_random has by far the highest churn (0.042 UNSW, 0.109 ToN) yet the lowest score -- noise perturbs predictions the most while making them worse, which is itself evidence the mechanism is not simply capacity-limited.",
+    "Not comparable to results/unsw_nb15_current.json or results/ton_iot_current.json: those runs have output fusion ON, this experiment has it OFF in every arm by design."
+  ]
+}
