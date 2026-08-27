@@ -43,7 +43,7 @@
     }
   },
   "pass_criterion": "real > control_head_only AND both advice controls <= control_head_only. Met on both datasets.",
-  "reproduce": "scratchpad script mechanism_only_v2.py (session-local, not checked into the repo); raw per-arm output preserved at mechanism_only_v2.json alongside it.",
+  "reproduce": "python -m src.pipeline.step4.mechanism_only_edge_injection (requires prototypes.pt and folds.pt already built for both datasets). Writes results/raw/mechanism_only_v2.json; raw per-arm output and console log are committed at results/raw/mechanism_only_v2.{json,log}.",
   "supersedes": {
     "file": "results/unsw_nb15_edge_injection.json",
     "reason": "That file measured a different mechanism-only variant (edge_prototype/edge_trained_head/attention arms, pre-v2 encoding, injection_scale swept 10-100) and is not re-verified on v2. This file is the v2, canonical-top_k/scale, 4-control-arm re-run, on both datasets."
