@@ -20,9 +20,11 @@ class CurrentResultsContractTest(unittest.TestCase):
         payload = json.loads(UNSW_RESULTS_PATH.read_text())
         results = payload["results"]
 
-        self.assertEqual(payload["configuration"]["top_k_percent"], 30.0)
+        self.assertEqual(payload["configuration"]["top_k_percent"], 31.0)
+        self.assertEqual(payload["configuration"]["injection_scale"], 2.0)
         self.assertEqual(payload["configuration"]["semantic_consultant"], "whitened_prototype")
         self.assertEqual(payload["configuration"]["trained_llm_head"], False)
+        self.assertEqual(payload["edge_attr_encoding"], "v2_log_cont_cat_idx")
         # The mechanism must be declared. A contract that omits it gets misread as
         # whatever the CLI default happens to be on the day it is read.
         self.assertEqual(payload["configuration"]["injection_mode"], "edge")
@@ -34,30 +36,31 @@ class CurrentResultsContractTest(unittest.TestCase):
 
         macro_f1 = [results[name]["macro_f1"] for name in ("gnn", "llm", "agaf", "feedback")]
         self.assertEqual(macro_f1, sorted(macro_f1))
-        self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.5496206583793729)
-        self.assertAlmostEqual(results["llm"]["macro_f1"], 0.735318802626)
-        self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.7458681287559671)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.7554348621596525)
-        self.assertAlmostEqual(results["feedback"]["accuracy"], 0.8079268292682927)
+        self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.7219365593805762)
+        self.assertAlmostEqual(results["llm"]["macro_f1"], 0.7353188026257084)
+        self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.7595293220194291)
+        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.772755270351248)
+        self.assertAlmostEqual(results["feedback"]["accuracy"], 0.8307926829268293)
 
-        # The ladder holds by ORDER only. The loop-AGAF gap is +0.0090 with a CI that
-        # crosses zero, so it must never be described as a significant separation.
+        # The ladder holds by ORDER only. The loop-AGAF gap CI crosses zero (P=0.7785),
+        # so it must never be described as a significant separation.
         loop_agaf = payload["statistical_comparisons"]["loop_vs_agaf"]
-        self.assertGreater(loop_agaf["mean_macro_f1_difference"], 0.0)
-        self.assertLess(loop_agaf["ci_95"][0], 0.0)
+        self.assertGreater(loop_agaf["mean_diff"], 0.0)
+        self.assertLess(loop_agaf["ci_low"], 0.0)
 
     def test_reproduction_uses_authoritative_manifest(self) -> None:
         expected = load_expected_ladder()
-        self.assertAlmostEqual(expected["gnn_alone"], 0.5496206583793729)
-        self.assertAlmostEqual(expected["llm_alone"], 0.735318802626)
-        self.assertAlmostEqual(expected["agaf"], 0.7458681287559671)
-        self.assertAlmostEqual(expected["feedback_loop"], 0.7554348621596525)
+        self.assertAlmostEqual(expected["gnn_alone"], 0.7219365593805762)
+        self.assertAlmostEqual(expected["llm_alone"], 0.7353188026257084)
+        self.assertAlmostEqual(expected["agaf"], 0.7595293220194291)
+        self.assertAlmostEqual(expected["feedback_loop"], 0.772755270351248)
 
         accuracy = load_expected_accuracy()
-        self.assertAlmostEqual(accuracy["feedback_loop"], 0.8079268292682927)
+        self.assertAlmostEqual(accuracy["feedback_loop"], 0.8307926829268293)
 
     def test_authoritative_ton_iot_aggregated_ladder(self) -> None:
-        """ToN runs the SAME architecture as UNSW, and the ladder does not hold there."""
+        """ToN runs the SAME architecture as UNSW. The ladder still fails there, but now
+        because AGAF regressed below the GNN rung -- not because the loop underperforms."""
         payload = json.loads(TON_RESULTS_PATH.read_text())
         results = payload["results"]
 
@@ -68,30 +71,44 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertEqual(payload["configuration"]["semantic_consultant"], "whitened_prototype")
         self.assertFalse(payload["configuration"]["trained_llm_head"])
         self.assertFalse(payload["configuration"]["agaf_head_fusion"])
+        self.assertEqual(payload["edge_attr_encoding"], "v2_log_cont_cat_idx")
 
-        self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.32711755971083384)
+        self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.4289705488338377)
         self.assertAlmostEqual(results["llm"]["macro_f1"], 0.27852446280044896)
-        self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.4446525803655099)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.3767039979181709)
-        self.assertEqual(payload["configuration"]["top_k_percent"], 18.0)
+        self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.3333694556345273)
+        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.4478180285563262)
+        self.assertEqual(payload["configuration"]["top_k_percent"], 25.0)
+        self.assertEqual(payload["configuration"]["injection_scale"], 20.0)
         self.assertEqual(payload["configuration"]["injection_mode"], "edge")
 
-        # The ladder does NOT hold on ToN: AGAF is the top rung, the loop sits below it,
-        # and the LLM rung sits below the GNN rung. All three facts must stay declared.
+        # The ladder does NOT hold on ToN, but the failure moved: AGAF is now BELOW the
+        # GNN rung, and the loop is the TOP rung, significantly above AGAF. Both facts
+        # must stay declared -- this reverses the pre-v2 finding, do not revert it.
         self.assertFalse(payload["ladder_order_holds"])
         self.assertTrue(payload["llm_below_gnn"])
+        self.assertTrue(payload["agaf_below_gnn"])
+        self.assertTrue(payload["loop_is_top_rung"])
         self.assertLess(results["llm"]["macro_f1"], results["gnn"]["macro_f1"])
-        self.assertLess(results["feedback"]["macro_f1"], results["agaf"]["macro_f1"])
+        self.assertLess(results["agaf"]["macro_f1"], results["gnn"]["macro_f1"])
+        self.assertEqual(
+            results["feedback"]["macro_f1"],
+            max(results[name]["macro_f1"] for name in ("gnn", "llm", "agaf", "feedback")),
+        )
 
-        # Under edge injection the loop-AGAF gap is negative AND the CI no longer
-        # crosses zero: AGAF is now significantly above the loop on ToN (P(>0)=0.025).
+        # AGAF is significantly BELOW the GNN rung now (P=0.0005) -- this is the one
+        # rung that regressed and the sole reason the canonical ladder shape fails here.
+        agaf_gnn = payload["statistical_comparisons"]["agaf_vs_gnn"]
+        self.assertLess(agaf_gnn["mean_diff"], 0.0)
+        self.assertLess(agaf_gnn["ci_high"], 0.0)
+        self.assertLess(agaf_gnn["prob_positive"], 0.05)
+
+        # The loop is significantly ABOVE AGAF now (flipped from the pre-v2 finding).
         loop_agaf = payload["statistical_comparisons"]["loop_vs_agaf"]
-        self.assertLess(loop_agaf["mean_diff"], 0.0)
-        self.assertLess(loop_agaf["ci_high"], 0.0)
-        self.assertLess(loop_agaf["prob_positive"], 0.05)
+        self.assertGreater(loop_agaf["mean_diff"], 0.0)
+        self.assertGreater(loop_agaf["ci_low"], 0.0)
+        self.assertGreater(loop_agaf["prob_positive"], 0.95)
 
-        # AGAF is clearly above both unimodal rungs; that separation IS significant.
-        self.assertGreater(payload["statistical_comparisons"]["agaf_vs_gnn"]["ci_low"], 0.0)
+        # AGAF is clearly above the LLM rung; that separation IS significant.
         self.assertGreater(payload["statistical_comparisons"]["agaf_vs_llm"]["ci_low"], 0.0)
 
     def test_both_datasets_declare_the_same_architecture(self) -> None:
@@ -110,11 +127,14 @@ class CurrentResultsContractTest(unittest.TestCase):
         )
         # The mechanism is part of the shared architecture, not a per-dataset knob.
         self.assertEqual(unsw["injection_mode"], ton["injection_mode"])
-        self.assertEqual(unsw["injection_scale"], ton["injection_scale"])
-        # top_k_percent is the one quantity allowed to differ: it is selected per dataset
-        # on validation folds and must never be carried across datasets.
+        # injection_scale and top_k_percent are the two quantities allowed to differ:
+        # both are selected per dataset on validation folds and must never be carried
+        # across datasets (see CLAUDE.md -- injection_scale must be re-selected whenever
+        # the edge encoding changes, and it was: 2.0 on UNSW vs 20.0 on ToN).
         self.assertIn("top_k_percent", unsw)
         self.assertIn("top_k_percent", ton)
+        self.assertIn("injection_scale", unsw)
+        self.assertIn("injection_scale", ton)
 
         comparison = json.loads(COMPARISON_PATH.read_text())
         self.assertTrue(comparison["architecture"]["shared"])
@@ -126,7 +146,8 @@ class CurrentResultsContractTest(unittest.TestCase):
         """The trained-head LLM-only baseline outscores the full system on both datasets.
 
         That is a genuine weakness of the result. These contracts exist so it cannot be
-        dropped from a write-up by accident.
+        dropped from a write-up by accident. NOTE: these baseline files were generated
+        2026-08-20 on the v1 encoding and have not been re-run on v2 -- see CLAUDE.md.
         """
         for path, canonical_path in (
             (UNSW_HEAD_BASELINE_PATH, UNSW_RESULTS_PATH),
@@ -146,7 +167,10 @@ class CurrentResultsContractTest(unittest.TestCase):
         """The ~8% attention consultation changes zero predictions, in every config.
 
         todo.md Step 4 calls the bidirectional loop the core novelty. It does not run on
-        this graph. This test pins that finding so it cannot be quietly dropped.
+        this graph. This test pins that finding so it cannot be quietly dropped. This is a
+        structural finding (co-located edges share node embeddings, so attention -- which
+        only speaks through node embeddings -- cannot separate them) and is not encoding-
+        dependent, so it is not re-verified against v2 in this pass.
         """
         payload = json.loads(LOOP_MECHANISM_PATH.read_text())
         self.assertTrue(payload["verdict"].startswith("NO"))
