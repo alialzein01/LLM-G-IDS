@@ -1,0 +1,17 @@
+===== UNSW-NB15  (top_k=31.0, scale=2.0, output_fusion=OFF) =====
+  control_head_only    0.7280 +/-0.0113  churn=0.0000  runs=[0.7325, 0.739, 0.7124]  [  131s]
+  real                 0.7344 +/-0.0141  churn=0.0099  runs=[0.7243, 0.7543, 0.7245]  [  300s]
+  control_shuffled     0.7181 +/-0.0216  churn=0.0145  runs=[0.7121, 0.7471, 0.6952]  [  459s]
+  control_random       0.6762 +/-0.0187  churn=0.0419  runs=[0.6498, 0.6916, 0.6871]  [  628s]
+  --> real - control          = +0.0064
+      shuffled - control      = -0.0098
+      random - control        = -0.0518
+===== NF-ToN-IoT  (top_k=25.0, scale=20.0, output_fusion=OFF) =====
+  control_head_only    0.4359 +/-0.0268  churn=0.0000  runs=[0.3983, 0.451, 0.4586]  [  225s]
+  real                 0.4386 +/-0.0203  churn=0.0148  runs=[0.4128, 0.4404, 0.4625]  [  502s]
+  control_shuffled     0.4131 +/-0.0119  churn=0.0140  runs=[0.4018, 0.4082, 0.4295]  [  729s]
+  control_random       0.3767 +/-0.0117  churn=0.1087  runs=[0.3827, 0.387, 0.3603]  [ 1024s]
+  --> real - control          = +0.0026
+      shuffled - control      = -0.0228
+      random - control        = -0.0593
+PASS CRITERION: real > control, AND both advice controls <= control.
