@@ -19,6 +19,14 @@ NOT comparable to ladder numbers: fusion is off in every arm.
 Requires prototypes.pt and folds.pt already built for both datasets
 (step4.build_prototypes, splits) before running.
 """
+import os
+
+# Must precede the torch import: without single-threaded BLAS, runs drift ~0.012
+# macro-F1 at a fixed seed, which is larger than every effect this experiment
+# measures (real - control is +0.0064 on UNSW, +0.0026 on ToN).
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import sys
 import time
 import json
@@ -26,6 +34,7 @@ import numpy as np
 import torch
 import warnings
 
+torch.set_num_threads(1)
 warnings.filterwarnings("ignore")
 
 import src.pipeline.step4.train_feedback as FB
