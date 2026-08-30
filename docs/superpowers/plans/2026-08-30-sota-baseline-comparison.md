@@ -21,17 +21,19 @@
 - Any results entry that is not faithful to its source paper carries `"is_faithful_to_paper": false` and a `"variant_label"`.
 - Report language: "re-trained on our aggregated representation", never "outperforms <paper>". "Highest point estimate", never "top rung".
 
-## OPEN DECISION — resolve before Task 6
+## RESOLVED DECISION — loss weighting
 
-**Loss weighting.** E-GraphSAGE specifies plain, unweighted cross-entropy. Our rungs use
-inverse-frequency class weights (`get_class_weights`). On ToN's ~145:1 imbalance, this
-single difference can dominate macro-F1 — plausibly more than architecture does. Running
-baselines with plain CE while ours use weighted CE would reproduce the "starve it"
-problem the spec's two-column design exists to avoid.
+**Decided 2026-08-30: `class_weighting` is on the `refit` grid.**
 
-This plan therefore adds `class_weighting ∈ {none, inverse_frequency}` to the `refit`
-grid (Task 7), leaving `as_published` faithful with plain CE. **Confirm with the user
-before Task 6 runs**, and if confirmed, update spec §5's grid table to match.
+E-GraphSAGE specifies plain, unweighted cross-entropy. Our rungs use inverse-frequency
+class weights (`get_class_weights`). On ToN's ~145:1 imbalance this single difference can
+dominate macro-F1, so running baselines unweighted while ours are weighted would report a
+loss-function gap as an architectural one.
+
+- `as_published` — plain cross-entropy, faithful to the paper.
+- `refit` — `class_weighting ∈ {none, inverse_frequency}`, selected on validation folds.
+
+Spec §5's grid table has been updated to match. **Task 6 is no longer blocked.**
 
 ---
 
@@ -996,9 +998,6 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: Task 5 CLI
 - Produces: populated `baselines.{e_graphsage,te_g_sage}.as_published` entries
 
-**Blocked on the OPEN DECISION above.** Confirm the loss-weighting question with the user
-before running.
-
 - [ ] **Step 1: Run both datasets**
 
 ```bash
@@ -1049,7 +1048,7 @@ Grid, fixed by spec §5 and not to be widened after seeing results:
 | learning rate | 1e-3, 5e-4 |
 | dropout | as published (0.2 / 0.3) |
 | TE-G-SAGE `rare_min_freq` | 50, 2 |
-| `class_weighting` | none, inverse_frequency *(pending the OPEN DECISION)* |
+| `class_weighting` | none, inverse_frequency |
 
 - [ ] **Step 1: Write the failing selection test**
 

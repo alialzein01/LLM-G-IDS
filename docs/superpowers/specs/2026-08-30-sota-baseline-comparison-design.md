@@ -122,6 +122,13 @@ Each baseline is reported in **two columns**:
   | learning rate | 1e-3, 5e-4 |
   | dropout | as published (0.2 E-GraphSAGE / 0.3 TE-G-SAGE) |
   | TE-G-SAGE `rare_min_freq` | 50 (published), 2 |
+  | `class_weighting` | none (published), inverse_frequency |
+
+  `class_weighting` is on the grid because macro-F1 averages classes equally and our own
+  rungs train with inverse-frequency weights. Leaving the baselines on plain
+  cross-entropy while ours are weighted would report a loss-function gap as an
+  architectural one — the failure mode this two-column design exists to prevent.
+  `as_published` remains plain cross-entropy, faithful to E-GraphSAGE's paper.
 
   Epochs are not a grid axis in either column: the source papers do not state an epoch
   count (see D3), so both columns use our standard early-stopping schedule. `refit`
