@@ -21,19 +21,36 @@
 - Any results entry that is not faithful to its source paper carries `"is_faithful_to_paper": false` and a `"variant_label"`.
 - Report language: "re-trained on our aggregated representation", never "outperforms <paper>". "Highest point estimate", never "top rung".
 
-## RESOLVED DECISION — loss weighting
+## Source-verified hyperparameters
 
-**Decided 2026-08-30: `class_weighting` is on the `refit` grid.**
+Read from the authors' released code, not the paper prose. Where code and paper disagree,
+**the code wins** — the published numbers came from the code.
 
-E-GraphSAGE specifies plain, unweighted cross-entropy. Our rungs use inverse-frequency
-class weights (`get_class_weights`). On ToN's ~145:1 imbalance this single difference can
-dominate macro-F1, so running baselines unweighted while ours are weighted would report a
-loss-function gap as an architectural one.
+| | E-GraphSAGE | TE-G-SAGE |
+|---|---|---|
+| source | `waimorris/E-GraphSAGE` `Unsw_ton_iot_multiclass_mean_agg.ipynb` | `Ricco555/TE-G-SAGE-XAI` `netflow/configs/train.yaml` + `models/edge_graphsage.py` |
+| hidden | 128 | 128 |
+| layers | 2 | 2 |
+| dropout | 0.2 | 0.3 |
+| optimizer | `Adam(model.parameters())` — **default lr 1e-3, weight_decay 0** | Adam, lr 3e-4, weight_decay 1e-4 |
+| epochs | `range(1, 5000)` — 4999, no validation, no early stopping | 20 |
+| loss | **`CrossEntropyLoss(weight=class_weights)`**, sklearn inverse-frequency | (not shown in config; same convention assumed, recorded as such) |
+| node features | `x_v = {1,...,1}` ones vector | `nn.Embedding(1, hidden)` — a learned constant, also ignores node features |
+| edge features | injected into message | injected at the **edge head only**, not during convolution |
+| edge head | `Linear(2*hidden -> num_classes)` | `EdgeHead`: `Linear(2*hidden+edge_dim -> 128) -> ReLU -> Dropout(0.3) -> Linear(128 -> C)` |
+| normalisation | none | `BatchNorm1d(hidden)` after every SAGEConv |
 
-- `as_published` — plain cross-entropy, faithful to the paper.
-- `refit` — `class_weighting ∈ {none, inverse_frequency}`, selected on validation folds.
+### Loss weighting — RESOLVED, and the earlier premise was wrong
 
-Spec §5's grid table has been updated to match. **Task 6 is no longer blocked.**
+An earlier draft of this plan claimed E-GraphSAGE specifies plain unweighted
+cross-entropy and therefore put `class_weighting` on the `refit` grid to avoid an unfair
+comparison. **That was based on the paper text; the released code uses
+`nn.CrossEntropyLoss(weight=class_weights)` with sklearn inverse-frequency weights** —
+the same scheme our own rungs use.
+
+Consequences:
+- `as_published` uses `class_weighting="inverse_frequency"`. This is the FAITHFUL setting.
+- `class_weighting` is **removed from the `refit` grid**. There is no asymmetry to correct.
 
 ---
 
@@ -506,14 +523,24 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: nothing from earlier tasks
 - Produces:
-  - `TEGSage(in_dim: int, edge_dim: int, hidden_dim: int = 128, num_layers: int = 2, num_classes: int = 10, dropout: float = 0.3)`
-  - `TEGSage.forward(x: Tensor, edge_index: Tensor, edge_attr: Tensor) -> Tensor`  # `[E, num_classes]`
-  - Constants `PUBLISHED_HIDDEN_DIM = 128`, `PUBLISHED_NUM_LAYERS = 2`, `PUBLISHED_DROPOUT = 0.3`
+  - `TEGSage(edge_dim: int, hidden_dim: int = 128, num_layers: int = 2, num_classes: int = 10, dropout: float = 0.3, edge_mlp_hidden: int = 128, node_init: str = "learned_constant", node_feat_dim: int | None = None)`
+  - `TEGSage.forward(x: Tensor | None, edge_index: Tensor, edge_attr: Tensor) -> Tensor`  # `[E, num_classes]`
+  - Constants `PUBLISHED_HIDDEN_DIM = 128`, `PUBLISHED_NUM_LAYERS = 2`, `PUBLISHED_DROPOUT = 0.3`, `PUBLISHED_LR = 3e-4`, `PUBLISHED_WEIGHT_DECAY = 1e-4`, `PUBLISHED_EPOCHS = 20`, `PUBLISHED_EDGE_MLP_HIDDEN = 128`
 
-TE-G-SAGE is `SAGEConv` over node states with mean aggregation, and the flow
-representation concatenates the two endpoint embeddings with the edge's own feature
-vector. Its published fanout `[25, 15]` exceeds the degree available in a 656-edge graph,
-so full-neighbourhood aggregation is used (deviation D2).
+Read from `Ricco555/TE-G-SAGE-XAI` `netflow/models/edge_graphsage.py`,
+`netflow/models/edge_head.py` and `netflow/configs/train.yaml`. Four details differ from
+a naive reading and all four matter:
+
+1. **Nodes carry no features.** `in_node == 0` triggers `nn.Embedding(1, hidden)` — one
+   learned constant broadcast to every node. Like E-GraphSAGE's ones-vector, it ignores
+   `data.x`, so the `plus_node_features` ablation applies to this model too (Task 8).
+2. **`BatchNorm1d(hidden)` after every SAGEConv**, before the ReLU.
+3. **Edge features enter at the head only**, never during convolution.
+4. **The head is a two-layer MLP**, not a bare Linear:
+   `Linear(2*hidden + edge_dim -> 128) -> ReLU -> Dropout(0.3) -> Linear(128 -> C)`.
+
+Published fanout `[25, 15]` and `batch_size: 4096` are both moot at 656-2127 edges;
+full-batch, full-neighbourhood training is used (deviation D2).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -526,9 +553,21 @@ class TEGSageShapeTest(unittest.TestCase):
         edge_index = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 2]], dtype=torch.long)
         edge_attr = torch.randn(4, 12)
         x = torch.randn(3, 10)
-        model = TEGSage(in_dim=10, edge_dim=12, num_classes=10)
-        logits = model(x, edge_index, edge_attr)
+        model = TEGSage(edge_dim=12, num_classes=10)
+        logits = model(None, edge_index, edge_attr)
         self.assertEqual(tuple(logits.shape), (4, 10))
+
+    def test_learned_constant_init_ignores_node_features(self) -> None:
+        """in_node == 0 in the released code: nodes carry a learned constant."""
+        edge_index = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 2]], dtype=torch.long)
+        edge_attr = torch.randn(4, 12)
+        x = torch.randn(3, 10)
+        model = TEGSage(edge_dim=12, num_classes=10)
+        model.eval()
+        with torch.no_grad():
+            a = model(x, edge_index, edge_attr)
+            b = model(torch.randn_like(x) * 100.0, edge_index, edge_attr)
+        torch.testing.assert_close(a, b)
 ```
 
 - [ ] **Step 2: Run to verify it fails**
@@ -550,58 +589,101 @@ from torch_geometric.nn import SAGEConv
 PUBLISHED_HIDDEN_DIM = 128
 PUBLISHED_NUM_LAYERS = 2
 PUBLISHED_DROPOUT = 0.3
+PUBLISHED_EDGE_MLP_HIDDEN = 128
+PUBLISHED_LR = 3e-4
+PUBLISHED_WEIGHT_DECAY = 1e-4
+PUBLISHED_EPOCHS = 20
 PUBLISHED_FANOUT = (25, 15)
 
 
-class TEGSage(nn.Module):
-    """TE-G-SAGE edge classifier (MDPI 2025), edge-aware GraphSAGE.
+class EdgeHead(nn.Module):
+    """Two-layer MLP over [h_src || h_dst || e_feat] -- the released EdgeHead."""
 
-    Published fanout (25, 15) exceeds the degree available in our aggregated
-    graphs, so full-neighbourhood aggregation is used -- deviation D2.
+    def __init__(self, in_dim: int, hidden: int, num_classes: int, dropout: float) -> None:
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden, num_classes),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.mlp(x)
+
+
+class TEGSage(nn.Module):
+    """TE-G-SAGE edge classifier, per the authors' released implementation.
+
+    Nodes carry no structural features: `node_init="learned_constant"` uses one
+    `nn.Embedding(1, hidden)` broadcast to every node, so `data.x` is unused.
+    `node_init="node_features"` is the labelled, NON-FAITHFUL ablation.
+    Edge features enter at the head only, never during convolution.
     """
 
     def __init__(
         self,
-        in_dim: int,
         edge_dim: int,
         hidden_dim: int = PUBLISHED_HIDDEN_DIM,
         num_layers: int = PUBLISHED_NUM_LAYERS,
         num_classes: int = 10,
         dropout: float = PUBLISHED_DROPOUT,
+        edge_mlp_hidden: int = PUBLISHED_EDGE_MLP_HIDDEN,
+        node_init: str = "learned_constant",
+        node_feat_dim: int | None = None,
     ) -> None:
         super().__init__()
-        self.dropout = dropout
-        dims = [in_dim] + [hidden_dim] * num_layers
-        self.convs = nn.ModuleList(
-            SAGEConv(dims[i], dims[i + 1], aggr="mean") for i in range(num_layers)
+        if node_init not in ("learned_constant", "node_features"):
+            raise ValueError(f"unknown node_init {node_init!r}")
+        if node_init == "node_features" and node_feat_dim is None:
+            raise ValueError("node_init='node_features' requires node_feat_dim")
+
+        self.node_init = node_init
+        self.hidden_dim = hidden_dim
+        in_dim = hidden_dim if node_init == "learned_constant" else int(node_feat_dim)
+        if node_init == "learned_constant":
+            self.node_embed = nn.Embedding(1, hidden_dim)
+
+        self.convs = nn.ModuleList()
+        self.norms = nn.ModuleList()
+        for layer in range(num_layers):
+            self.convs.append(
+                SAGEConv(in_dim if layer == 0 else hidden_dim, hidden_dim, aggr="mean")
+            )
+            self.norms.append(nn.BatchNorm1d(hidden_dim))
+
+        self.head = EdgeHead(
+            hidden_dim * 2 + edge_dim, edge_mlp_hidden, num_classes, dropout
         )
-        # Built eagerly: a submodule created inside forward() is invisible to an
-        # optimizer constructed before the first forward pass, so its weights
-        # would never be updated.
-        self.classifier = nn.Linear(hidden_dim * 2 + edge_dim, num_classes)
 
     def forward(
-        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
+        self,
+        x: torch.Tensor | None,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
     ) -> torch.Tensor:
-        h = x
-        for i, conv in enumerate(self.convs):
-            h = conv(h, edge_index)
-            h = F.relu(h)
-            if i < len(self.convs) - 1:
-                h = F.dropout(h, p=self.dropout, training=self.training)
+        if self.node_init == "learned_constant":
+            num_nodes = int(edge_index.max()) + 1 if x is None else x.shape[0]
+            h = self.node_embed.weight[0].expand(num_nodes, self.hidden_dim)
+        else:
+            h = x
+
+        for conv, norm in zip(self.convs, self.norms):
+            h = F.relu(norm(conv(h, edge_index)))
 
         src, dst = edge_index[0], edge_index[1]
-        flow = torch.cat([h[src], h[dst], edge_attr], dim=1)
-        return self.classifier(flow)
+        return self.head(torch.cat([h[src], h[dst], edge_attr], dim=1))
 ```
 
 `edge_dim` varies with `rare_min_freq`, so the driver must pass the actual featurized
-width from `te_g_sage_edge_features` rather than assuming a constant.
+width from `te_g_sage_edge_features` rather than assuming a constant. The head is built
+eagerly in `__init__` — a submodule created inside `forward()` is invisible to an
+optimizer constructed beforehand and would never be trained.
 
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `OMP_NUM_THREADS=1 python -m pytest tests/test_baseline_models.py -v`
-Expected: 4 passed.
+Expected: 5 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -627,7 +709,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `src.pipeline.common.splits.eval_macro_f1`, `get_class_weights`; `src.pipeline.common.metrics.classification_metrics`
 - Produces:
-  - `run_out_of_fold(model_factory: Callable[[], nn.Module], x, edge_index, edge_attr, labels, folds, *, seed: int, class_weighting: str, max_epochs: int = 200, patience: int = 25, lr: float = 1e-3, eval_classes) -> numpy.ndarray`  # pooled OOF predictions `[E]`
+  - `run_out_of_fold(model_factory: Callable[[], nn.Module], x, edge_index, edge_attr, labels, folds, *, seed: int, class_weighting: str, eval_classes, max_epochs: int = 200, patience: int = 25, lr: float = 1e-3, weight_decay: float = 0.0, optimizer: str = "adam") -> numpy.ndarray`  # pooled OOF predictions `[E]`
   - `pooled_scores(labels, preds, config) -> dict[str, float]` with keys `macro_f1`, `accuracy`, `weighted_f1`
 
 - [ ] **Step 1: Write the failing test**
@@ -723,7 +805,8 @@ def run_out_of_fold(
     max_epochs: int = 200,
     patience: int = 25,
     lr: float = 1e-3,
-    weight_decay: float = 5e-4,
+    weight_decay: float = 0.0,
+    optimizer: str = "adam",
 ) -> np.ndarray:
     """Train one model per fold, predict that fold's test edges, pool the result.
 
@@ -737,7 +820,10 @@ def run_out_of_fold(
         np.random.seed(seed + fold_idx)
 
         model = model_factory()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+        # Both source implementations use plain Adam, not AdamW. Defaulting to AdamW
+        # here would silently apply decoupled weight decay neither paper specifies.
+        opt_cls = {"adam": torch.optim.Adam, "adamw": torch.optim.AdamW}[optimizer]
+        opt = opt_cls(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         train_mask, val_mask = fold["train_mask"], fold["val_mask"]
         if class_weighting == "inverse_frequency":
@@ -750,13 +836,13 @@ def run_out_of_fold(
         best_f1, best_state, stale = -1.0, None, 0
         for _ in range(max_epochs):
             model.train()
-            optimizer.zero_grad()
+            opt.zero_grad()
             loss = criterion(
                 model(x, edge_index, edge_attr)[train_mask], labels[train_mask]
             )
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
-            optimizer.step()
+            opt.step()
 
             model.eval()
             with torch.no_grad():
@@ -832,9 +918,15 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: Tasks 1, 2, 3, 4
 - Produces:
-  - `build_payload(dataset: str, configs: dict) -> dict`
-  - CLI: `python -m src.pipeline.baselines.run_baselines --dataset <key> --mode {as_published,refit,plus_node_features,all} --seeds 42 1 2`
+  - `empty_payload(dataset: str) -> dict` — the payload skeleton (Step 3)
+  - `run(dataset: str, mode: str, seeds: list[int]) -> pathlib.Path` — trains, scores, merges into the results file (Step 5)
+  - CLI: `python -m src.pipeline.baselines.run_baselines --dataset <key> --mode as_published --seeds 42 1 2`
   - Output: `results/{dataset}_sota_baselines.json`
+
+`--mode` accepts **only `as_published` in this task.** Tasks 7 and 8 each add their own
+choice (`refit`, `plus_node_features`) to the `argparse` `choices` list when they
+implement that path. Do not stub the later modes here — an unimplemented CLI choice that
+silently does nothing is worse than one that does not exist.
 
 - [ ] **Step 1: Write the failing contract test**
 
@@ -890,13 +982,20 @@ DEVIATIONS = [
         "code": "D2",
         "reason": "TE-G-SAGE's published fanout (25, 15) exceeds the node degree "
                   "available in a 656-edge (UNSW) / 2127-edge (ToN) graph.",
-        "resolution": "Full-neighbourhood aggregation.",
+        "resolution": "Full-neighbourhood, full-batch training. TE-G-SAGE's "
+                      "batch_size 4096 also exceeds the entire graph.",
     },
     {
         "code": "D3",
-        "reason": "Neither paper states an epoch count.",
-        "resolution": "Our standard schedule: max 200 epochs, patience 25, best "
-                      "validation macro-F1 restored before test prediction.",
+        "reason": "Both released implementations train for a fixed epoch count with no "
+                  "validation split and no early stopping -- E-GraphSAGE runs "
+                  "range(1, 5000) (4999 epochs), TE-G-SAGE 20. A fixed schedule with no "
+                  "validation cannot be used here: our protocol selects on validation "
+                  "folds, and 4999 full-batch epochs on a 656-edge graph is unbounded "
+                  "overfitting.",
+        "resolution": "Max 200 epochs, patience 25 on validation macro-F1, best state "
+                      "restored before test prediction -- identical to the schedule our "
+                      "own rungs use, so neither side is advantaged.",
     },
     {
         "code": "D4",
@@ -961,13 +1060,27 @@ Expected: PASS
 
 - [ ] **Step 5: Implement the run loop and CLI**
 
-Append to `run_baselines.py`: a `run(dataset, mode, seeds)` that, for each model and each
-requested mode, builds features (Task 1), constructs the model factory (Tasks 2-3), calls
-`run_out_of_fold` per seed (Task 4), records `mean`/`std` of `macro_f1` across seeds plus
-the per-seed list, and writes `results/{dataset}_sota_baselines.json`. Each entry carries
-`hyperparameters`, `seeds`, and — for the variant — `"is_faithful_to_paper": False` and
-`"variant_label": "E-GraphSAGE + our node features"`. `argparse` exposes
-`--dataset`, `--mode`, `--seeds`.
+Append `run(dataset, mode, seeds)` handling **`mode == "as_published"` only**; raise
+`ValueError(f"mode {mode!r} is implemented in a later task")` for anything else.
+
+For each of the two models it must:
+
+1. `df, data = load_aligned_edges(config)` (Task 1).
+2. Build that model's features — `egraphsage_edge_features(df)` or
+   `te_g_sage_edge_features(df, rare_min_freq=50)` — and convert to a float32 tensor.
+3. Build a `model_factory` closure returning a fresh model at each call, using the
+   published hyperparameters from the source-verified table near the top of this plan.
+4. For each seed, call `run_out_of_fold(...)` with that model's published optimizer
+   settings: E-GraphSAGE `optimizer="adam", lr=1e-3, weight_decay=0.0`;
+   TE-G-SAGE `optimizer="adam", lr=3e-4, weight_decay=1e-4`. Both use
+   `class_weighting="inverse_frequency"` — faithful, per the source-verified table.
+5. Score with `pooled_scores(...)` and record per-seed `macro_f1` plus `mean` and `std`
+   across seeds, alongside a `hyperparameters` dict and `"is_faithful_to_paper": True`.
+6. Merge into the existing results file if present (never clobber another mode's entry),
+   otherwise start from `empty_payload(dataset)`. Write with `indent=2`.
+
+`argparse` exposes `--dataset` (required), `--mode` (`choices=["as_published"]`,
+default `"as_published"`), `--seeds` (`nargs="+"`, `type=int`, default `[42, 1, 2]`).
 
 - [ ] **Step 6: Smoke-run the driver on the smaller dataset**
 
@@ -1048,7 +1161,6 @@ Grid, fixed by spec §5 and not to be widened after seeing results:
 | learning rate | 1e-3, 5e-4 |
 | dropout | as published (0.2 / 0.3) |
 | TE-G-SAGE `rare_min_freq` | 50, 2 |
-| `class_weighting` | none, inverse_frequency |
 
 - [ ] **Step 1: Write the failing selection test**
 
@@ -1096,15 +1208,20 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 8: `plus_node_features` variant
+### Task 8: `plus_node_features` variant (both baselines)
 
 **Files:**
 - Modify: `src/pipeline/baselines/run_baselines.py`
 - Modify: both `results/*_sota_baselines.json`
 
 **Interfaces:**
-- Consumes: `EGraphSAGE(node_init="node_features", node_feat_dim=10)` from Task 2
-- Produces: `baselines.e_graphsage.plus_node_features` carrying `is_faithful_to_paper: False`
+- Consumes: `EGraphSAGE(node_init="node_features", node_feat_dim=10)` from Task 2 and
+  `TEGSage(node_init="node_features", node_feat_dim=10)` from Task 3
+- Produces: `baselines.{e_graphsage,te_g_sage}.plus_node_features`, each carrying
+  `is_faithful_to_paper: False` and a `variant_label`
+
+Both baselines ignore node features in their released form (E-GraphSAGE via a ones
+vector, TE-G-SAGE via a learned constant embedding), so the ablation applies to both.
 
 - [ ] **Step 1: Write the failing guard test**
 
@@ -1128,8 +1245,12 @@ Expected: FAIL — no `plus_node_features` entry exists yet.
 
 - [ ] **Step 3: Implement the variant path and run it**
 
-Reuse the winning `refit` hyperparameters, changing only `node_init` to
-`"node_features"` with `node_feat_dim=data.x.shape[1]`.
+Reuse the winning `refit` hyperparameters **read from
+`results/{dataset}_sota_baselines.json`'s `baselines.<model>.refit.hyperparameters`** —
+Task 7 must have run and written them. If that key is absent, fail with a clear message
+rather than silently falling back to published defaults. Change only `node_init` to
+`"node_features"` with `node_feat_dim=data.x.shape[1]`, and add `plus_node_features` to
+the CLI `choices` list.
 
 ```bash
 export OMP_NUM_THREADS=1

@@ -122,20 +122,22 @@ Each baseline is reported in **two columns**:
   | learning rate | 1e-3, 5e-4 |
   | dropout | as published (0.2 E-GraphSAGE / 0.3 TE-G-SAGE) |
   | TE-G-SAGE `rare_min_freq` | 50 (published), 2 |
-  | `class_weighting` | none (published), inverse_frequency |
 
-  `class_weighting` is on the grid because macro-F1 averages classes equally and our own
-  rungs train with inverse-frequency weights. Leaving the baselines on plain
-  cross-entropy while ours are weighted would report a loss-function gap as an
-  architectural one — the failure mode this two-column design exists to prevent.
-  `as_published` remains plain cross-entropy, faithful to E-GraphSAGE's paper.
+  **Loss weighting is not on the grid.** An earlier revision put it there, on the premise
+  that E-GraphSAGE specifies plain unweighted cross-entropy while our rungs use
+  inverse-frequency weights. That premise came from the paper text and was wrong: the
+  authors' released notebook uses `nn.CrossEntropyLoss(weight=class_weights)` with
+  sklearn inverse-frequency weights — the same scheme we use. Weighted cross-entropy is
+  therefore the *faithful* setting and belongs in `as_published`. No asymmetry exists to
+  correct.
 
   Epochs are not a grid axis in either column: the source papers do not state an epoch
   count (see D3), so both columns use our standard early-stopping schedule. `refit`
   therefore differs from `as_published` only in the knobs tabulated above.
 
-- **`plus_node_features`** (E-GraphSAGE only) — identical to `refit`, except the
-  `x_v = {1,...,1}` initialisation is replaced by our 10 centrality measures (`data.x`).
+- **`plus_node_features`** (both baselines) — identical to `refit`, except the
+  featureless node initialisation (E-GraphSAGE's `x_v = {1,...,1}`; TE-G-SAGE's learned
+  constant embedding) is replaced by our 10 centrality measures (`data.x`).
 
   This is **not E-GraphSAGE** and must never be tabulated as such. It is labelled
   "E-GraphSAGE + our node features" everywhere it appears. Its purpose is a single
@@ -149,10 +151,11 @@ Each baseline is reported in **two columns**:
   same edge list both columns already receive. It changes the *representation*, not the
   data.
 
-  TE-G-SAGE's node-feature initialisation is not documented in the material reviewed. If
-  implementation confirms it also uses a constant initialisation, the same variant is
-  added for it; if it consumes node features natively, the column does not apply and that
-  fact is recorded.
+  **Confirmed: TE-G-SAGE also ignores node features.** Its released
+  `edge_graphsage.py` uses `nn.Embedding(1, hidden)` — one learned constant broadcast to
+  every node — when `in_node == 0`, which is the shipped configuration. The
+  `plus_node_features` variant therefore applies to **both** baselines, and both carry
+  `is_faithful_to_paper: false`.
 
 Reporting both is deliberate. The published defaults were chosen for graphs ~300x larger
 than ours; running them unchanged at our scale places them outside their designed
