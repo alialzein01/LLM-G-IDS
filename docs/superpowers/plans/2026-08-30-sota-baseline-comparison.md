@@ -63,12 +63,13 @@ import unittest
 
 import numpy as np
 
-from src.pipeline.baselines.preprocess import (
-    egraphsage_edge_features,
-    load_aligned_edges,
-    te_g_sage_edge_features,
-)
+from src.pipeline.baselines.preprocess import load_aligned_edges
 from src.pipeline.common.datasets import get_dataset_config
+
+# NOTE: import ONLY load_aligned_edges here. The featurizers do not exist yet, and
+# a module-level import of a missing name fails COLLECTION -- pytest would report an
+# ImportError for the whole file instead of running the alignment test. Step 5 adds
+# the featurizer import alongside the tests that need it.
 
 
 class AlignmentTest(unittest.TestCase):
@@ -140,9 +141,23 @@ def load_aligned_edges(config: DatasetConfig) -> tuple[pd.DataFrame, Data]:
 - [ ] **Step 4: Run the alignment test to verify it passes**
 
 Run: `OMP_NUM_THREADS=1 python -m pytest tests/test_baseline_preprocess.py -v`
-Expected: PASS for both datasets. If it FAILS, stop and report — the CSV and the graph are out of sync and no baseline number is trustworthy until that is fixed.
+Expected: 1 passed (both dataset subTests). The file must collect cleanly at this point
+with only `load_aligned_edges` implemented — if you see a collection ImportError, a
+featurizer name has been imported at module level too early. If the assertion itself
+FAILS, stop and report — the CSV and the graph are out of sync and no baseline number is trustworthy until that is fixed.
 
 - [ ] **Step 5: Write the failing featurization tests**
+
+Add this import at the top of the file, beside the existing one:
+
+```python
+from src.pipeline.baselines.preprocess import (
+    egraphsage_edge_features,
+    te_g_sage_edge_features,
+)
+```
+
+Then append:
 
 ```python
 class EGraphSAGEFeatureTest(unittest.TestCase):
@@ -184,7 +199,9 @@ class TEGSageFeatureTest(unittest.TestCase):
 - [ ] **Step 6: Run to verify they fail**
 
 Run: `OMP_NUM_THREADS=1 python -m pytest tests/test_baseline_preprocess.py -v`
-Expected: FAIL with `ImportError: cannot import name 'egraphsage_edge_features'`
+Expected: collection ERROR — `ImportError: cannot import name 'egraphsage_edge_features'
+from 'src.pipeline.baselines.preprocess'`. Here that error IS the expected red state,
+because the import was added deliberately in Step 5 to drive Step 7.
 
 - [ ] **Step 7: Implement both featurizers**
 
