@@ -14,7 +14,7 @@ disagree, the contract wins and this file is stale.
 
 ## 0. Headline finding (2026-08-30)
 
-> ### The feedback channel works. The consultant does not use it.
+> ### The feedback channel works. Neither realistic consultant uses it reliably.
 >
 > This is the central result of the Gate 0 investigation and it redirects the project.
 >
@@ -26,22 +26,26 @@ disagree, the contract wins and this file is stale.
 > The **canonical whitened-prototype consultant captures essentially none of it** —
 > **−4.5% of that headroom on UNSW** and **11.9% on ToN**, neither separated from zero.
 >
-> **Therefore the binding constraint is consultant quality, not mechanism capacity.** The
-> injection channel has real, demonstrated capacity that our semantic consultant simply fails
-> to exploit.
+> Gate 0.5 then replaced the prototype with a much stronger, leakage-free per-fold trained
+> head while keeping output fusion off. It captured only **12.5%** of pooled oracle headroom
+> on UNSW (unseparated from control) and **−38.0%** on ToN (a statistically separated
+> regression). Standalone classifier quality therefore does **not** translate into useful
+> injected advice.
+>
+> **Refined conclusion:** mechanism capacity is not the limit, but prototype quality alone is
+> not the full explanation. The unresolved failure is the compatibility/calibration of
+> realistic consultant logits with the bias path: even a strong classifier cannot exploit the
+> capacity that the oracle demonstrates.
 >
 > **Consequences for the work plan:**
-> - The four queued mechanism fixes (P1′ reshape *when* advice is computed, P3′ reshape the
->   channel, P2′ learn when to trust it, P4 learned router) were all designed to fix the
->   *mechanism*. Gate 0 says the mechanism is not what is broken. **They are surgery on a
->   channel that already works.**
-> - Effort should move to the consultant: the prototype scorer collapses under class imbalance
->   (ToN prototype 0.2785 vs a trained MLP on the *same* CySecBERT embeddings at ~0.50).
+> - Replacing the prototype with a stronger classifier is **not sufficient**. Do not treat
+>   trained-head accuracy as an upper bound on realistic mechanism gain.
+> - Of the queued options, calibration/trust work (P2′) is now more directly motivated than a
+>   simple consultant swap. P1′/P3′ remain experiments, not fixes established by Gate 0.
 > - This is independently corroborated by §2.2 — the mechanism-only `real > control` claim
->   also failed to replicate, which is exactly what a consultant contributing ≈0% predicts.
+>   also failed to replicate.
 >
-> Two independent routes, same conclusion. See §2.4 for the full Gate 0 table and §2.2 for the
-> retraction.
+> See §2.4 for Gate 0, §2.5 for the trained-head diagnostic, and §2.2 for the retraction.
 
 ---
 
@@ -199,6 +203,34 @@ Raw: `results/raw/oracle_ceiling_v2.{json,log}`. Runner:
 only): headroom +0.0417 (control 0.5558 → oracle_edge 0.5975); prototype captured +0.0028 (7%),
 trained head +0.0264 (63%); `oracle_attention` 0.5491, *below* control.
 
+### 2.5 Gate 0.5 — trained-head consultant diagnostic (2026-08-30)
+
+Question: does a strong but realistic trained-head consultant close a meaningful share of the
+v2 oracle gap? The per-fold heads were regenerated from the current graph, embeddings, and
+`folds.pt`; each fold's exact `[E,C]` slice was used so test rows remain OOF. Output fusion was
+off, making direct head echoing structurally impossible. **Diagnostic only: this arm is not a
+ladder rung and does not change the canonical prototype architecture.**
+
+| arm / comparison | UNSW | ToN |
+|---|---:|---:|
+| control | 0.7398 | 0.4195 |
+| prototype edge | 0.7382 | 0.4325 |
+| **trained-head edge** | **0.7441** | **0.3781** |
+| oracle edge | 0.7743 | 0.5286 |
+| trained-head pooled gain | +0.0043 | −0.0414 |
+| captured share of oracle headroom | **12.5%** | **−38.0%** |
+| paired trained-head − control | +0.0007, CI[−0.0183,+0.0201], P=0.525 | −0.0378, CI[−0.0588,−0.0167], P=0.0001 |
+
+**The trained head does not close a meaningful share of the gap.** On UNSW its small point gain
+is unseparated from zero. On ToN it significantly harms the mechanism despite scoring 0.5165
+standalone against the prototype's 0.2785. The oracle result therefore cannot be reached merely
+by substituting a more accurate classifier. The open problem is how consultant logits are
+calibrated, selected, and translated into edge bias—not whether the bias channel has capacity.
+
+Contracts: `results/{unsw_nb15,ton_iot}_oracle_ceiling_v2_trained_head.json`. Raw:
+`results/raw/oracle_ceiling_v2_trained_head.{json,log}`. Regeneration logs:
+`results/raw/build_llm_heads_{unsw,ton}_gate05.log`.
+
 ---
 
 ## 3. Corrections and retractions
@@ -266,9 +298,10 @@ re-verified exact on all 4 rungs.
   regression; not re-run on either.
 - **Trained-head LLM-only baseline beats the full system on both datasets** (UNSW 0.8321 vs
   loop 0.7728; ToN 0.5165 vs loop 0.4478) — an MLP on CySecBERT KG-text embeddings outperforms
-  the complete architecture. `results/{unsw_nb15,ton_iot}_head_baseline.json`. **Both files are
-  dated 2026-08-20, v1 encoding, pre-fusion-fix — not re-run on v2.** The qualitative finding is
-  expected to survive; the exact numbers are unverified. Re-run before citing to two decimals.
+  the complete architecture. The per-fold logits were regenerated against the current graph,
+  embeddings, and folds for Gate 0.5 on 2026-08-30 and reproduced these exact pooled OOF scores.
+  The older `results/{unsw_nb15,ton_iot}_head_baseline.json` files remain dated 2026-08-20, but
+  the two headline head scores are now independently re-verified under current provenance.
 - **Swapping the trained head in as consultant degenerates the loop.** With the head throughout,
   loop 0.8258 < LLM-head 0.8321 ≈ AGAF-head 0.8331 — the loop echoes its consultant rather than
   improving on it. This, plus cross-dataset comparability, is why the canonical rule mandates

@@ -15,6 +15,12 @@ TON_RESULTS_PATH = Path("results/ton_iot_current.json")
 COMPARISON_PATH = Path("results/cross_dataset_comparison.json")
 UNSW_ORACLE_V2_PATH = Path("results/unsw_nb15_oracle_ceiling_v2.json")
 TON_ORACLE_V2_PATH = Path("results/ton_iot_oracle_ceiling_v2.json")
+UNSW_ORACLE_V2_HEAD_PATH = Path(
+    "results/unsw_nb15_oracle_ceiling_v2_trained_head.json"
+)
+TON_ORACLE_V2_HEAD_PATH = Path(
+    "results/ton_iot_oracle_ceiling_v2_trained_head.json"
+)
 
 
 class CurrentResultsContractTest(unittest.TestCase):
@@ -210,6 +216,60 @@ class CurrentResultsContractTest(unittest.TestCase):
                 self.assertIn("ci_high", comparison)
             self.assertIn("headroom_below_0_02", payload["decision"])
             self.assertIn("stop_mechanism_surgery", payload["program_decision"])
+
+    def test_gate05_trained_head_is_diagnostic_and_never_a_ladder_rung(self) -> None:
+        for path in (UNSW_ORACLE_V2_HEAD_PATH, TON_ORACLE_V2_HEAD_PATH):
+            self.assertTrue(
+                path.exists(),
+                f"Missing Gate 0.5 artifact {path}; regenerate heads and run the diagnostic",
+            )
+
+        payloads = [
+            json.loads(UNSW_ORACLE_V2_HEAD_PATH.read_text()),
+            json.loads(TON_ORACLE_V2_HEAD_PATH.read_text()),
+        ]
+        shared_fields = (
+            "edge_attr_encoding",
+            "seeds",
+            "fold_count",
+            "max_iterations",
+            "churn_tolerance",
+            "bias_confidence_fraction",
+            "gate_mode",
+            "use_output_fusion",
+            "injection_modes",
+            "oracle_logit_magnitude",
+            "deterministic_cpu",
+        )
+        for field in shared_fields:
+            self.assertEqual(
+                payloads[0]["configuration"][field],
+                payloads[1]["configuration"][field],
+                f"Gate 0.5 architecture drifted on {field}",
+            )
+
+        expected_arms = {
+            "control_head_only",
+            "real_prototype_edge",
+            "head_trained_edge",
+            "oracle_edge",
+            "oracle_attention",
+        }
+        for payload in payloads:
+            self.assertIn("DIAGNOSTIC ONLY", payload["status"])
+            self.assertEqual(set(payload["arms"]), expected_arms)
+            head_contract = payload["arms"]["head_trained_edge"]
+            self.assertEqual(head_contract["advice_source"], "trained_head")
+            self.assertFalse(head_contract["use_output_fusion"])
+            self.assertTrue(head_contract["diagnostic_only"])
+            self.assertFalse(head_contract["eligible_for_ladder"])
+            self.assertTrue(payload["configuration"]["trained_head_artifact_regenerated"])
+            self.assertEqual(len(payload["results"]["head_trained_edge"]["fold_records"]), 15)
+            comparison = payload["paired_comparisons"][
+                "head_trained_edge_vs_control_head_only"
+            ]
+            self.assertEqual(comparison["n_pairs"], 15)
+            self.assertIn("trained_head_captured_share", payload["decision"])
 
     def test_head_baselines_record_that_they_beat_the_full_system(self) -> None:
         """The trained-head LLM-only baseline outscores the full system on both datasets.
