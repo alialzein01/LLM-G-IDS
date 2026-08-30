@@ -42,3 +42,16 @@ class EGraphSAGEShapeTest(unittest.TestCase):
             a = model(x, edge_index, edge_attr)
             b = model(torch.randn_like(x) * 100.0, edge_index, edge_attr)
         self.assertFalse(torch.allclose(a, b))
+
+
+from src.models.baselines.te_g_sage import TEGSage
+
+
+class TEGSageShapeTest(unittest.TestCase):
+    def test_emits_one_logit_row_per_edge(self) -> None:
+        edge_index = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 2]], dtype=torch.long)
+        edge_attr = torch.randn(4, 12)
+        x = torch.randn(3, 10)
+        model = TEGSage(in_dim=10, edge_dim=12, num_classes=10)
+        logits = model(x, edge_index, edge_attr)
+        self.assertEqual(tuple(logits.shape), (4, 10))
