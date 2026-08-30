@@ -108,6 +108,53 @@ class FeedbackDefaultsTest(unittest.TestCase):
         self.assertEqual(head_summary["semantic_consultant"], "trained_llm_head")
         self.assertEqual(head_summary["trained_llm_head"], True)
 
+    def test_collected_trace_records_selection_without_claiming_reconsultation(
+        self,
+    ) -> None:
+        torch.manual_seed(7)
+        model = _build_model(
+            top_k_percent=50.0,
+            max_iterations=2,
+            use_output_fusion=False,
+            injection_mode="edge",
+        ).eval()
+        x = torch.randn(4, 10)
+        edge_index = torch.tensor(
+            [[0, 1, 2, 3, 0, 2], [1, 2, 3, 0, 2, 0]], dtype=torch.long
+        )
+        edge_attr = torch.randn(6, 5)
+        embeddings = torch.randn(6, 768)
+        oracle = torch.full((6, 10), -4.0)
+        oracle[:, 0] = 4.0
+
+        with torch.no_grad():
+            _, _, real_trace = model(
+                x,
+                edge_index,
+                edge_attr,
+                embeddings,
+                feedback_mode="real",
+                collect_trace=True,
+                head_logits=oracle,
+            )
+            _, _, control_trace = model(
+                x,
+                edge_index,
+                edge_attr,
+                embeddings,
+                feedback_mode="head_only",
+                collect_trace=True,
+            )
+
+        self.assertGreater(real_trace[0]["selected_count"], 0)
+        self.assertFalse(real_trace[0]["advice_recomputed"])
+        self.assertIn("selection_jaccard_previous", real_trace[-1])
+        self.assertEqual(control_trace[0]["selected_count"], 0)
+        self.assertFalse(control_trace[0]["advice_recomputed"])
+        self.assertTrue(torch.isnan(torch.tensor(
+            control_trace[0]["mean_disagreement"]
+        )))
+
 
 if __name__ == "__main__":
     unittest.main()
