@@ -1060,7 +1060,8 @@ class FeedbackLoopClassifier(nn.Module):
         logits: torch.Tensor
         aux_logits: dict[str, torch.Tensor] = {}
         prev_pred: torch.Tensor | None = None
-        trace: list[dict[str, float]] = []
+        trace: list[dict[str, object]] = []
+        previous_selected: torch.Tensor | None = None
 
         edge_emb: torch.Tensor | None = None
         for it in range(self.max_iterations):
@@ -1071,6 +1072,25 @@ class FeedbackLoopClassifier(nn.Module):
             churn = float("nan")
             if prev_pred is not None:
                 churn = float((pred != prev_pred).float().mean())
+            should_stop = (
+                prev_pred is not None
+                and not math.isnan(churn)
+                and churn < self.churn_tol
+            )
+
+            # Compute the gated set once and reuse it for both trace diagnostics
+            # and the next bias.  On ordinary non-tracing forwards, avoid this
+            # work when convergence or the iteration cap means no next bias exists.
+            selected = torch.empty(0, dtype=torch.long, device=probs.device)
+            needs_selection = semantic_logits is not None and (
+                collect_trace or (not should_stop and it < self.max_iterations - 1)
+            )
+            if needs_selection:
+                selected = self.selector(probs).nonzero(
+                    as_tuple=False
+                ).squeeze(-1)
+                selected = self._gate_flagged(selected, semantic_logits, probs)
+
             if collect_trace:
                 ent = self.selector.entropy(probs.detach())
                 mean_disagreement = float("nan")
@@ -1082,6 +1102,16 @@ class FeedbackLoopClassifier(nn.Module):
                     mean_disagreement, flagged_overlap = self._gate_diagnostics(
                         diagnostic_flagged, semantic_logits, probs
                     )
+                selection_jaccard = float("nan")
+                if semantic_logits is not None and previous_selected is not None:
+                    union = torch.unique(torch.cat([previous_selected, selected]))
+                    if union.numel() == 0:
+                        selection_jaccard = 1.0
+                    else:
+                        intersection = torch.isin(
+                            previous_selected, selected
+                        ).sum()
+                        selection_jaccard = float(intersection / union.numel())
                 trace.append(
                     {
                         "iter": it + 1,
@@ -1089,20 +1119,24 @@ class FeedbackLoopClassifier(nn.Module):
                         "mean_entropy": float(ent.mean()),
                         "mean_disagreement": mean_disagreement,
                         "flagged_overlap": flagged_overlap,
+                        "selected_count": int(selected.numel()),
+                        "selection_jaccard_previous": selection_jaccard,
+                        # Gate 0 uses fixed cached prototype/oracle logits.  A
+                        # changing selected set is not semantic re-consultation.
+                        "advice_recomputed": False,
                         "logits": logits.detach().clone(),
                     }
                 )
+                if semantic_logits is not None:
+                    previous_selected = selected.detach().clone()
             prev_pred = pred
 
-            if prev_pred is not None and not math.isnan(churn) and churn < self.churn_tol:
+            if should_stop:
                 break
             if semantic_logits is None or it == self.max_iterations - 1:
                 continue
 
-            mask = self.selector(probs)
-            flagged = mask.nonzero(as_tuple=False).squeeze(-1)
-            flagged = self._gate_flagged(flagged, semantic_logits, probs)
-            bias = self.bias_module(semantic_logits[flagged], flagged, num_edges)
+            bias = self.bias_module(semantic_logits[selected], selected, num_edges)
 
         fusion_head: torch.Tensor | None = None
         if semantic_logits is None:

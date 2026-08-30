@@ -1,6 +1,7 @@
-"""Mechanism-only edge-injection test, v2 encoding, both datasets, 3 seeds.
+"""Gate 0 oracle-ceiling test, v2 encoding, both datasets, 3 seeds.
 
-Reproduces results/unsw_nb15_edge_injection_v2.json. Run from repo root:
+Writes the cross-dataset raw payload and both authoritative v2 oracle contracts.
+Run from repo root:
 
     python -m src.pipeline.step4.mechanism_only_edge_injection
 
@@ -9,10 +10,9 @@ GNN ONLY through the consultative feedback path. Scored against `control_head_on
 -- the same model with the feedback structurally absent -- NEVER against the bare GNN
 rung, which is a different model from a different training driver.
 
-Two advice controls decide whether any gain is semantic content or just added capacity:
-  shuffled = real advice delivered to the WRONG edge
-  random   = fixed uniform noise
-If either matches `real`, the mechanism is not reading the advice.
+The deliberately leaky oracle arms replace the semantic consultant's class logits
+with the true class at +/-4 nats.  Output fusion remains disabled, so even the oracle
+can reach the GNN only through the feedback mechanism being measured.
 
 NOT comparable to ladder numbers: fusion is off in every arm.
 
@@ -27,12 +27,18 @@ import os
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
-import sys
-import time
 import json
+import math
+import time
+import warnings
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
+from types import MappingProxyType
+
 import numpy as np
 import torch
-import warnings
 
 torch.set_num_threads(1)
 warnings.filterwarnings("ignore")
@@ -42,81 +48,466 @@ from src.pipeline.step4.sweep_top_k import _pooled_macro_f1
 from src.pipeline.common.datasets import get_dataset_config
 
 SEEDS = (42, 1, 2)
+SCHEMA_VERSION = 2
+ORACLE_LOGIT_MAGNITUDE = 4.0
+PAIRED_BOOTSTRAP_ITERS = 10_000
+RAW_OUTPUT_PATH = Path("results/raw/oracle_ceiling_v2.json")
+CONTRACT_PATHS = MappingProxyType(
+    {
+        "unsw_nb15": Path("results/unsw_nb15_oracle_ceiling_v2.json"),
+        "ton_iot": Path("results/ton_iot_oracle_ceiling_v2.json"),
+    }
+)
 SETUP = {
     "unsw_nb15": dict(top_k=31.0, scale=2.0),
     "ton_iot": dict(top_k=25.0, scale=20.0),
 }
-ARMS = ["control_head_only", "real", "control_shuffled", "control_random"]
 
 
-def run(output_path: str = "results/raw/mechanism_only_v2.json") -> dict:
-    _orig_seed = FB.SEED
-    out: dict = {}
+@dataclass(frozen=True)
+class ArmSpec:
+    """One prespecified Gate 0 arm.
 
-    for ds, cfgv in SETUP.items():
-        cfg = get_dataset_config(ds)
-        D = f"data/{ds}/processed"
-        data = torch.load(f"{D}/step1/pyg_data.pt", weights_only=False)
-        folds = torch.load(f"{D}/splits/folds.pt", weights_only=False)
-        emb = torch.load(cfg.llm_embedding_path, weights_only=False)
-        protos = torch.load(f"{D}/step4_feedback/prototypes.pt", weights_only=False)
-        labels = data.edge_label
-        ec = tuple(cfg.eval_classes)
-        dc = tuple(cfg.dropped_classes) if cfg.dropped_classes else ()
-        NC = cfg.num_classes
-        out[ds] = {}
+    ``advice_source='oracle'`` is diagnostic label leakage by construction.  It
+    is permitted only because every arm disables the output-fusion branch.
+    """
+
+    feedback_mode: str
+    injection_mode: str
+    advice_source: str
+
+
+ARMS = MappingProxyType(
+    {
+        "control_head_only": ArmSpec("head_only", "edge", "none"),
+        "real_prototype_edge": ArmSpec("real", "edge", "prototype"),
+        "oracle_edge": ArmSpec("real", "edge", "oracle"),
+        "oracle_attention": ArmSpec("real", "attention", "oracle"),
+    }
+)
+
+
+def _oracle_logits(
+    labels: torch.Tensor,
+    num_classes: int,
+    magnitude: float = 4.0,
+) -> torch.Tensor:
+    """Return deliberately leaky true-label logits at ``-magnitude/+magnitude``."""
+    if labels.ndim != 1 or labels.dtype != torch.long:
+        raise ValueError("labels must be a one-dimensional torch.long tensor")
+    if not isinstance(num_classes, int) or num_classes < 2:
+        raise ValueError("num_classes must be an integer >= 2")
+    if not math.isfinite(magnitude) or magnitude <= 0.0:
+        raise ValueError("magnitude must be finite and > 0")
+    if labels.numel() == 0:
+        raise ValueError("labels must not be empty")
+    if int(labels.min()) < 0 or int(labels.max()) >= num_classes:
+        raise ValueError("labels must lie in [0, num_classes)")
+
+    logits = torch.full(
+        (labels.shape[0], num_classes),
+        -float(magnitude),
+        device=labels.device,
+        dtype=torch.get_default_dtype(),
+    )
+    return logits.scatter_(1, labels.unsqueeze(1), float(magnitude))
+
+
+def _train_arm_fold(
+    arm_name: str,
+    *,
+    labels: torch.Tensor,
+    num_classes: int,
+    **fold_kwargs,
+):
+    """Train one fold while enforcing the Gate 0 advice and injection route."""
+    try:
+        spec = ARMS[arm_name]
+    except KeyError as exc:
+        raise ValueError(f"Unknown Gate 0 arm: {arm_name!r}") from exc
+
+    head_logits = (
+        _oracle_logits(labels, num_classes, ORACLE_LOGIT_MAGNITUDE)
+        if spec.advice_source == "oracle"
+        else None
+    )
+    call_kwargs = dict(fold_kwargs)
+    call_kwargs.update(
+        mode=spec.feedback_mode,
+        injection_mode=spec.injection_mode,
+        use_output_fusion=False,
+        head_logits=head_logits,
+    )
+    return FB._train_one_fold(**call_kwargs)
+
+
+def _paired_fold_ci(
+    candidate: Sequence[Mapping],
+    control: Sequence[Mapping],
+    *,
+    iters: int = PAIRED_BOOTSTRAP_ITERS,
+    seed: int = 42,
+) -> dict[str, float]:
+    """Bootstrap a CI over matched ``(seed, fold)`` macro-F1 differences."""
+    if iters < 1:
+        raise ValueError("iters must be >= 1")
+
+    def indexed(rows: Sequence[Mapping]) -> dict[tuple[int, int], float]:
+        result: dict[tuple[int, int], float] = {}
+        for row in rows:
+            key = (int(row["seed"]), int(row["fold"]))
+            if key in result:
+                raise ValueError(f"duplicate seed/fold pair: {key}")
+            value = float(row["test_macro_f1"])
+            if not math.isfinite(value):
+                raise ValueError(f"non-finite fold score for {key}")
+            result[key] = value
+        return result
+
+    candidate_by_pair = indexed(candidate)
+    control_by_pair = indexed(control)
+    if not candidate_by_pair or candidate_by_pair.keys() != control_by_pair.keys():
+        raise ValueError("candidate and control must have identical seed/fold pairs")
+
+    keys = sorted(candidate_by_pair)
+    paired = np.asarray(
+        [candidate_by_pair[key] - control_by_pair[key] for key in keys],
+        dtype=float,
+    )
+    rng = np.random.default_rng(seed)
+    sampled = paired[rng.integers(0, paired.size, size=(iters, paired.size))]
+    bootstrap_means = sampled.mean(axis=1)
+    return {
+        "mean_diff": float(paired.mean()),
+        "ci_low": float(np.percentile(bootstrap_means, 2.5)),
+        "ci_high": float(np.percentile(bootstrap_means, 97.5)),
+        "prob_positive": float((bootstrap_means > 0).mean()),
+        "n_pairs": int(paired.size),
+    }
+
+
+def _json_safe(value):
+    """Recursively convert numpy scalars and non-finite floats for strict JSON."""
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        value = float(value)
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
+def _atomic_json_dump(payload: Mapping, path: str | Path) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w") as handle:
+        json.dump(_json_safe(payload), handle, indent=2, allow_nan=False)
+        handle.write("\n")
+    os.replace(temporary, path)
+
+
+def _flatten_folds(runs: Sequence[Mapping]) -> list[dict]:
+    return [dict(fold) for run in runs for fold in run["folds"]]
+
+
+def _iteration_evidence(fold_records: Sequence[Mapping]) -> dict[str, dict]:
+    by_iteration: dict[int, list[Mapping]] = {}
+    for fold in fold_records:
+        for row in fold["iterations"]:
+            by_iteration.setdefault(int(row["iter"]), []).append(row)
+
+    summary: dict[str, dict] = {}
+    for iteration, rows in sorted(by_iteration.items()):
+        f1_values = np.asarray([float(row["test_macro_f1"]) for row in rows])
+        baselines = []
+        for fold in fold_records:
+            iterations = {int(row["iter"]): row for row in fold["iterations"]}
+            if iteration in iterations and 1 in iterations:
+                baselines.append(
+                    float(iterations[iteration]["test_macro_f1"])
+                    - float(iterations[1]["test_macro_f1"])
+                )
+        jaccards = [
+            float(row["selection_jaccard_previous"])
+            for row in rows
+            if row.get("selection_jaccard_previous") is not None
+            and math.isfinite(float(row["selection_jaccard_previous"]))
+        ]
+        summary[str(iteration)] = {
+            "n_fold_runs": len(rows),
+            "mean_test_macro_f1": float(f1_values.mean()),
+            "mean_change_from_iteration_1": float(np.mean(baselines)),
+            "wrong_to_correct": int(
+                sum(int(row["wrong_to_correct"]) for row in rows)
+            ),
+            "correct_to_wrong": int(
+                sum(int(row["correct_to_wrong"]) for row in rows)
+            ),
+            "mean_selected_count": float(
+                np.mean([row["selected_count"] for row in rows])
+            ),
+            "mean_selection_jaccard_previous": (
+                float(np.mean(jaccards)) if jaccards else None
+            ),
+            "advice_recomputed": any(bool(row["advice_recomputed"]) for row in rows),
+        }
+    return summary
+
+
+def _summarize_arm(runs: list[dict]) -> dict:
+    pooled = np.asarray([float(run["pooled_macro_f1"]) for run in runs])
+    folds = _flatten_folds(runs)
+    churn = [
+        float(row["churn"])
+        for fold in folds
+        for row in fold["iterations"]
+        if row.get("churn") is not None and math.isfinite(float(row["churn"]))
+    ]
+    return {
+        "mean": float(pooled.mean()),
+        "std": float(pooled.std()),
+        "runs": runs,
+        "fold_records": folds,
+        "mean_churn": float(np.mean(churn)) if churn else 0.0,
+        "iteration_evidence": _iteration_evidence(folds),
+    }
+
+
+def _arm_contracts() -> dict[str, dict]:
+    return {
+        name: {
+            "feedback_mode": spec.feedback_mode,
+            "injection_mode": spec.injection_mode,
+            "advice_source": spec.advice_source,
+            "use_output_fusion": False,
+            "diagnostic_label_leakage": spec.advice_source == "oracle",
+        }
+        for name, spec in ARMS.items()
+    }
+
+
+def _shared_architecture(fold_count: int) -> dict:
+    return {
+        "edge_attr_encoding": "v2_log_cont_cat_idx",
+        "seeds": list(SEEDS),
+        "fold_count": fold_count,
+        "max_iterations": FB.MAX_ITERATIONS,
+        "churn_tolerance": FB.CHURN_TOL,
+        "bias_confidence_fraction": FB.BIAS_CONFIDENCE_FRAC,
+        "gate_mode": FB.DEFAULT_GATE_MODE,
+        "real_arm_semantic_consultant": "whitened_prototype",
+        "trained_llm_head": False,
+        "use_output_fusion": False,
+        "injection_modes": {
+            name: spec.injection_mode for name, spec in ARMS.items()
+        },
+        "oracle_logit_magnitude": ORACLE_LOGIT_MAGNITUDE,
+        "deterministic_cpu": True,
+        "omp_num_threads": 1,
+        "mkl_num_threads": 1,
+        "torch_num_threads": 1,
+    }
+
+
+def _run_dataset(dataset: str, setup: Mapping) -> dict:
+    cfg = get_dataset_config(dataset)
+    root = Path(f"data/{dataset}/processed")
+    data = torch.load(root / "step1/pyg_data.pt", weights_only=False)
+    folds = torch.load(root / "splits/folds.pt", weights_only=False)
+    emb = torch.load(cfg.llm_embedding_path, weights_only=False)
+    protos = torch.load(root / "step4_feedback/prototypes.pt", weights_only=False)
+    labels = data.edge_label
+    eval_classes = tuple(cfg.eval_classes)
+    dropped_classes = tuple(cfg.dropped_classes or ())
+    num_classes = cfg.num_classes
+    if len(folds) != 5 or len(protos.get("folds", ())) != len(folds):
+        raise ValueError(
+            f"Gate 0 requires five matching CV/prototype folds; got "
+            f"{len(folds)} CV folds and {len(protos.get('folds', ()))} prototype folds"
+        )
+    started = time.time()
+    arm_results: dict[str, dict] = {}
+
+    print(
+        f"\n===== {cfg.display_name}  (top_k={setup['top_k']}, "
+        f"scale={setup['scale']}, output_fusion=OFF) =====",
+        flush=True,
+    )
+    for arm_name in ARMS:
+        seed_runs: list[dict] = []
+        for seed in SEEDS:
+            FB.SEED = seed
+            oof = torch.full((labels.shape[0], num_classes), float("nan"))
+            fold_records: list[dict] = []
+            for fold_idx, fold in enumerate(folds):
+                result = _train_arm_fold(
+                    arm_name,
+                    labels=labels,
+                    num_classes=num_classes,
+                    data=data,
+                    emb=emb,
+                    fold_state=protos["folds"][fold_idx],
+                    fold=fold,
+                    fold_idx=fold_idx,
+                    top_k_percent=setup["top_k"],
+                    eval_classes=eval_classes,
+                    dropped_classes=dropped_classes,
+                    injection_scale=setup["scale"],
+                )
+                oof[fold["test_mask"]] = result.logits[fold["test_mask"]]
+                fold_records.append(
+                    {
+                        "seed": seed,
+                        "fold": fold_idx,
+                        "best_val_macro_f1": result.best_val_macro_f1,
+                        "test_macro_f1": result.test_macro_f1,
+                        "iterations": result.iterations,
+                        "bias_diagnostics": result.bias_diagnostics,
+                    }
+                )
+            seed_runs.append(
+                {
+                    "seed": seed,
+                    "pooled_macro_f1": _pooled_macro_f1(
+                        labels, oof, eval_classes, dropped_classes
+                    ),
+                    "folds": fold_records,
+                }
+            )
+        arm_results[arm_name] = _summarize_arm(seed_runs)
+        arm = arm_results[arm_name]
         print(
-            f"\n===== {cfg.display_name}  (top_k={cfgv['top_k']}, scale={cfgv['scale']}, "
-            f"output_fusion=OFF) =====",
+            f"  {arm_name:24s} {arm['mean']:.4f} +/-{arm['std']:.4f}  "
+            f"[{time.time() - started:5.0f}s]",
             flush=True,
         )
-        t0 = time.time()
-        for arm in ARMS:
-            mode = (
-                "head_only" if arm == "control_head_only"
-                else "shuffled" if arm == "control_shuffled"
-                else "random" if arm == "control_random"
-                else "real"
-            )
-            runs, churns = [], []
-            for seed in SEEDS:
-                FB.SEED = seed
-                oof = torch.full((labels.shape[0], NC), float("nan"))
-                ch = []
-                for fi, f in enumerate(folds):
-                    r = FB._train_one_fold(
-                        data=data, emb=emb, fold_state=protos["folds"][fi], fold=f,
-                        fold_idx=fi, mode=mode, top_k_percent=cfgv["top_k"],
-                        eval_classes=ec, dropped_classes=dc, injection_mode="edge",
-                        injection_scale=cfgv["scale"], use_output_fusion=False,
-                    )
-                    oof[f["test_mask"]] = r.logits[f["test_mask"]]
-                    c = [
-                        it["churn"] for it in r.iterations
-                        if isinstance(it.get("churn"), float) and it["churn"] == it["churn"]
-                    ]
-                    ch.append(float(np.mean(c)) if c else 0.0)
-                runs.append(_pooled_macro_f1(labels, oof, ec, dc))
-                churns.append(float(np.mean(ch)))
-            out[ds][arm] = dict(
-                mean=float(np.mean(runs)), std=float(np.std(runs)),
-                runs=[round(x, 4) for x in runs], churn=float(np.mean(churns)),
-            )
-            a = out[ds][arm]
-            print(
-                f"  {arm:20s} {a['mean']:.4f} +/-{a['std']:.4f}  churn={a['churn']:.4f}  "
-                f"runs={a['runs']}  [{time.time() - t0:5.0f}s]",
-                flush=True,
-            )
-        c = out[ds]["control_head_only"]["mean"]
-        print(f"  --> real - control          = {out[ds]['real']['mean'] - c:+.4f}")
-        print(f"      shuffled - control      = {out[ds]['control_shuffled']['mean'] - c:+.4f}")
-        print(f"      random - control        = {out[ds]['control_random']['mean'] - c:+.4f}")
 
-    FB.SEED = _orig_seed
-    json.dump(out, open(output_path, "w"), indent=1)
-    print("\nPASS CRITERION: real > control, AND both advice controls <= control.")
-    return out
+    control_folds = arm_results["control_head_only"]["fold_records"]
+    comparisons = {
+        f"{name}_vs_control_head_only": _paired_fold_ci(
+            arm_results[name]["fold_records"], control_folds
+        )
+        for name in ("real_prototype_edge", "oracle_edge", "oracle_attention")
+    }
+    control_mean = arm_results["control_head_only"]["mean"]
+    prototype_gain = arm_results["real_prototype_edge"]["mean"] - control_mean
+    oracle_headroom = arm_results["oracle_edge"]["mean"] - control_mean
+    captured_share = (
+        prototype_gain / oracle_headroom if oracle_headroom != 0.0 else None
+    )
+    return {
+        "dataset": cfg.display_name,
+        "dataset_key": dataset,
+        "configuration": {
+            **_shared_architecture(len(folds)),
+            "top_k_percent": float(setup["top_k"]),
+            "injection_scale": float(setup["scale"]),
+        },
+        "arms": arm_results,
+        "paired_comparisons": comparisons,
+        "decision": {
+            "oracle_edge_headroom": oracle_headroom,
+            "prototype_gain": prototype_gain,
+            "prototype_captured_share": captured_share,
+            "headroom_below_0_02": oracle_headroom < 0.02,
+        },
+        "elapsed_seconds": time.time() - started,
+    }
+
+
+def _dataset_contract(raw: Mapping, dataset: str) -> dict:
+    result = raw["datasets"][dataset]
+    return {
+        "schema_version": raw["schema_version"],
+        "dataset": result["dataset"],
+        "dataset_key": dataset,
+        "experiment": raw["experiment"],
+        "generated": raw["generated"],
+        "status": raw["status"],
+        "question": raw["question"],
+        "primary_metric": raw["primary_metric"],
+        "configuration": result["configuration"],
+        "arms": raw["arms"],
+        "results": result["arms"],
+        "paired_comparisons": result["paired_comparisons"],
+        "decision": result["decision"],
+        "program_decision": raw["program_decision"],
+        "reproduce": raw["reproduce"],
+        "raw_output": raw["raw_output"],
+        "supersedes": (
+            "results/unsw_nb15_oracle_ceiling.json"
+            if dataset == "unsw_nb15"
+            else None
+        ),
+    }
+
+
+def _write_outputs(
+    raw: Mapping,
+    output_path: str | Path,
+    contract_paths: Mapping[str, str | Path],
+) -> None:
+    _atomic_json_dump(raw, output_path)
+    for dataset, path in contract_paths.items():
+        _atomic_json_dump(_dataset_contract(raw, dataset), path)
+
+
+def run(
+    output_path: str | Path = RAW_OUTPUT_PATH,
+    contract_paths: Mapping[str, str | Path] | None = None,
+) -> dict:
+    original_seed = FB.SEED
+    datasets: dict[str, dict] = {}
+    try:
+        for dataset, setup in SETUP.items():
+            datasets[dataset] = _run_dataset(dataset, setup)
+    finally:
+        FB.SEED = original_seed
+
+    stop = all(
+        result["decision"]["headroom_below_0_02"]
+        for result in datasets.values()
+    )
+    raw = {
+        "schema_version": SCHEMA_VERSION,
+        "experiment": "oracle_consultant_ceiling_v2",
+        "generated": date.today().isoformat(),
+        "status": (
+            "DIAGNOSTIC ONLY - DELIBERATE LABEL LEAKAGE; NEVER REPORTABLE "
+            "AS DEPLOYABLE PERFORMANCE"
+        ),
+        "question": (
+            "Under v2 encoding and canonical validation-selected settings, how "
+            "much macro-F1 can a perfect consultant deliver through the feedback "
+            "mechanism alone?"
+        ),
+        "primary_metric": "pooled_5_fold_oof_macro_f1",
+        "seeds": list(SEEDS),
+        "raw_output": str(output_path),
+        "arms": _arm_contracts(),
+        "datasets": datasets,
+        "program_decision": {
+            "rule": "stop P1'-P4 if oracle_edge headroom < 0.02 on both datasets",
+            "stop_mechanism_surgery": stop,
+            "outcome": "stop" if stop else "continue",
+        },
+        "reproduce": (
+            "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m "
+            "src.pipeline.step4.mechanism_only_edge_injection"
+        ),
+    }
+    _write_outputs(raw, output_path, contract_paths or CONTRACT_PATHS)
+    print(
+        "\nGATE 0 DECISION: "
+        + ("STOP P1'-P4" if stop else "HEADROOM REMAINS; REVIEW NEXT OPTION"),
+        flush=True,
+    )
+    return raw
 
 
 if __name__ == "__main__":

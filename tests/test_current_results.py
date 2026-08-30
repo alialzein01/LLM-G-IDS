@@ -13,6 +13,8 @@ TON_HEAD_BASELINE_PATH = Path("results/ton_iot_head_baseline.json")
 LOOP_MECHANISM_PATH = Path("results/unsw_nb15_loop_mechanism.json")
 TON_RESULTS_PATH = Path("results/ton_iot_current.json")
 COMPARISON_PATH = Path("results/cross_dataset_comparison.json")
+UNSW_ORACLE_V2_PATH = Path("results/unsw_nb15_oracle_ceiling_v2.json")
+TON_ORACLE_V2_PATH = Path("results/ton_iot_oracle_ceiling_v2.json")
 
 
 class CurrentResultsContractTest(unittest.TestCase):
@@ -141,6 +143,73 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertEqual(
             comparison["architecture"]["semantic_consultant"], unsw["semantic_consultant"]
         )
+
+    def test_v2_oracle_contracts_declare_shared_architecture_and_evidence(self) -> None:
+        """Gate 0 must be comparable across datasets and retain causal evidence."""
+        for path in (UNSW_ORACLE_V2_PATH, TON_ORACLE_V2_PATH):
+            self.assertTrue(
+                path.exists(),
+                f"Missing Gate 0 artifact {path}; run the prespecified v2 oracle experiment",
+            )
+
+        unsw = json.loads(UNSW_ORACLE_V2_PATH.read_text())
+        ton = json.loads(TON_ORACLE_V2_PATH.read_text())
+        shared_fields = (
+            "edge_attr_encoding",
+            "seeds",
+            "fold_count",
+            "max_iterations",
+            "churn_tolerance",
+            "bias_confidence_fraction",
+            "gate_mode",
+            "real_arm_semantic_consultant",
+            "trained_llm_head",
+            "use_output_fusion",
+            "injection_modes",
+            "oracle_logit_magnitude",
+            "deterministic_cpu",
+            "omp_num_threads",
+            "mkl_num_threads",
+            "torch_num_threads",
+        )
+        for field in shared_fields:
+            self.assertIn(field, unsw["configuration"])
+            self.assertEqual(
+                unsw["configuration"][field],
+                ton["configuration"][field],
+                f"Gate 0 architecture drifted on {field}",
+            )
+
+        self.assertEqual(unsw["configuration"]["top_k_percent"], 31.0)
+        self.assertEqual(ton["configuration"]["top_k_percent"], 25.0)
+        self.assertEqual(unsw["configuration"]["injection_scale"], 2.0)
+        self.assertEqual(ton["configuration"]["injection_scale"], 20.0)
+
+        expected_arms = {
+            "control_head_only",
+            "real_prototype_edge",
+            "oracle_edge",
+            "oracle_attention",
+        }
+        for payload in (unsw, ton):
+            self.assertIn("NEVER REPORTABLE", payload["status"])
+            self.assertEqual(set(payload["arms"]), expected_arms)
+            self.assertEqual(set(payload["results"]), expected_arms)
+            for arm in expected_arms:
+                result = payload["results"][arm]
+                self.assertEqual(len(result["fold_records"]), 15)
+                self.assertIn("iteration_evidence", result)
+                for evidence in result["iteration_evidence"].values():
+                    self.assertIn("wrong_to_correct", evidence)
+                    self.assertIn("correct_to_wrong", evidence)
+                    self.assertIn("mean_selection_jaccard_previous", evidence)
+                    self.assertFalse(evidence["advice_recomputed"])
+            for comparison in payload["paired_comparisons"].values():
+                self.assertEqual(comparison["n_pairs"], 15)
+                self.assertIn("ci_low", comparison)
+                self.assertIn("ci_high", comparison)
+            self.assertIn("headroom_below_0_02", payload["decision"])
+            self.assertIn("stop_mechanism_surgery", payload["program_decision"])
 
     def test_head_baselines_record_that_they_beat_the_full_system(self) -> None:
         """The trained-head LLM-only baseline outscores the full system on both datasets.

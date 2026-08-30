@@ -128,6 +128,52 @@ def _macro_f1(
     return eval_macro_f1(labels[mask], preds, eval_classes)
 
 
+def _build_iteration_rows(
+    trace: list[dict],
+    labels: torch.Tensor,
+    test_mask: torch.Tensor,
+    eval_classes: tuple[int, ...] | list[int] | None = None,
+    dropped_classes: tuple[int, ...] | list[int] = (),
+) -> list[dict]:
+    """Convert tensor-bearing model traces into JSON-safe test-fold evidence."""
+    if not trace:
+        return []
+
+    baseline_pred = _preds_from_logits(trace[0]["logits"][test_mask], dropped_classes)
+    targets = labels[test_mask]
+    baseline_correct = baseline_pred == targets
+    rows: list[dict] = []
+    for item in trace:
+        it_logits = item["logits"]
+        current_pred = _preds_from_logits(it_logits[test_mask], dropped_classes)
+        current_correct = current_pred == targets
+        rows.append(
+            {
+                "iter": item["iter"],
+                "churn": item["churn"],
+                "mean_entropy": item["mean_entropy"],
+                "mean_disagreement": item["mean_disagreement"],
+                "flagged_overlap": item["flagged_overlap"],
+                "selected_count": item["selected_count"],
+                "selection_jaccard_previous": item[
+                    "selection_jaccard_previous"
+                ],
+                "advice_recomputed": item["advice_recomputed"],
+                "test_macro_f1": _macro_f1(
+                    it_logits, labels, test_mask, eval_classes, dropped_classes
+                ),
+                "wrong_to_correct": int(
+                    ((~baseline_correct) & current_correct).sum()
+                ),
+                "correct_to_wrong": int(
+                    (baseline_correct & (~current_correct)).sum()
+                ),
+                "per_class_f1": _per_class_f1(it_logits, labels, test_mask),
+            }
+        )
+    return rows
+
+
 def _build_model(
     top_k_percent: float = TOP_K_PERCENT,
     bias_confidence_fraction: float = BIAS_CONFIDENCE_FRAC,
@@ -311,23 +357,9 @@ def _train_one_fold(
             feedback_mode=mode, collect_trace=True, head_logits=head_logits,
         )
 
-    # per-iteration test-fold metrics
-    iter_rows = []
-    for t in trace:
-        it_logits = t["logits"]
-        iter_rows.append(
-            {
-                "iter": t["iter"],
-                "churn": t["churn"],
-                "mean_entropy": t["mean_entropy"],
-                "mean_disagreement": t["mean_disagreement"],
-                "flagged_overlap": t["flagged_overlap"],
-                "test_macro_f1": _macro_f1(
-                    it_logits, labels, test_mask, eval_classes, dropped_classes
-                ),
-                "per_class_f1": _per_class_f1(it_logits, labels, test_mask),
-            }
-        )
+    iter_rows = _build_iteration_rows(
+        trace, labels, test_mask, eval_classes, dropped_classes
+    )
 
     test_f1 = _macro_f1(eval_logits, labels, test_mask, eval_classes, dropped_classes)
 
