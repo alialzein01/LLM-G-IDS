@@ -29,6 +29,11 @@ EXPECTED_ARMS = {
         "injection_mode": "edge",
         "advice_source": "prototype",
     },
+    "head_trained_edge": {
+        "feedback_mode": "real",
+        "injection_mode": "edge",
+        "advice_source": "trained_head",
+    },
     "oracle_edge": {
         "feedback_mode": "real",
         "injection_mode": "edge",
@@ -50,7 +55,7 @@ def test_gate0_preserves_prespecified_seeds_and_dataset_settings() -> None:
     }
 
 
-def test_gate0_declares_exactly_four_explicit_arm_specs() -> None:
+def test_gate05_declares_exactly_five_explicit_arm_specs() -> None:
     assert isinstance(experiment.ARMS, Mapping), (
         "Gate 0 arms must be named specifications, not implicit string branches"
     )
@@ -116,18 +121,19 @@ def test_oracle_logits_reject_invalid_label_contract(
 
 
 @pytest.mark.parametrize(
-    "arm_name,expects_oracle",
+    "arm_name,expected_source",
     [
-        ("control_head_only", False),
-        ("real_prototype_edge", False),
-        ("oracle_edge", True),
-        ("oracle_attention", True),
+        ("control_head_only", "none"),
+        ("real_prototype_edge", "prototype"),
+        ("head_trained_edge", "trained_head"),
+        ("oracle_edge", "oracle"),
+        ("oracle_attention", "oracle"),
     ],
 )
 def test_train_arm_fold_uses_only_the_semantic_channel(
     monkeypatch: pytest.MonkeyPatch,
     arm_name: str,
-    expects_oracle: bool,
+    expected_source: str,
 ) -> None:
     captured: dict = {}
     sentinel = object()
@@ -138,12 +144,16 @@ def test_train_arm_fold_uses_only_the_semantic_channel(
 
     monkeypatch.setattr(experiment.FB, "_train_one_fold", fake_train_one_fold)
     labels = torch.tensor([1, 0, 2], dtype=torch.long)
+    trained_head_logits = torch.stack(
+        [torch.full((3, 3), float(fold_idx)) for fold_idx in range(5)]
+    )
 
     result = experiment._train_arm_fold(
         arm_name,
         labels=labels,
         num_classes=3,
         fold_idx=4,
+        trained_head_logits=trained_head_logits,
     )
 
     spec = EXPECTED_ARMS[arm_name]
@@ -153,11 +163,38 @@ def test_train_arm_fold_uses_only_the_semantic_channel(
     assert captured["use_output_fusion"] is False
     assert captured["fold_idx"] == 4
 
-    if expects_oracle:
+    if expected_source == "oracle":
         expected = experiment._oracle_logits(labels, num_classes=3)
         assert torch.equal(captured["head_logits"], expected)
+    elif expected_source == "trained_head":
+        assert torch.equal(captured["head_logits"], trained_head_logits[4])
     else:
         assert captured["head_logits"] is None
+
+
+@pytest.mark.parametrize(
+    "trained_head_logits,fold_idx,error",
+    [
+        (torch.zeros(5, 3, 2), 0, "shape"),
+        (torch.zeros(5, 3, 3), -1, "fold_idx"),
+        (torch.zeros(5, 3, 3), 5, "fold_idx"),
+    ],
+)
+def test_trained_head_arm_rejects_wrong_shape_or_fold_index(
+    monkeypatch: pytest.MonkeyPatch,
+    trained_head_logits: torch.Tensor,
+    fold_idx: int,
+    error: str,
+) -> None:
+    monkeypatch.setattr(experiment.FB, "_train_one_fold", lambda **_: None)
+    with pytest.raises(ValueError, match=error):
+        experiment._train_arm_fold(
+            "head_trained_edge",
+            labels=torch.tensor([0, 1, 2]),
+            num_classes=3,
+            fold_idx=fold_idx,
+            trained_head_logits=trained_head_logits,
+        )
 
 
 def test_iteration_rows_report_transitions_relative_to_iteration_one() -> None:
@@ -395,9 +432,13 @@ def test_run_builds_one_program_decision_and_writes_from_same_payload(
         "rule": "stop P1'-P4 if oracle_edge headroom < 0.02 on both datasets",
         "stop_mechanism_surgery": True,
         "outcome": "stop",
+        "gate05_is_diagnostic_only": True,
+        "trained_head_is_ladder_rung": False,
     }
     assert raw["arms"]["oracle_edge"]["diagnostic_label_leakage"] is True
     assert raw["arms"]["real_prototype_edge"]["diagnostic_label_leakage"] is False
+    assert raw["arms"]["head_trained_edge"]["diagnostic_only"] is True
+    assert raw["arms"]["head_trained_edge"]["eligible_for_ladder"] is False
 
 
 def test_write_outputs_derives_both_contracts_from_raw_payload(tmp_path) -> None:

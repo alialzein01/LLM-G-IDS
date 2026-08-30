@@ -20,10 +20,11 @@ attention remains unseparated from control on both datasets.
 Artifacts: `results/raw/oracle_ceiling_v2.{json,log}` plus
 `results/{unsw_nb15,ton_iot}_oracle_ceiling_v2.json`. Full suite: 58 passed.
 
-**Interpretation:** Gate 0 does not stop P1′–P4 for lack of mechanism capacity.
-It strengthens the consultant-quality concern: the canonical prototype leaves
-most available edge-channel headroom unrealized. Choosing consultant work versus
-P1′/P3′ remains the next thesis-level decision; no later option started here.
+**Interpretation after Gate 0.5:** Gate 0 does not stop P1′–P4 for lack of
+mechanism capacity, but a regenerated trained head also fails to exploit that
+capacity (12.5% point share on UNSW, −38.0% on ToN). The problem is not fixed by
+substituting a more accurate consultant; realistic-advice calibration and
+translation through the bias path remain unresolved. No later option started here.
 
 **Goal:** Measure the feedback mechanism's v2 ceiling on UNSW-NB15 and ToN-IoT
 using the canonical per-dataset `top_k_percent` and `injection_scale`, with

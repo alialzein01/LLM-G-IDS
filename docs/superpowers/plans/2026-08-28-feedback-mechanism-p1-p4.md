@@ -107,6 +107,12 @@ raises it too. Revision 1 was wrong to propose it. Every option below is judged 
 > Oracle attention remains unseparated from control on both datasets. See
 > `results/unsw_nb15_oracle_ceiling_v2.json`,
 > `results/ton_iot_oracle_ceiling_v2.json`, and the completed Gate 0 TDD plan.
+>
+> **Gate 0.5 refinement (2026-08-30):** a regenerated, leakage-free trained-head
+> consultant captured only 12.5% of pooled headroom on UNSW (unseparated from
+> control) and −38.0% on ToN (significant harm). A stronger standalone classifier
+> is therefore not sufficient; the unresolved issue is realistic-advice
+> calibration/translation through the bias path. See RESULTS_ARCHIVE.md §2.5.
 
 **Why.** Every headroom argument in this document rests on a pre-v2 measurement taken at
 non-canonical `top_k=16, scale=10`, on UNSW only. The v1→v2 encoding change moved the GNN

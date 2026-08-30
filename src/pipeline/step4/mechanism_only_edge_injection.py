@@ -51,11 +51,15 @@ SEEDS = (42, 1, 2)
 SCHEMA_VERSION = 2
 ORACLE_LOGIT_MAGNITUDE = 4.0
 PAIRED_BOOTSTRAP_ITERS = 10_000
-RAW_OUTPUT_PATH = Path("results/raw/oracle_ceiling_v2.json")
+RAW_OUTPUT_PATH = Path("results/raw/oracle_ceiling_v2_trained_head.json")
 CONTRACT_PATHS = MappingProxyType(
     {
-        "unsw_nb15": Path("results/unsw_nb15_oracle_ceiling_v2.json"),
-        "ton_iot": Path("results/ton_iot_oracle_ceiling_v2.json"),
+        "unsw_nb15": Path(
+            "results/unsw_nb15_oracle_ceiling_v2_trained_head.json"
+        ),
+        "ton_iot": Path(
+            "results/ton_iot_oracle_ceiling_v2_trained_head.json"
+        ),
     }
 )
 SETUP = {
@@ -81,6 +85,7 @@ ARMS = MappingProxyType(
     {
         "control_head_only": ArmSpec("head_only", "edge", "none"),
         "real_prototype_edge": ArmSpec("real", "edge", "prototype"),
+        "head_trained_edge": ArmSpec("real", "edge", "trained_head"),
         "oracle_edge": ArmSpec("real", "edge", "oracle"),
         "oracle_attention": ArmSpec("real", "attention", "oracle"),
     }
@@ -118,6 +123,8 @@ def _train_arm_fold(
     *,
     labels: torch.Tensor,
     num_classes: int,
+    fold_idx: int,
+    trained_head_logits: torch.Tensor | None = None,
     **fold_kwargs,
 ):
     """Train one fold while enforcing the Gate 0 advice and injection route."""
@@ -126,13 +133,39 @@ def _train_arm_fold(
     except KeyError as exc:
         raise ValueError(f"Unknown Gate 0 arm: {arm_name!r}") from exc
 
-    head_logits = (
-        _oracle_logits(labels, num_classes, ORACLE_LOGIT_MAGNITUDE)
-        if spec.advice_source == "oracle"
-        else None
-    )
+    if spec.advice_source == "oracle":
+        head_logits = _oracle_logits(
+            labels, num_classes, ORACLE_LOGIT_MAGNITUDE
+        )
+    elif spec.advice_source == "trained_head":
+        expected_tail = (labels.shape[0], num_classes)
+        if (
+            trained_head_logits is None
+            or trained_head_logits.ndim != 3
+            or tuple(trained_head_logits.shape[1:]) != expected_tail
+        ):
+            actual = (
+                None
+                if trained_head_logits is None
+                else tuple(trained_head_logits.shape)
+            )
+            raise ValueError(
+                "trained_head_logits shape must be [folds, E, C] with "
+                f"(E, C)={expected_tail}; got {actual}"
+            )
+        if fold_idx < 0 or fold_idx >= trained_head_logits.shape[0]:
+            raise ValueError(
+                f"fold_idx must be in [0, {trained_head_logits.shape[0]}), "
+                f"got {fold_idx}"
+            )
+        # This exact fold slice is load-bearing: its test rows are OOF for this
+        # fold, whereas selecting another slice silently breaks OOF discipline.
+        head_logits = trained_head_logits[fold_idx]
+    else:
+        head_logits = None
     call_kwargs = dict(fold_kwargs)
     call_kwargs.update(
+        fold_idx=fold_idx,
         mode=spec.feedback_mode,
         injection_mode=spec.injection_mode,
         use_output_fusion=False,
@@ -286,6 +319,8 @@ def _arm_contracts() -> dict[str, dict]:
             "advice_source": spec.advice_source,
             "use_output_fusion": False,
             "diagnostic_label_leakage": spec.advice_source == "oracle",
+            "diagnostic_only": spec.advice_source in {"trained_head", "oracle"},
+            "eligible_for_ladder": False,
         }
         for name, spec in ARMS.items()
     }
@@ -302,6 +337,9 @@ def _shared_architecture(fold_count: int) -> dict:
         "gate_mode": FB.DEFAULT_GATE_MODE,
         "real_arm_semantic_consultant": "whitened_prototype",
         "trained_llm_head": False,
+        "trained_head_diagnostic_arm": True,
+        "trained_head_artifact_regenerated": True,
+        "trained_head_use_output_fusion": False,
         "use_output_fusion": False,
         "injection_modes": {
             name: spec.injection_mode for name, spec in ARMS.items()
@@ -330,6 +368,25 @@ def _run_dataset(dataset: str, setup: Mapping) -> dict:
             f"Gate 0 requires five matching CV/prototype folds; got "
             f"{len(folds)} CV folds and {len(protos.get('folds', ()))} prototype folds"
         )
+    trained_head_path = root / "step4_feedback/llm_head_logits.pt"
+    trained_head_logits = torch.load(trained_head_path, weights_only=False)
+    expected_head_shape = (len(folds), labels.shape[0], num_classes)
+    if tuple(trained_head_logits.shape) != expected_head_shape:
+        raise RuntimeError(
+            f"Trained-head logits have shape {tuple(trained_head_logits.shape)}; "
+            f"expected {expected_head_shape}."
+        )
+    source_paths = (
+        Path(cfg.graph_path),
+        Path(cfg.splits_path),
+        Path(cfg.llm_embedding_path),
+    )
+    newest_source_mtime = max(path.stat().st_mtime_ns for path in source_paths)
+    if trained_head_path.stat().st_mtime_ns <= newest_source_mtime:
+        raise RuntimeError(
+            f"Stale trained-head artifact {trained_head_path}; regenerate it after "
+            "the current graph, folds, and LLM embeddings."
+        )
     started = time.time()
     arm_results: dict[str, dict] = {}
 
@@ -349,6 +406,7 @@ def _run_dataset(dataset: str, setup: Mapping) -> dict:
                     arm_name,
                     labels=labels,
                     num_classes=num_classes,
+                    trained_head_logits=trained_head_logits,
                     data=data,
                     emb=emb,
                     fold_state=protos["folds"][fold_idx],
@@ -392,13 +450,22 @@ def _run_dataset(dataset: str, setup: Mapping) -> dict:
         f"{name}_vs_control_head_only": _paired_fold_ci(
             arm_results[name]["fold_records"], control_folds
         )
-        for name in ("real_prototype_edge", "oracle_edge", "oracle_attention")
+        for name in (
+            "real_prototype_edge",
+            "head_trained_edge",
+            "oracle_edge",
+            "oracle_attention",
+        )
     }
     control_mean = arm_results["control_head_only"]["mean"]
     prototype_gain = arm_results["real_prototype_edge"]["mean"] - control_mean
+    trained_head_gain = arm_results["head_trained_edge"]["mean"] - control_mean
     oracle_headroom = arm_results["oracle_edge"]["mean"] - control_mean
     captured_share = (
         prototype_gain / oracle_headroom if oracle_headroom != 0.0 else None
+    )
+    trained_head_captured_share = (
+        trained_head_gain / oracle_headroom if oracle_headroom != 0.0 else None
     )
     return {
         "dataset": cfg.display_name,
@@ -407,6 +474,10 @@ def _run_dataset(dataset: str, setup: Mapping) -> dict:
             **_shared_architecture(len(folds)),
             "top_k_percent": float(setup["top_k"]),
             "injection_scale": float(setup["scale"]),
+            "trained_head_artifact": str(trained_head_path),
+            "trained_head_artifact_shape": list(trained_head_logits.shape),
+            "trained_head_artifact_regenerated": True,
+            "trained_head_artifact_newer_than_sources": True,
         },
         "arms": arm_results,
         "paired_comparisons": comparisons,
@@ -414,6 +485,8 @@ def _run_dataset(dataset: str, setup: Mapping) -> dict:
             "oracle_edge_headroom": oracle_headroom,
             "prototype_gain": prototype_gain,
             "prototype_captured_share": captured_share,
+            "trained_head_gain": trained_head_gain,
+            "trained_head_captured_share": trained_head_captured_share,
             "headroom_below_0_02": oracle_headroom < 0.02,
         },
         "elapsed_seconds": time.time() - started,
@@ -439,11 +512,8 @@ def _dataset_contract(raw: Mapping, dataset: str) -> dict:
         "program_decision": raw["program_decision"],
         "reproduce": raw["reproduce"],
         "raw_output": raw["raw_output"],
-        "supersedes": (
-            "results/unsw_nb15_oracle_ceiling.json"
-            if dataset == "unsw_nb15"
-            else None
-        ),
+        "extends": f"results/{dataset}_oracle_ceiling_v2.json",
+        "supersedes": None,
     }
 
 
@@ -475,16 +545,15 @@ def run(
     )
     raw = {
         "schema_version": SCHEMA_VERSION,
-        "experiment": "oracle_consultant_ceiling_v2",
+        "experiment": "oracle_consultant_ceiling_v2_trained_head",
         "generated": date.today().isoformat(),
         "status": (
             "DIAGNOSTIC ONLY - DELIBERATE LABEL LEAKAGE; NEVER REPORTABLE "
             "AS DEPLOYABLE PERFORMANCE"
         ),
         "question": (
-            "Under v2 encoding and canonical validation-selected settings, how "
-            "much macro-F1 can a perfect consultant deliver through the feedback "
-            "mechanism alone?"
+            "Under the Gate 0 v2 mechanism-only protocol, how much oracle "
+            "headroom can a leakage-free per-fold trained-head consultant capture?"
         ),
         "primary_metric": "pooled_5_fold_oof_macro_f1",
         "seeds": list(SEEDS),
@@ -495,6 +564,8 @@ def run(
             "rule": "stop P1'-P4 if oracle_edge headroom < 0.02 on both datasets",
             "stop_mechanism_surgery": stop,
             "outcome": "stop" if stop else "continue",
+            "gate05_is_diagnostic_only": True,
+            "trained_head_is_ladder_rung": False,
         },
         "reproduce": (
             "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m "
