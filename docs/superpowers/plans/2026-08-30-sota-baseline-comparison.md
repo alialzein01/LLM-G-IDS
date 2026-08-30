@@ -297,14 +297,26 @@ The paper's Eq. 4 aggregates edge features alone, but the authors' released
 implementation computes the message as `W_msg([h_u ‖ e_uv])`. Confirm which form the
 published numbers came from, then implement that form and record the choice.
 
-Run: fetch `https://github.com/waimorris/E-GraphSAGE` (the authors' repo) and read the
-`SAGELayer.message_func` definition. If the repo is unreachable, fall back to
-`https://ar5iv.labs.arxiv.org/html/2103.16329` §IV and implement the paper's Eq. 4-6
-form exactly.
+**This has already been verified — do not re-verify, just implement it.** The authors'
+released notebook
 
-Record the outcome as a one-line comment in `e_graphsage.py` naming the source, and add
-it to the driver's `deviations` list as `D5` if the implemented form differs from the
-paper equations.
+`https://raw.githubusercontent.com/waimorris/E-GraphSAGE/master/E-GraphSAGE/netflow/ton-iot/Unsw_ton_iot_multiclass_mean_agg.ipynb`
+
+defines the message as:
+
+```python
+self.W_msg(torch.cat([edges.src["h"], edges.data["h"]], 2))
+```
+
+i.e. `W_msg([h_u ‖ e_uv])`, which **differs from the paper's Eq. 4** (that aggregates
+`e_uv` alone, without the source node state). The published numbers came from the code,
+so implement the code's form.
+
+Record the source URL as a comment in `e_graphsage.py`.
+
+**Do not edit any deviations list in this task.** The driver does not exist until Task 5,
+whose literal `DEVIATIONS` block already contains the corresponding `D5` entry. This step
+produces a code comment only.
 
 - [ ] **Step 2: Write the failing model tests**
 
@@ -838,7 +850,7 @@ class ContractShapeTest(unittest.TestCase):
             self.assertIn(key, payload)
         self.assertEqual(payload["primary_metric"], "macro_f1")
         codes = {d["code"] for d in payload["deviations"]}
-        self.assertTrue({"D1", "D2", "D3", "D4"}.issubset(codes))
+        self.assertTrue({"D1", "D2", "D3", "D4", "D5"}.issubset(codes))
         for dev in payload["deviations"]:
             self.assertTrue(dev["reason"])
             self.assertTrue(dev["resolution"])
@@ -889,6 +901,16 @@ DEVIATIONS = [
         "reason": "TE-G-SAGE's rare_min_freq=50 removes almost every port category "
                   "at our scale, where the whole graph has fewer than 2200 edges.",
         "resolution": "Applied as published in as_published; swept in refit.",
+    },
+    {
+        "code": "D5",
+        "reason": "E-GraphSAGE's paper Eq. 4 aggregates edge features alone, but the "
+                  "authors' released implementation builds the message as "
+                  "W_msg([h_u || e_uv]), concatenating the source node state. The "
+                  "published numbers came from the code, not the equation.",
+        "resolution": "The released implementation's form is used. Source: "
+                      "github.com/waimorris/E-GraphSAGE, "
+                      "E-GraphSAGE/netflow/ton-iot/Unsw_ton_iot_multiclass_mean_agg.ipynb",
     },
 ]
 
@@ -1271,7 +1293,7 @@ class SotaBaselineContractTest(unittest.TestCase):
     def test_every_deviation_is_explained(self) -> None:
         payload = json.loads(Path("results/unsw_nb15_sota_baselines.json").read_text())
         codes = {d["code"] for d in payload["deviations"]}
-        self.assertTrue({"D1", "D2", "D3", "D4"}.issubset(codes))
+        self.assertTrue({"D1", "D2", "D3", "D4", "D5"}.issubset(codes))
         for dev in payload["deviations"]:
             self.assertTrue(dev["reason"].strip())
             self.assertTrue(dev["resolution"].strip())
@@ -1286,7 +1308,7 @@ Expected: all pass, including the pre-existing suite.
 
 New section "§5 SOTA baseline comparison" recording: the two baselines and why the other
 candidates were rejected, the as_published / refit / plus_node_features numbers per
-dataset, the full Task 9 CI table with its sign convention, the D1-D4 deviations, and the
+dataset, the full Task 9 CI table with its sign convention, the D1-D5 deviations, and the
 claim boundary sentence verbatim. State explicitly which baseline-versus-rung differences
 are separated and which are not.
 
