@@ -127,6 +127,26 @@ Each baseline is reported in **two columns**:
   count (see D3), so both columns use our standard early-stopping schedule. `refit`
   therefore differs from `as_published` only in the knobs tabulated above.
 
+- **`plus_node_features`** (E-GraphSAGE only) — identical to `refit`, except the
+  `x_v = {1,...,1}` initialisation is replaced by our 10 centrality measures (`data.x`).
+
+  This is **not E-GraphSAGE** and must never be tabulated as such. It is labelled
+  "E-GraphSAGE + our node features" everywhere it appears. Its purpose is a single
+  ablation: E-GraphSAGE learns its node representation from the edges, while we hand our
+  model precomputed centralities derived from those same edges. The gap between `refit`
+  and `plus_node_features` isolates how much of our advantage comes from that feature
+  engineering rather than from GNN+LLM fusion — the question a reviewer will ask, and one
+  the two-column design cannot answer.
+
+  Note that this column withholds nothing from `refit`: centralities are derived from the
+  same edge list both columns already receive. It changes the *representation*, not the
+  data.
+
+  TE-G-SAGE's node-feature initialisation is not documented in the material reviewed. If
+  implementation confirms it also uses a constant initialisation, the same variant is
+  added for it; if it consumes node features natively, the column does not apply and that
+  fact is recorded.
+
 Reporting both is deliberate. The published defaults were chosen for graphs ~300x larger
 than ours; running them unchanged at our scale places them outside their designed
 operating regime, and we chose that regime by choosing aggregation. The `as_published`
@@ -175,7 +195,8 @@ the results JSON, so the report can cite them rather than bury them.
 | `results/{unsw_nb15,ton_iot}_sota_baselines.json` | results contract |
 | `tests/test_sota_baselines.py` | contract tests (§9) |
 
-Report artifact: one table of 2 baselines x 2 configs x 2 datasets against our 4 rungs
+Report artifact: one table of 2 baselines x 2 configs (plus the labelled E-GraphSAGE
+ node-feature variant) x 2 datasets against our 4 rungs
 (GNN / LLM / AGAF / Loop).
 
 ## 8. Results contract
@@ -185,6 +206,9 @@ Report artifact: one table of 2 baselines x 2 configs x 2 datasets against our 4
 
 - `baselines.{e_graphsage,te_g_sage}.{as_published,refit}` each carrying
   `macro_f1`, `accuracy`, `weighted_f1`, `per_class_f1`, `seeds`, `hyperparameters`.
+- `baselines.e_graphsage.plus_node_features` — same fields, plus
+  `"variant_label": "E-GraphSAGE + our node features"` and
+  `"is_faithful_to_paper": false`, so no downstream table can render it as E-GraphSAGE.
 - `deviations` — the D1-D4 list.
 - `data_provenance` — path and sha of `aggregated_edges.csv` and `folds.pt`, plus
   `excluded_classes`.
@@ -196,8 +220,11 @@ Report artifact: one table of 2 baselines x 2 configs x 2 datasets against our 4
   fold hash).
 - The same classes are excluded from the ToN metric in both files.
 - Every declared deviation has a non-empty `reason` and `resolution`.
-- E-GraphSAGE ignores `data.x`: assert its forward pass is invariant to perturbing
-  `data.x`, confirming the ones-initialisation is faithfully implemented.
+- E-GraphSAGE ignores `data.x`: assert its forward pass under `as_published` and `refit`
+  is invariant to perturbing `data.x`, confirming the ones-initialisation is faithfully
+  implemented — and that the same forward pass under `plus_node_features` is *not*
+  invariant, confirming the variant actually consumes the centralities.
+- Any results entry with `is_faithful_to_paper: false` carries a `variant_label`.
 - Seed determinism: two runs at seed 42 with `OMP_NUM_THREADS=1` agree to 1e-6.
 
 ## 10. Interpretation, fixed in advance
@@ -208,6 +235,8 @@ Fixed before any number is produced, so the conclusion is not selected after the
   and loop deltas are attributable to our contribution.
 - If either baseline lands **above** our Loop rung (0.7728 UNSW / 0.4478 ToN), we report
   that outcome plainly, and the report's contribution claim narrows accordingly.
+- If `plus_node_features` closes most of the gap to our rungs, our advantage is largely
+  the centrality feature engineering rather than the fusion, and the report must say so.
 - On NF-ToN-IoT the ladder already does not hold (AGAF sits significantly below the GNN,
   P=0.0005; Loop is not separated from the GNN, P=0.862). The baseline comparison does
   not change that and must not be presented as if it does.
