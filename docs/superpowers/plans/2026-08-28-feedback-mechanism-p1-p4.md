@@ -29,32 +29,47 @@
 
 ## Why touch the feedback mechanism at all
 
-Mechanism-only, fusion off, 3 seeds (`results/unsw_nb15_edge_injection_v2.json`):
+Mechanism-only, fusion off, 3 seeds, pooled 5-fold OOF macro-F1. **Revision 3
+(2026-08-30):** the `real − control` figures previously quoted here (+0.0064 UNSW,
++0.0026 ToN, from `results/unsw_nb15_edge_injection_v2.json`) came from a run that was
+**not thread-pinned** and **do not replicate**. Gate 0 re-ran the same configuration
+with pinning:
 
-| dataset | control (`head_only`) | real | real − control |
-|---|---:|---:|---:|
-| UNSW | 0.7280 ± 0.0113 | 0.7344 ± 0.0141 | +0.0064 |
-| ToN | 0.4359 ± 0.0268 | 0.4386 ± 0.0203 | +0.0026 |
+| dataset | run | control (`head_only`) | real | real − control |
+|---|---|---:|---:|---:|
+| UNSW | 2026-08-27, not pinned | 0.7280 | 0.7344 | +0.0064 |
+| UNSW | **Gate 0, pinned** | 0.7398 | 0.7382 | **−0.0016** |
+| ToN | 2026-08-27, not pinned | 0.4359 | 0.4386 | +0.0026 |
+| ToN | **Gate 0, pinned** | 0.4195 | 0.4325 | **+0.0130** |
 
-`real > control > shuffled > random` on both — the mechanism reads advice *content* — but
-the gain sits inside one seed's noise band.
+Levels moved 0.012–0.016 — the documented drift magnitude — and the sign flips on UNSW
+while growing on ToN. Noise, not bias. Paired per-(seed,fold) bootstrap agrees: UNSW
+−0.0046 P=0.356, ToN +0.0099 P=0.836. **`real > control` is retracted.** The mechanism is
+still demonstrably *sensitive to advice content* (`random` degrades −0.0518/−0.0593,
+`shuffled` −0.0228 on ToN) — but supplying real advice does not measurably beat supplying
+none. That contract now carries a `retraction` block; `CLAUDE.md` is corrected.
 
-**The corrected oracle reframes what is worth fixing.** Of the +0.0417 mechanism headroom:
+**Gate 0 replaces the pre-v2 headroom table entirely** (the +0.0417 / 7% / 63% figures
+below were pre-v2, `top_k=16, scale=10`, UNSW only):
 
-| consultant | captured | share |
+| | UNSW | ToN |
 |---|---:|---:|
-| whitened prototype (**canonical**) | +0.0028 | **7%** |
-| trained LLM head (non-canonical) | +0.0264 | **63%** |
+| `oracle_edge` − control | **+0.0345** (paired +0.0369, CI[+0.0097,+0.0618], P=0.995) | **+0.1090** (paired +0.1354, CI[+0.0919,+0.1797], P=1.0) |
+| `real_prototype_edge` − control | −0.0016 (P=0.356) | +0.0130 (P=0.836) |
+| `oracle_attention` − control | −0.0016 (P=0.482) | +0.0114 (P=0.870) |
+| prototype's captured share of headroom | **−4.5%** | **11.9%** |
 
-Under the canonical prototype architecture, **~93% of available headroom is unrealized,
-and we already know a better consultant closes most of it.** That is a *consultant-quality*
-finding, not a mechanism-capacity one — and it argues that mechanism surgery (P1′–P4) is
-competing for a smaller share than the architecture's own consultant choice costs it.
-This tension is a decision for the thesis, not for this plan: `CLAUDE.md`'s canonical rule
-mandates the prototype consultant on every rung, precisely so cross-dataset comparisons
-stay meaningful.
+**The channel works; the consultant does not use it.** A perfect consultant gets a cleanly
+separated gain through the edge channel on both datasets. The canonical whitened prototype
+captures ≈0% of it, and neither prototype figure is separated from zero. Attention remains
+dead under v2 — third independent confirmation, now with CIs.
 
-**All oracle numbers above are pre-v2** (top_k=16, scale=10). Hence Gate 0.
+This is a **consultant-quality** finding, not a mechanism-capacity one, and it argues that
+P1′/P3′ are surgery on a channel that already works. `CLAUDE.md`'s canonical rule mandates
+the prototype consultant on every rung, precisely so cross-dataset comparisons stay
+meaningful — so the live question is whether to *improve* the prototype scorer (it collapses
+under class imbalance: ToN prototype 0.2785 vs a trained MLP on the same CySecBERT
+embeddings at ~0.50) rather than to replace it or to reshape the channel.
 
 ## Global constraints
 
@@ -84,6 +99,14 @@ raises it too. Revision 1 was wrong to propose it. Every option below is judged 
 ---
 
 ## Gate 0 — Re-run the oracle under v2 (do this first)
+
+> **Completed 2026-08-30. Decision: CONTINUE.** Pooled oracle-edge headroom is
+> `+0.0345` on UNSW-NB15 and `+0.1090` on ToN-IoT, so the `<0.02 on both`
+> stopping rule is not met. The canonical prototype captures `-4.5%` of pooled
+> headroom on UNSW (prototype point estimate below control) and `11.9%` on ToN.
+> Oracle attention remains unseparated from control on both datasets. See
+> `results/unsw_nb15_oracle_ceiling_v2.json`,
+> `results/ton_iot_oracle_ceiling_v2.json`, and the completed Gate 0 TDD plan.
 
 **Why.** Every headroom argument in this document rests on a pre-v2 measurement taken at
 non-canonical `top_k=16, scale=10`, on UNSW only. The v1→v2 encoding change moved the GNN

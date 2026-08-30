@@ -7,7 +7,24 @@
   "edge_attr_encoding": "v2_log_cont_cat_idx",
   "status": "mechanism_only - use_output_fusion=False in every arm, so the LLM reaches the GNN ONLY through the consultative feedback path. NOT comparable to results/unsw_nb15_current.json (fusion on).",
   "question": "Does edge injection (--injection-mode edge, the canonical default) still causally use the LLM's advice under v2 encoding and the canonical top_k/scale (31.0/2.0), now that the loop-fusion fairness fix has landed? Supersedes results/unsw_nb15_edge_injection.json, which was measured pre-v2 under a different mechanism-only variant.",
-  "verdict": "YES. real > control_head_only > control_shuffled > control_random, on both UNSW and ToN-IoT. The gain is small (+0.0064 UNSW, +0.0026 ToN) and sits inside one seed's noise band, so treat it as directional, not decisive -- but the 4-arm ordering is clean on both datasets, including ToN, where the pre-v2 mechanism-only test did not separate real from random advice.",
+  "verdict": "PARTLY RETRACTED 2026-08-30 -- see `retraction` below. The original verdict read: 'YES. real > control_head_only > control_shuffled > control_random, on both UNSW and ToN-IoT.' The real-vs-control leg does NOT replicate under a thread-pinned re-run and must not be cited. What still holds: the mechanism is sensitive to advice CONTENT (shuffled and random both degrade beyond drift, except UNSW shuffled which is unresolved). What does NOT hold: that real advice measurably beats no advice.",
+  "retraction": {
+    "date": "2026-08-30",
+    "cause": "This run was NOT thread-pinned. OMP_NUM_THREADS/MKL_NUM_THREADS were unset and torch.set_num_threads(1) was not called; the runner only began pinning them on 2026-08-30. Documented drift at fixed seed without pinning is ~0.012 macro-F1, which exceeds the real-vs-control effect this experiment reports.",
+    "replication": {
+      "source": "results/{unsw_nb15,ton_iot}_oracle_ceiling_v2.json (Gate 0, thread-pinned, same 3 seeds, same top_k/scale, same pooled_5_fold_oof_macro_f1 metric)",
+      "unsw_nb15": {"control_head_only": 0.7398, "real_prototype_edge": 0.7382, "real_minus_control": -0.0016, "this_file_reported": 0.006404},
+      "ton_iot": {"control_head_only": 0.4195, "real_prototype_edge": 0.4325, "real_minus_control": 0.0130, "this_file_reported": 0.002614},
+      "paired_bootstrap_real_vs_control": {
+        "unsw_nb15": {"mean_diff": -0.0046, "ci_low": -0.0273, "ci_high": 0.0158, "prob_positive": 0.356},
+        "ton_iot": {"mean_diff": 0.0099, "ci_low": -0.0111, "ci_high": 0.0286, "prob_positive": 0.836}
+      },
+      "reading": "Absolute levels moved 0.012-0.016 between runs and real_minus_control flipped sign on UNSW (+0.0064 -> -0.0016) while growing on ToN (+0.0026 -> +0.0130). Not a systematic bias in either direction -- the effect is not resolvable at this sample size."
+    },
+    "still_supported": "The mechanism reads advice CONTENT. control_random degrades beyond drift on both datasets (-0.0518 UNSW, -0.0593 ToN) and control_shuffled does on ToN (-0.0228). UNSW's control_shuffled (-0.0098) is inside the drift band and is unresolved.",
+    "no_longer_supported": "'real > control_head_only', and therefore the full 4-arm ordering. Do not cite this file as proof that the LLM is a working consultant. Gate 0 independently finds the canonical prototype consultant captures approximately 0% of available mechanism headroom (UNSW -4.5%, ToN 11.9%, neither separated from zero).",
+    "if_rerunning": "Export OMP_NUM_THREADS=1. src/pipeline/step4/mechanism_only_edge_injection.py now pins this itself, but that pin postdates this run. A thread-pinned 4-arm re-run (adding shuffled/random, which Gate 0 did not measure) is the experiment that would settle the shuffled leg on UNSW."
+  },
   "primary_metric": "pooled_5_fold_oof_macro_f1",
   "seeds": [42, 1, 2],
   "configuration": {
@@ -42,7 +59,7 @@
       "random_minus_control": -0.059298
     }
   },
-  "pass_criterion": "real > control_head_only AND both advice controls <= control_head_only. Met on both datasets.",
+  "pass_criterion": "real > control_head_only AND both advice controls <= control_head_only. Reported as met on both datasets at the time; the 'real > control_head_only' half is RETRACTED (see `retraction`) -- it does not replicate under thread pinning. The 'advice controls <= control_head_only' half still holds.",
   "reproduce": "python -m src.pipeline.step4.mechanism_only_edge_injection (requires prototypes.pt and folds.pt already built for both datasets). Writes results/raw/mechanism_only_v2.json; raw per-arm output and console log are committed at results/raw/mechanism_only_v2.{json,log}.",
   "supersedes": {
     "file": "results/unsw_nb15_edge_injection.json",
