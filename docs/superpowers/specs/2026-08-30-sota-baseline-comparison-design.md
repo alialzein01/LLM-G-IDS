@@ -254,6 +254,44 @@ Fixed before any number is produced, so the conclusion is not selected after the
   bootstrap protocol used in `docs/RESULTS_ARCHIVE.md` §1.1. Use
   **"highest point estimate"**, never "top rung".
 
+## 10a. Known architectural ceiling — E-GraphSAGE on an aggregated multigraph
+
+Measured 2026-08-31, before any headline run, so it cannot be a post-hoc explanation.
+
+E-GraphSAGE's published edge representation is `z_uv = CONCAT(h_u, h_v)` (paper Eq. 5),
+confirmed in the authors' notebook as `self.W(th.cat([h_u, h_v], 1))`. **The classifier
+never sees the edge's own features.** Two edges sharing an endpoint pair therefore have
+mathematically identical representations and cannot be assigned different labels.
+
+Our graph is an aggregated multigraph keyed on `(src_ip, dst_ip, attack_type)`, so
+parallel edges are created by construction:
+
+| Dataset | Edges | IP pairs carrying >1 attack class | Edges indistinguishable by endpoints |
+|---|---:|---:|---:|
+| NF-UNSW-NB15 | 656 | 40 | **385 (58.7%)** |
+| NF-ToN-IoT | 2127 | 61 | **167 (7.9%)** |
+
+Consequences that must be stated in the report:
+
+- E-GraphSAGE's low macro-F1 on NF-UNSW-NB15 is **substantially a representation-
+  architecture interaction, not evidence that E-GraphSAGE is a weak model.** An upper
+  bound imposed by indistinguishable inputs is not a fair architectural verdict.
+- TE-G-SAGE is not subject to this ceiling: its `EdgeHead` consumes
+  `[h_src ‖ h_dst ‖ e_feat]`. The large gap between the two baselines is largely this,
+  not general model quality.
+- Our own rungs also consume edge features and are likewise unaffected, so **we must not
+  present the E-GraphSAGE gap as a win for fusion.**
+- It also explains the source paper's own numbers: binary F1 1.00 but multi-class
+  weighted-F1 only 0.63 on NF-ToN-IoT. The ceiling exists on their data too; aggregation
+  amplifies it.
+
+Verified not to be an epoch-budget artifact: trained to the authors' full 4999 epochs on
+fold 0, validation macro-F1 plateaus at ~0.11 (best 0.1384 @ epoch 1400). The 200-epoch
+cap in D3 is not the cause.
+
+This ceiling is recorded as `known_ceilings.e_graphsage_endpoint_only` in both results
+files and must appear in the report wherever the E-GraphSAGE number is quoted.
+
 ## 11. Out of scope
 
 - Fidelity reproduction of published numbers on full raw NetFlow data.

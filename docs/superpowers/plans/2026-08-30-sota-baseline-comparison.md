@@ -1424,6 +1424,34 @@ class SotaBaselineContractTest(unittest.TestCase):
 Run: `OMP_NUM_THREADS=1 python -m pytest tests/ -v`
 Expected: all pass, including the pre-existing suite.
 
+- [ ] **Step 0: Record the E-GraphSAGE endpoint-only ceiling in both results files**
+
+Add to each `results/{dataset}_sota_baselines.json`, and assert its presence in the
+contract test:
+
+```python
+"known_ceilings": {
+    "e_graphsage_endpoint_only": {
+        "description": (
+            "E-GraphSAGE classifies edges from CONCAT(h_u, h_v) only -- the edge's own "
+            "features never reach the classifier (paper Eq. 5; authors' notebook: "
+            "self.W(th.cat([h_u, h_v], 1))). Parallel edges between one IP pair are "
+            "mathematically indistinguishable."
+        ),
+        "edges_indistinguishable_by_endpoints": {"unsw_nb15": 385, "ton_iot": 167},
+        "fraction": {"unsw_nb15": 0.587, "ton_iot": 0.079},
+        "not_an_epoch_artifact": (
+            "Trained to the authors' full 4999 epochs on fold 0; validation macro-F1 "
+            "plateaus at ~0.11, best 0.1384 at epoch 1400."
+        ),
+        "reporting_rule": (
+            "This is a representation-architecture interaction, not evidence that "
+            "E-GraphSAGE is a weak model, and must NOT be presented as a win for fusion."
+        ),
+    }
+}
+```
+
 - [ ] **Step 3: Add a `docs/RESULTS_ARCHIVE.md` section**
 
 New section "§5 SOTA baseline comparison" recording: the two baselines and why the other
