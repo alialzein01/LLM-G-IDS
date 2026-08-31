@@ -873,6 +873,215 @@
             ]
           }
         ]
+      },
+      "plus_node_features": {
+        "macro_f1": 0.43581771151594756,
+        "macro_f1_std": 0.032270805484555805,
+        "accuracy": 0.8610062893081761,
+        "weighted_f1": 0.884862232098257,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Benign",
+            "f1": 0.9500197617346267
+          },
+          {
+            "class_id": 1,
+            "class_name": "backdoor",
+            "f1": 0.30083389677710165
+          },
+          {
+            "class_id": 2,
+            "class_name": "ddos",
+            "f1": 0.20107757221681274
+          },
+          {
+            "class_id": 4,
+            "class_name": "injection",
+            "f1": 0.5282045879613726
+          },
+          {
+            "class_id": 5,
+            "class_name": "mitm",
+            "f1": 0.8552315007437691
+          },
+          {
+            "class_id": 6,
+            "class_name": "password",
+            "f1": 0.13531844499586435
+          },
+          {
+            "class_id": 8,
+            "class_name": "scanning",
+            "f1": 0.20606060606060606
+          },
+          {
+            "class_id": 9,
+            "class_name": "xss",
+            "f1": 0.3097953216374269
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.39886598296448816,
+            "accuracy": 0.8316037735849057,
+            "weighted_f1": 0.8619371573012187,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9325602685382972
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.2
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.2153846153846154
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.4796747967479675
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7894736842105263
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.12307692307692308
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.24242424242424243
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.20833333333333334
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.4774891496739398,
+            "accuracy": 0.8995283018867924,
+            "weighted_f1": 0.9141599654091587,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.973305954825462
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.39215686274509803
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.22784810126582278
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.6009389671361502
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.9174311926605505
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.15384615384615385
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.13333333333333333
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.42105263157894735
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.43109800190941455,
+            "accuracy": 0.8518867924528302,
+            "weighted_f1": 0.8784895735843934,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9441930618401206
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.3103448275862069
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.16
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.504
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.8587896253602305
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.12903225806451613
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.24242424242424243
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.3
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 128,
+          "num_layers": 2,
+          "lr": 0.001,
+          "dropout": 0.2,
+          "optimizer": "adam",
+          "weight_decay": 0.0,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "node_features",
+          "node_feat_dim": 10
+        },
+        "is_faithful_to_paper": false,
+        "variant_label": "E-GraphSAGE + our node features"
       }
     },
     "te_g_sage": {
@@ -2125,6 +2334,217 @@
             ]
           }
         ]
+      },
+      "plus_node_features": {
+        "macro_f1": 0.35232053854296286,
+        "macro_f1_std": 0.018227051052964783,
+        "accuracy": 0.7932389937106917,
+        "weighted_f1": 0.8381216195457742,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Benign",
+            "f1": 0.9092109979096624
+          },
+          {
+            "class_id": 1,
+            "class_name": "backdoor",
+            "f1": 0.13362807405360597
+          },
+          {
+            "class_id": 2,
+            "class_name": "ddos",
+            "f1": 0.16683312196153033
+          },
+          {
+            "class_id": 4,
+            "class_name": "injection",
+            "f1": 0.5476899918339837
+          },
+          {
+            "class_id": 5,
+            "class_name": "mitm",
+            "f1": 0.7112283380289015
+          },
+          {
+            "class_id": 6,
+            "class_name": "password",
+            "f1": 0.14859555295390647
+          },
+          {
+            "class_id": 8,
+            "class_name": "scanning",
+            "f1": 0.0319069069069069
+          },
+          {
+            "class_id": 9,
+            "class_name": "xss",
+            "f1": 0.1694713246952053
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.37565221138686977,
+            "accuracy": 0.8316037735849057,
+            "weighted_f1": 0.8659641933543101,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9358467619337184
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.14285714285714285
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.1875
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5405405405405406
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7882037533512064
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.12244897959183673
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.041666666666666664
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.24615384615384617
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.33116455634448155,
+            "accuracy": 0.7561320754716981,
+            "weighted_f1": 0.80987770203607,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8840025493945188
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.14893617021276595
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.14457831325301204
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5355191256830601
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.6239316239316239
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.1694915254237288
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.0
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.14285714285714285
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.3501448478975372,
+            "accuracy": 0.7919811320754717,
+            "weighted_f1": 0.8385229632469426,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9077836824007502
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.10909090909090909
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.16842105263157894
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5670103092783505
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7215496368038741
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.15384615384615385
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.05405405405405406
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.11940298507462686
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 32,
+          "num_layers": 1,
+          "lr": 0.001,
+          "rare_min_freq": 2,
+          "dropout": 0.3,
+          "edge_mlp_hidden": 128,
+          "optimizer": "adam",
+          "weight_decay": 0.0001,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "node_features",
+          "node_feat_dim": 10
+        },
+        "is_faithful_to_paper": false,
+        "variant_label": "TE-G-SAGE + our node features"
       }
     }
   }
