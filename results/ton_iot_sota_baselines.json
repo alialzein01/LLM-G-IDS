@@ -1,0 +1,485 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "primary_metric": "macro_f1",
+  "generated": "2026-08-31",
+  "claim_boundary": "Published architectures re-trained on our aggregated flow-graph representation. NOT a comparison against their published numbers, which were obtained on per-flow graphs ~300x larger.",
+  "data_provenance": {
+    "aggregated_edges_path": "data/ton_iot/processed/step1/aggregated_edges.csv",
+    "aggregated_edges_sha256": "179eae2838044f26df7d03092e6e46e1290acd950d080411d5854c612def30ac",
+    "splits_path": "data/ton_iot/processed/splits/folds.pt",
+    "splits_sha256": "e36d6c020db3cf41991a2782fba04c7e198362ff69c3949bcdae7736afc0404f",
+    "eval_classes": [
+      0,
+      1,
+      2,
+      4,
+      5,
+      6,
+      8,
+      9
+    ],
+    "excluded_classes": [
+      3,
+      7
+    ]
+  },
+  "preprocessing": {
+    "ours_v2": "log1p+Z on cols 0-2; learned embeddings on protocol/port",
+    "e_graphsage": "all five NetFlow columns standard-scaled",
+    "te_g_sage": "log1p + StandardScaler + corr-prune@0.995; one-hot categoricals with rare-category folding"
+  },
+  "deviations": [
+    {
+      "code": "D1",
+      "reason": "TE-G-SAGE publishes a 60/30/10 chronological split; aggregation collapsed per-flow timestamps, so no chronological order exists.",
+      "resolution": "Our stratified 5-fold folds.pt is used for all models."
+    },
+    {
+      "code": "D2",
+      "reason": "TE-G-SAGE's published fanout (25, 15) exceeds the node degree available in a 656-edge (UNSW) / 2127-edge (ToN) graph.",
+      "resolution": "Full-neighbourhood, full-batch training. TE-G-SAGE's batch_size 4096 also exceeds the entire graph."
+    },
+    {
+      "code": "D3",
+      "reason": "Both released implementations train for a fixed epoch count with no validation split and no early stopping -- E-GraphSAGE runs range(1, 5000) (4999 epochs), TE-G-SAGE 20. A fixed schedule with no validation cannot be used here: our protocol selects on validation folds, and 4999 full-batch epochs on a 656-edge graph is unbounded overfitting.",
+      "resolution": "Max 200 epochs, patience 25 on validation macro-F1, best state restored before test prediction -- identical to the schedule our own rungs use, so neither side is advantaged."
+    },
+    {
+      "code": "D4",
+      "reason": "TE-G-SAGE's rare_min_freq=50 removes almost every port category at our scale, where the whole graph has fewer than 2200 edges.",
+      "resolution": "Applied as published in as_published; swept in refit."
+    },
+    {
+      "code": "D5",
+      "reason": "E-GraphSAGE's paper Eq. 4 aggregates edge features alone, but the authors' released implementation builds the message as W_msg([h_u || e_uv]), concatenating the source node state. The published numbers came from the code, not the equation.",
+      "resolution": "The released implementation's form is used. Source: github.com/waimorris/E-GraphSAGE, E-GraphSAGE/netflow/ton-iot/Unsw_ton_iot_multiclass_mean_agg.ipynb"
+    }
+  ],
+  "baselines": {
+    "e_graphsage": {
+      "as_published": {
+        "macro_f1": 0.41413419333870055,
+        "macro_f1_std": 0.004579774762392102,
+        "accuracy": 0.8485849056603773,
+        "weighted_f1": 0.8753541707095863,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Benign",
+            "f1": 0.9428369780385434
+          },
+          {
+            "class_id": 1,
+            "class_name": "backdoor",
+            "f1": 0.2596070596070596
+          },
+          {
+            "class_id": 2,
+            "class_name": "ddos",
+            "f1": 0.19656204029685456
+          },
+          {
+            "class_id": 4,
+            "class_name": "injection",
+            "f1": 0.5719228031400424
+          },
+          {
+            "class_id": 5,
+            "class_name": "mitm",
+            "f1": 0.7890177755194488
+          },
+          {
+            "class_id": 6,
+            "class_name": "password",
+            "f1": 0.11614543605390287
+          },
+          {
+            "class_id": 8,
+            "class_name": "scanning",
+            "f1": 0.15784461413259918
+          },
+          {
+            "class_id": 9,
+            "class_name": "xss",
+            "f1": 0.2791368399211536
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.40841225688082305,
+            "accuracy": 0.8570754716981132,
+            "weighted_f1": 0.8839017132403534,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9474632242569799
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.23076923076923078
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.208955223880597
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.6237623762376238
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.8232044198895028
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.13333333333333333
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.06451612903225806
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.23529411764705882
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.4196231051915351,
+            "accuracy": 0.8400943396226415,
+            "weighted_f1": 0.8687175571049467,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9371393865775888
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.2571428571428571
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.20930232558139536
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5490196078431373
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7684478371501272
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.14492753623188406
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.14814814814814814
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.34285714285714286
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.41436721794374354,
+            "accuracy": 0.8485849056603774,
+            "weighted_f1": 0.8734432417834592,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9439083232810616
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.2909090909090909
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.17142857142857143
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5429864253393665
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7754010695187166
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.07017543859649122
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.2608695652173913
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.25925925925925924
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 128,
+          "num_layers": 2,
+          "dropout": 0.2,
+          "optimizer": "adam",
+          "lr": 0.001,
+          "weight_decay": 0.0,
+          "class_weighting": "inverse_frequency",
+          "published_epochs": 4999,
+          "max_epochs": 200,
+          "patience": 25,
+          "node_init": "ones"
+        },
+        "is_faithful_to_paper": true
+      }
+    },
+    "te_g_sage": {
+      "as_published": {
+        "macro_f1": 0.19309729102409157,
+        "macro_f1_std": 0.016088030122723765,
+        "accuracy": 0.6737421383647799,
+        "weighted_f1": 0.7262705205942371,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Benign",
+            "f1": 0.8461826097222224
+          },
+          {
+            "class_id": 1,
+            "class_name": "backdoor",
+            "f1": 0.03827195980113485
+          },
+          {
+            "class_id": 2,
+            "class_name": "ddos",
+            "f1": 0.05784493284493284
+          },
+          {
+            "class_id": 4,
+            "class_name": "injection",
+            "f1": 0.08390146681735876
+          },
+          {
+            "class_id": 5,
+            "class_name": "mitm",
+            "f1": 0.29339495770019547
+          },
+          {
+            "class_id": 6,
+            "class_name": "password",
+            "f1": 0.0832079777175011
+          },
+          {
+            "class_id": 8,
+            "class_name": "scanning",
+            "f1": 0.042272042637006145
+          },
+          {
+            "class_id": 9,
+            "class_name": "xss",
+            "f1": 0.09970238095238095
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.20875606352290516,
+            "accuracy": 0.6745283018867925,
+            "weighted_f1": 0.731240382833752,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8466833541927409
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.04081632653061224
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.041666666666666664
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.17040358744394618
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.2907801418439716
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.07582938388625593
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.047619047619047616
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.15625
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.19956263117001322,
+            "accuracy": 0.6981132075471698,
+            "weighted_f1": 0.729086846034213,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8538116591928251
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.04225352112676056
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.13186813186813187
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.0
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.2868217054263566
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.08888888888888889
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.05
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.14285714285714285
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.1709731783793563,
+            "accuracy": 0.6485849056603774,
+            "weighted_f1": 0.7184843329147463,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8380528157811009
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.031746031746031744
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.0
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.08130081300813008
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.3025830258302583
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.08490566037735849
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.029197080291970802
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.0
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 128,
+          "num_layers": 2,
+          "dropout": 0.3,
+          "edge_mlp_hidden": 128,
+          "rare_min_freq": 50,
+          "optimizer": "adam",
+          "lr": 0.0003,
+          "weight_decay": 0.0001,
+          "class_weighting": "inverse_frequency",
+          "published_epochs": 20,
+          "max_epochs": 200,
+          "patience": 25,
+          "node_init": "learned_constant"
+        },
+        "is_faithful_to_paper": true
+      }
+    }
+  }
+}
