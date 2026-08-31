@@ -306,6 +306,652 @@
           "node_init": "ones"
         },
         "is_faithful_to_paper": true
+      },
+      "refit": {
+        "macro_f1": 0.13683866466335112,
+        "macro_f1_std": 0.0076468191655860536,
+        "accuracy": 0.36788617886178865,
+        "weighted_f1": 0.4179161103962117,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Normal",
+            "f1": 0.8128042558288037
+          },
+          {
+            "class_id": 1,
+            "class_name": "Analysis",
+            "f1": 0.05683005166876135
+          },
+          {
+            "class_id": 2,
+            "class_name": "Backdoors",
+            "f1": 0.08306206853171046
+          },
+          {
+            "class_id": 3,
+            "class_name": "DoS",
+            "f1": 0.031746031746031744
+          },
+          {
+            "class_id": 4,
+            "class_name": "Exploits",
+            "f1": 0.0971231293381503
+          },
+          {
+            "class_id": 5,
+            "class_name": "Fuzzers",
+            "f1": 0.056826588925013695
+          },
+          {
+            "class_id": 6,
+            "class_name": "Generic",
+            "f1": 0.05866719630764575
+          },
+          {
+            "class_id": 7,
+            "class_name": "Reconnaissance",
+            "f1": 0.05843669293607776
+          },
+          {
+            "class_id": 8,
+            "class_name": "Shellcode",
+            "f1": 0.05280159097930182
+          },
+          {
+            "class_id": 9,
+            "class_name": "Worms",
+            "f1": 0.060089040372014374
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.1263360679581968,
+            "accuracy": 0.35060975609756095,
+            "weighted_f1": 0.40699827669029165,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.8023032629558541
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.06451612903225806
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.0851063829787234
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.0
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.11904761904761904
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.024390243902439025
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.04040404040404041
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.06557377049180328
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.03076923076923077
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.03125
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.14432208350179426,
+            "accuracy": 0.3856707317073171,
+            "weighted_f1": 0.42816029839182934,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.8278388278388278
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.08
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.07317073170731707
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.09523809523809523
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.03278688524590164
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.09345794392523364
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.06818181818181818
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.023529411764705882
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.0963855421686747
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.05263157894736842
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.13985784253006225,
+            "accuracy": 0.3673780487804878,
+            "weighted_f1": 0.41858975610651394,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.8082706766917294
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.025974025974025976
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.09090909090909091
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.0
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.13953488372093023
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.05263157894736842
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.06741573033707865
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.08620689655172414
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.03125
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.0963855421686747
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 64,
+          "num_layers": 1,
+          "lr": 0.0005,
+          "dropout": 0.2,
+          "optimizer": "adam",
+          "weight_decay": 0.0,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "ones"
+        },
+        "is_faithful_to_paper": true,
+        "validation_macro_f1": 0.14997667773357293,
+        "grid_trace": [
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.14228737876896116,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.15655699626893144
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.1290186136366497
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.14128652640130232
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.13935360499250857,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.1429296757704611
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13559639410059737
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.1395347451064673
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.12934006145130764,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14386976344484084
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.11342414292326172
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.1307262779858204
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.1412158482701424,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14869021748165595
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13332434717141034
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.14163298015736095
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.13790101696506116,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.15051327360713113
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.132771504902571
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.13041827238548134
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.1265302321827976,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.141410938171348
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.12274404846035561
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.11543570991668917
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.14667960450876194,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14759905237639165
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13314609413022818
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.15929366701966594
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.14997667773357293,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.1543218275506891
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13278587406995318
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.16282233158007656
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.14618152689979097,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.1488315634701544
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13856318789260544
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.15114982933661308
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.14262643086102253,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.13596684879273735
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.14595639442641362
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.1459560493639166
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.1376202119117089,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.13849725036744703
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.14649001849519103
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.12787336687248868
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.13616300999192832,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.13353275062933218
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.1467611008309145
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.12819517851553833
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.14165332005135825,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14550469162300583
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13756663307194775
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.14188863545912117
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.14571630085191586,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14847256599594366
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.14138639788460136
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.14728993867520263
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.1466952806612344,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14803983439518612
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13938305329319195
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.15266295429532514
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.14469122704276807,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.14548852873391058
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.14353989191455419
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.1450452604798394
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.13842409559990862,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.13500435449931117
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.14296318830707447
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.13730474399334025
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.1381035085633353,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.13377560408774522
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.13951835583572494
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.14101656576653573
+              }
+            ]
+          }
+        ]
       }
     },
     "te_g_sage": {
@@ -558,6 +1204,1086 @@
           "node_init": "learned_constant"
         },
         "is_faithful_to_paper": true
+      },
+      "refit": {
+        "macro_f1": 0.5842018197168614,
+        "macro_f1_std": 0.022366190862169528,
+        "accuracy": 0.6620934959349594,
+        "weighted_f1": 0.6648540032029651,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Normal",
+            "f1": 0.768270901968708
+          },
+          {
+            "class_id": 1,
+            "class_name": "Analysis",
+            "f1": 0.3825277479412817
+          },
+          {
+            "class_id": 2,
+            "class_name": "Backdoors",
+            "f1": 0.6064425770308123
+          },
+          {
+            "class_id": 3,
+            "class_name": "DoS",
+            "f1": 0.42750218978319293
+          },
+          {
+            "class_id": 4,
+            "class_name": "Exploits",
+            "f1": 0.7453744565395052
+          },
+          {
+            "class_id": 5,
+            "class_name": "Fuzzers",
+            "f1": 0.6309604746460402
+          },
+          {
+            "class_id": 6,
+            "class_name": "Generic",
+            "f1": 0.16522371137017763
+          },
+          {
+            "class_id": 7,
+            "class_name": "Reconnaissance",
+            "f1": 0.8824753867791842
+          },
+          {
+            "class_id": 8,
+            "class_name": "Shellcode",
+            "f1": 0.5344710688477315
+          },
+          {
+            "class_id": 9,
+            "class_name": "Worms",
+            "f1": 0.6987696822619788
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.5950257207957967,
+            "accuracy": 0.6707317073170732,
+            "weighted_f1": 0.6733649854021032,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.7697974217311234
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.32653061224489793
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.5714285714285714
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.44155844155844154
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.7222222222222222
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.6521739130434783
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.2545454545454545
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.88
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.5234899328859061
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.8085106382978723
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.5530507527473457,
+            "accuracy": 0.6402439024390244,
+            "weighted_f1": 0.642574744966541,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.7624521072796935
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.42105263157894735
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.5714285714285714
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.3902439024390244
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.7184466019417476
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.6382978723404256
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.03773584905660377
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.8607594936708861
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.5147058823529411
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.6153846153846154
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.6045289856074414,
+            "accuracy": 0.6753048780487805,
+            "weighted_f1": 0.6786222792402511,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.7725631768953068
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.4
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.6764705882352942
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.4507042253521127
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.7954545454545454
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.6024096385542169
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.2033898305084746
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.9066666666666666
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.5652173913043478
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.6724137931034483
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 32,
+          "num_layers": 2,
+          "lr": 0.001,
+          "rare_min_freq": 2,
+          "dropout": 0.3,
+          "edge_mlp_hidden": 128,
+          "optimizer": "adam",
+          "weight_decay": 0.0001,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "learned_constant"
+        },
+        "is_faithful_to_paper": true,
+        "validation_macro_f1": 0.6167166747094811,
+        "grid_trace": [
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.581363968527227,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5920439611628721
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.6030932033775687
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5489547410412405
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.6010633826155994,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.6360568039352632
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.6093992902745061
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5577340536370292
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.5121594046647894,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5270073736555678
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.45462821154907207
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5548426287897282
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.5572730407318714,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5676026898749583
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.6132029458692589
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.49101348645139736
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.446894371294923,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.409902509592484
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.39328971178705363
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5374908925052315
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.552525348157494,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5681927114962482
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5547471380945741
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5346361948816595
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.5413176099622924,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5736043157299741
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5344567914537153
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5158917227031877
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.6167166747094811,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.6323787988727798
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5992795899089657
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.6184916353466979
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.46632455959833474,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.46401296007170034
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4915493168933421
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.4434114018299618
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.5442529611031973,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5823550875411871
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5239394910346604
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5264643047337443
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.3880599554886981,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.3753318237718502
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4407073921110685
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.34814065058317556
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.48385650394879054,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.48792266809964274
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4678918989895012
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.4957549447572277
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.447044550030993,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4475273619251646
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.454294568733735
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.43931171943407954
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.5401818166647495,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5473237163676966
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5422612197088589
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5309605139176928
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.4244043352170676,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4146470773329316
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.44152272577640267
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.41704320254186855
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.527481124274184,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5122661593318025
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5459548486648181
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5242223648259314
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.3517895470277958,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.335268599945573
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.33535851544518286
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.3847415256926315
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.4985656453147224,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4268285108570475
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5321554046055282
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5367130204815915
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.5320762908198551,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5240620154216046
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5332981795095172
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5388686775284435
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.5600574930699833,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5486780142533612
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.6301609287876475
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5013335361689413
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.45336852341921247,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4181920696373444
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4191196339210147
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.5227938666992785
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.4775418256252357,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4845838432775366
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5070512680798196
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.4409903655183508
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.3647792490301221,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.3449128665695256
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.3614961282477336
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.38792875227310714
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.3642122252900804,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.40568576861460687
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.3244095801835719
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.36254132707206244
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.37273099189145437,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.36904806745889907
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.38274563086922236
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.3663992773462418
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.4740338537946254,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4878623293413643
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4654845888159175
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.4687546432265946
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.34933022868547375,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.3597589976947976
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.3373153656081918
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.3509163227534317
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.46166051824274107,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.440389198431276
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.48754310404889656
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.45704925224805065
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.34247317199168875,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.40354892363061756
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.30301215280901533
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.32085843953543336
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.3885020750317292,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4031585090669775
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4089177331454878
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.3534299828827223
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.45829198601443516,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4610085602939738
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4540345547944685
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.45983284295486315
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.5322920488931341,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.5362272201862706
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5502732691807379
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.510375657312394
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.40679998744005835,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.41965022820511555
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.38319614541992464
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.4175535886951348
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.4994948911295642,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4872928012121987
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.5304808480670549
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.48071102410943906
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.35285424330115117,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.3637692608641128
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.34946065766532
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.3453328113740205
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.41316212921813184,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.41657158118884496
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4207897806094392
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.40212502585611143
+              }
+            ]
+          }
+        ]
       }
     }
   }

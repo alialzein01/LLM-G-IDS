@@ -267,6 +267,612 @@
           "node_init": "ones"
         },
         "is_faithful_to_paper": true
+      },
+      "refit": {
+        "macro_f1": 0.41413419333870055,
+        "macro_f1_std": 0.004579774762392102,
+        "accuracy": 0.8485849056603773,
+        "weighted_f1": 0.8753541707095863,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Benign",
+            "f1": 0.9428369780385434
+          },
+          {
+            "class_id": 1,
+            "class_name": "backdoor",
+            "f1": 0.2596070596070596
+          },
+          {
+            "class_id": 2,
+            "class_name": "ddos",
+            "f1": 0.19656204029685456
+          },
+          {
+            "class_id": 4,
+            "class_name": "injection",
+            "f1": 0.5719228031400424
+          },
+          {
+            "class_id": 5,
+            "class_name": "mitm",
+            "f1": 0.7890177755194488
+          },
+          {
+            "class_id": 6,
+            "class_name": "password",
+            "f1": 0.11614543605390287
+          },
+          {
+            "class_id": 8,
+            "class_name": "scanning",
+            "f1": 0.15784461413259918
+          },
+          {
+            "class_id": 9,
+            "class_name": "xss",
+            "f1": 0.2791368399211536
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.40841225688082305,
+            "accuracy": 0.8570754716981132,
+            "weighted_f1": 0.8839017132403534,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9474632242569799
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.23076923076923078
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.208955223880597
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.6237623762376238
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.8232044198895028
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.13333333333333333
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.06451612903225806
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.23529411764705882
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.4196231051915351,
+            "accuracy": 0.8400943396226415,
+            "weighted_f1": 0.8687175571049467,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9371393865775888
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.2571428571428571
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.20930232558139536
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5490196078431373
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7684478371501272
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.14492753623188406
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.14814814814814814
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.34285714285714286
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.41436721794374354,
+            "accuracy": 0.8485849056603774,
+            "weighted_f1": 0.8734432417834592,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.9439083232810616
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.2909090909090909
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.17142857142857143
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.5429864253393665
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.7754010695187166
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.07017543859649122
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.2608695652173913
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.25925925925925924
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 128,
+          "num_layers": 2,
+          "lr": 0.001,
+          "dropout": 0.2,
+          "optimizer": "adam",
+          "weight_decay": 0.0,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "ones"
+        },
+        "is_faithful_to_paper": true,
+        "validation_macro_f1": 0.465328704394633,
+        "grid_trace": [
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.2719589052356734,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2652038178184368
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2749584998560165
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2757143980325668
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.15822832298477477,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.18966451996629127
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.10077975800552959
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.18424069098250345
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.09921233136868347,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.12265577065759255
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.09894562855879675
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.07603559488966113
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.28001965640475907,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2922268895362479
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.3105126635357915
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23731941614223775
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.2441603523686906,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.273579720195552
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.25090867030753444
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.20799266660298543
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.15263716344286657,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.11170562413765542
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.1903785735904116
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.15582729260053266
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.2879640635871059,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2801092061459226
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2974577083426114
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.28632527627278365
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.28635941399661463,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.26050900002046934
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.29393231452424357
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.30463692744513104
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.247565076398937,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.1973700667846642
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2607422031597991
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2845829592523477
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.404281476771782,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.36886527444297307
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4147815480329859
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.4291976078393872
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.3275400543551689,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.3330722234397772
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4019304710538698
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2476174685718598
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.21960396488236636,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2186924668626682
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2132901461258582
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2268292816585727
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.28987851226361544,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2854291694929854
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2717772677635577
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.31242909953430326
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.2619886128828545,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2569305825985313
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2591927051565225
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2698425508935098
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.25192353773428217,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.24610788483586993
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.24077596663829573
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2688867617286809
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.001
+            },
+            "validation_macro_f1": 0.465328704394633,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.4677709874499138
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.44604228263973245
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.48217284309425273
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0005
+            },
+            "validation_macro_f1": 0.3941914598128741,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.36639861480074215
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.4024276936814431
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.41374807095643706
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0003
+            },
+            "validation_macro_f1": 0.3509544971608563,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.3588890609463326
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.35005851405323385
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.34391591648300257
+              }
+            ]
+          }
+        ]
       }
     },
     "te_g_sage": {
@@ -479,6 +1085,1046 @@
           "node_init": "learned_constant"
         },
         "is_faithful_to_paper": true
+      },
+      "refit": {
+        "macro_f1": 0.2345212471111797,
+        "macro_f1_std": 0.01010544068620072,
+        "accuracy": 0.7272012578616351,
+        "weighted_f1": 0.758939133364394,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Benign",
+            "f1": 0.8674603392332951
+          },
+          {
+            "class_id": 1,
+            "class_name": "backdoor",
+            "f1": 0.012345679012345678
+          },
+          {
+            "class_id": 2,
+            "class_name": "ddos",
+            "f1": 0.10801492085895754
+          },
+          {
+            "class_id": 4,
+            "class_name": "injection",
+            "f1": 0.10937163891351591
+          },
+          {
+            "class_id": 5,
+            "class_name": "mitm",
+            "f1": 0.4536862127771219
+          },
+          {
+            "class_id": 6,
+            "class_name": "password",
+            "f1": 0.19247944070639103
+          },
+          {
+            "class_id": 8,
+            "class_name": "scanning",
+            "f1": 0.06558485463150777
+          },
+          {
+            "class_id": 9,
+            "class_name": "xss",
+            "f1": 0.06722689075630252
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.2282466424690418,
+            "accuracy": 0.7113207547169811,
+            "weighted_f1": 0.7540625239229609,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8590308370044053
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.0
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.10989010989010989
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.16304347826086957
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.45
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.18518518518518517
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.0
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.058823529411764705
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.24877843700506733,
+            "accuracy": 0.7306603773584905,
+            "weighted_f1": 0.7606103562746157,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8704791344667697
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.0
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.12844036697247707
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.07865168539325842
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.4523809523809524
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.1794871794871795
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.13793103448275862
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.14285714285714285
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.22653866185942995,
+            "accuracy": 0.7396226415094339,
+            "weighted_f1": 0.7621445198956056,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Benign",
+                "f1": 0.8728710462287105
+              },
+              {
+                "class_id": 1,
+                "class_name": "backdoor",
+                "f1": 0.037037037037037035
+              },
+              {
+                "class_id": 2,
+                "class_name": "ddos",
+                "f1": 0.08571428571428572
+              },
+              {
+                "class_id": 4,
+                "class_name": "injection",
+                "f1": 0.08641975308641975
+              },
+              {
+                "class_id": 5,
+                "class_name": "mitm",
+                "f1": 0.45867768595041325
+              },
+              {
+                "class_id": 6,
+                "class_name": "password",
+                "f1": 0.2127659574468085
+              },
+              {
+                "class_id": 8,
+                "class_name": "scanning",
+                "f1": 0.058823529411764705
+              },
+              {
+                "class_id": 9,
+                "class_name": "xss",
+                "f1": 0.0
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 32,
+          "num_layers": 1,
+          "lr": 0.001,
+          "rare_min_freq": 2,
+          "dropout": 0.3,
+          "edge_mlp_hidden": 128,
+          "optimizer": "adam",
+          "weight_decay": 0.0001,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "learned_constant"
+        },
+        "is_faithful_to_paper": true,
+        "validation_macro_f1": 0.26476632272731243,
+        "grid_trace": [
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.23997993617172322,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.24674480150415756
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.23607975089858918
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23711525611242293
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.26476632272731243,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2704712399483361
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.26960724757093196
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.25422048066266917
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.2366991213447497,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.23765655520240206
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2397672666029199
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23267354222892722
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.23527576313895993,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2265060559738202
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.24797234293897458
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23134889050408503
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.19116444864999385,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.20497749410753352
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.17404963161708023
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.19446622022536786
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.2183182771800903,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.20832607170228848
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2211385998818729
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.22549015995610952
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.23871625869883653,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2313825017772318
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2514211061439807
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23334516817529707
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.2520599390460428,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.26387011538377364
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.22710112014992548
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2652085816044293
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.2614589399906797,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2823364655069926
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.259751581139439
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.24228877332560755
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.24252983078919824,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.23518343990121798
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.24158895441410433
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2508170980522725
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.21237199514274915,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2379940270135566
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2152336060598583
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.18388835235483253
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 32,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.2233443440170737,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.20913726057752377
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.23976011075397272
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.22113566071972462
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.23053017559394598,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.21950774642836138
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.24019846180779886
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23188431854567768
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.24740977254911897,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.24549185268974094
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2367121971622525
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.26002526779536345
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.2184856466462898,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.21092643037963682
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.22395577356788085
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.22057473599135186
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.23687545340426466,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.24251513057111707
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2305692079068448
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23754202173483216
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.21133553698815163,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2165756699617829
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2247391220340711
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.19269181896860094
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.22379996898102186,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.21766882325402048
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2324284698715436
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.22130261381750146
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.23440699420170283,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.23227024293227072
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.23802812497504305
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.23292261469779466
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.24966470108867553,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.23998338555044577
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2489725994348207
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.26003811828076007
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.2246597796792217,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2381140881321643
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.22256780708090385
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2132974438245971
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.22937147681474815,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.20466099475002913
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.241208129041673
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.24224530665254235
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.20166094223043615,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.18624594931257282
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.21505919180851601
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2036776855702196
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 64,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.18858537822700708,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.19144221459736427
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.18905114625180486
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.18526277383185213
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.20647089604373647,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.19901981836295418
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.214024830014418
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.20636803975383727
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.22945495090612264,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.2431330643263488
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.22646996121032706
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.21876182718169207
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.19233000006294287,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.18207753748693595
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.20305021000520762
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.19186225269668505
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.21850037115459128,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.22825574758935527
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.20403748873199098
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2232078771424276
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.2016661434738859,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.19048861770127784
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.21155619145968557
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2029536212606943
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 1,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.21313315784470496,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.208909146327691
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.2315125953776871
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.1989777318287368
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.2243030782540345,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.21528559763610716
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.23998084754417892
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.21764278958181746
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.001,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.21002253275364882,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.21021523805162762
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.225650947057418
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.19420141315190081
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.20916748636152716,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.21377481095409884
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.20077892301526531
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.2129487251152174
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0005,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.226616233557966,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.24607603931556402
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.22030068812386117
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.21347197323447292
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 50
+            },
+            "validation_macro_f1": 0.19556725326759536,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.22734073126142093
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.17962030221782221
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.17974072632354288
+              }
+            ]
+          },
+          {
+            "hyperparameters": {
+              "hidden_dim": 128,
+              "num_layers": 2,
+              "lr": 0.0003,
+              "rare_min_freq": 2
+            },
+            "validation_macro_f1": 0.20073201249644548,
+            "seeds": [
+              {
+                "seed": 42,
+                "validation_macro_f1": 0.22200174597604544
+              },
+              {
+                "seed": 1,
+                "validation_macro_f1": 0.19447156946159055
+              },
+              {
+                "seed": 2,
+                "validation_macro_f1": 0.18572272205170054
+              }
+            ]
+          }
+        ]
       }
     }
   }
