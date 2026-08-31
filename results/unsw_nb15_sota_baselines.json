@@ -952,6 +952,255 @@
             ]
           }
         ]
+      },
+      "plus_node_features": {
+        "macro_f1": 0.11727516109409819,
+        "macro_f1_std": 0.00646929019411215,
+        "accuracy": 0.3882113821138211,
+        "weighted_f1": 0.38061481071843645,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Normal",
+            "f1": 0.7506815302562453
+          },
+          {
+            "class_id": 1,
+            "class_name": "Analysis",
+            "f1": 0.0440962203858311
+          },
+          {
+            "class_id": 2,
+            "class_name": "Backdoors",
+            "f1": 0.035990793052939944
+          },
+          {
+            "class_id": 3,
+            "class_name": "DoS",
+            "f1": 0.05146705146705147
+          },
+          {
+            "class_id": 4,
+            "class_name": "Exploits",
+            "f1": 0.04908094475968766
+          },
+          {
+            "class_id": 5,
+            "class_name": "Fuzzers",
+            "f1": 0.02625656414103526
+          },
+          {
+            "class_id": 6,
+            "class_name": "Generic",
+            "f1": 0.016260162601626018
+          },
+          {
+            "class_id": 7,
+            "class_name": "Reconnaissance",
+            "f1": 0.07584815112763184
+          },
+          {
+            "class_id": 8,
+            "class_name": "Shellcode",
+            "f1": 0.07862574870448887
+          },
+          {
+            "class_id": 9,
+            "class_name": "Worms",
+            "f1": 0.044444444444444446
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.11758719447016841,
+            "accuracy": 0.3902439024390244,
+            "weighted_f1": 0.3977073414103556,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.7926421404682275
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.06299212598425197
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.07407407407407407
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.0
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.04597701149425287
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.03225806451612903
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.0
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.057692307692307696
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.11023622047244094
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.0
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.12503776485426094,
+            "accuracy": 0.39634146341463417,
+            "weighted_f1": 0.36685734310932766,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.7053571428571429
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.03389830508474576
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.03389830508474576
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.06349206349206349
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.0
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.046511627906976744
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.04878048780487805
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.0851063829787234
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.1
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.13333333333333333
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.10920052395786524,
+            "accuracy": 0.3780487804878049,
+            "weighted_f1": 0.37727974763562616,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.7540453074433657
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.035398230088495575
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.0
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.09090909090909091
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.10126582278481013
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.0
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.0
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.0847457627118644
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.02564102564102564
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.0
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 64,
+          "num_layers": 1,
+          "lr": 0.0005,
+          "dropout": 0.2,
+          "optimizer": "adam",
+          "weight_decay": 0.0,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "node_features",
+          "node_feat_dim": 10
+        },
+        "is_faithful_to_paper": false,
+        "variant_label": "E-GraphSAGE + our node features"
       }
     },
     "te_g_sage": {
@@ -2284,6 +2533,257 @@
             ]
           }
         ]
+      },
+      "plus_node_features": {
+        "macro_f1": 0.7196063220765291,
+        "macro_f1_std": 0.009418247116242404,
+        "accuracy": 0.7987804878048781,
+        "weighted_f1": 0.8028023805340468,
+        "per_class_f1": [
+          {
+            "class_id": 0,
+            "class_name": "Normal",
+            "f1": 0.9061537861653567
+          },
+          {
+            "class_id": 1,
+            "class_name": "Analysis",
+            "f1": 0.4514562167392356
+          },
+          {
+            "class_id": 2,
+            "class_name": "Backdoors",
+            "f1": 0.6230374396135265
+          },
+          {
+            "class_id": 3,
+            "class_name": "DoS",
+            "f1": 0.575534188034188
+          },
+          {
+            "class_id": 4,
+            "class_name": "Exploits",
+            "f1": 0.8096644302701489
+          },
+          {
+            "class_id": 5,
+            "class_name": "Fuzzers",
+            "f1": 0.6401766612046986
+          },
+          {
+            "class_id": 6,
+            "class_name": "Generic",
+            "f1": 0.6272406368032758
+          },
+          {
+            "class_id": 7,
+            "class_name": "Reconnaissance",
+            "f1": 0.9156769156769157
+          },
+          {
+            "class_id": 8,
+            "class_name": "Shellcode",
+            "f1": 0.8312990728489318
+          },
+          {
+            "class_id": 9,
+            "class_name": "Worms",
+            "f1": 0.8158238734090126
+          }
+        ],
+        "seeds": [
+          {
+            "seed": 42,
+            "macro_f1": 0.7310067233571012,
+            "accuracy": 0.8064024390243902,
+            "weighted_f1": 0.8110973815934401,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.9087719298245615
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.44
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.6666666666666666
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.6
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.8602150537634409
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.616822429906542
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.647887323943662
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.8888888888888888
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.8387096774193549
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.8421052631578947
+              }
+            ]
+          },
+          {
+            "seed": 1,
+            "macro_f1": 0.7198708683793545,
+            "accuracy": 0.8033536585365854,
+            "weighted_f1": 0.806374046420343,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.9144851657940664
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.4528301886792453
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.59375
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.5641025641025641
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.7766990291262136
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.6730769230769231
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.6285714285714286
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.9230769230769231
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.851063829787234
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.8210526315789474
+              }
+            ]
+          },
+          {
+            "seed": 2,
+            "macro_f1": 0.7079413744931313,
+            "accuracy": 0.7865853658536586,
+            "weighted_f1": 0.7909357135883573,
+            "per_class_f1": [
+              {
+                "class_id": 0,
+                "class_name": "Normal",
+                "f1": 0.8952042628774423
+              },
+              {
+                "class_id": 1,
+                "class_name": "Analysis",
+                "f1": 0.46153846153846156
+              },
+              {
+                "class_id": 2,
+                "class_name": "Backdoors",
+                "f1": 0.6086956521739131
+              },
+              {
+                "class_id": 3,
+                "class_name": "DoS",
+                "f1": 0.5625
+              },
+              {
+                "class_id": 4,
+                "class_name": "Exploits",
+                "f1": 0.7920792079207921
+              },
+              {
+                "class_id": 5,
+                "class_name": "Fuzzers",
+                "f1": 0.6306306306306306
+              },
+              {
+                "class_id": 6,
+                "class_name": "Generic",
+                "f1": 0.6052631578947368
+              },
+              {
+                "class_id": 7,
+                "class_name": "Reconnaissance",
+                "f1": 0.935064935064935
+              },
+              {
+                "class_id": 8,
+                "class_name": "Shellcode",
+                "f1": 0.8041237113402062
+              },
+              {
+                "class_id": 9,
+                "class_name": "Worms",
+                "f1": 0.7843137254901961
+              }
+            ]
+          }
+        ],
+        "hyperparameters": {
+          "hidden_dim": 32,
+          "num_layers": 2,
+          "lr": 0.001,
+          "rare_min_freq": 2,
+          "dropout": 0.3,
+          "edge_mlp_hidden": 128,
+          "optimizer": "adam",
+          "weight_decay": 0.0001,
+          "class_weighting": "inverse_frequency",
+          "max_epochs": 300,
+          "patience": 25,
+          "node_init": "node_features",
+          "node_feat_dim": 10
+        },
+        "is_faithful_to_paper": false,
+        "variant_label": "TE-G-SAGE + our node features"
       }
     }
   }

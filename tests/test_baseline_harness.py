@@ -95,3 +95,36 @@ class RefitSelectionTest(unittest.TestCase):
             ),
             "TE-G-SAGE's published config must be a grid point",
         )
+
+
+class VariantLabellingTest(unittest.TestCase):
+    def test_both_baselines_have_a_node_feature_variant(self) -> None:
+        """Driving test: the entries must exist, for both datasets and both models."""
+        import json
+        from pathlib import Path
+
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = json.loads(
+                Path(f"results/{dataset}_sota_baselines.json").read_text()
+            )
+            for model in ("e_graphsage", "te_g_sage"):
+                with self.subTest(dataset=dataset, model=model):
+                    entry = payload["baselines"][model]["plus_node_features"]
+                    self.assertIsInstance(entry["macro_f1"], float)
+                    self.assertFalse(entry["is_faithful_to_paper"])
+                    self.assertTrue(entry["variant_label"])
+
+    def test_no_unlabelled_non_faithful_entry_anywhere(self) -> None:
+        """Standing guard, not the driver: this one MAY pass vacuously, and that is
+        fine -- its job is to catch a future non-faithful entry added without a label."""
+        import json
+        from pathlib import Path
+
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = json.loads(
+                Path(f"results/{dataset}_sota_baselines.json").read_text()
+            )
+            for model, entries in payload["baselines"].items():
+                for name, entry in entries.items():
+                    if entry.get("is_faithful_to_paper") is False:
+                        self.assertTrue(entry.get("variant_label"), f"{model}.{name}")

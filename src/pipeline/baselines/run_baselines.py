@@ -433,7 +433,135 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
     return output_path
 
 
+def _refit_hyperparameters(
+    payload: dict, dataset: str, model_name: str
+) -> dict[str, object]:
+    try:
+        return payload["baselines"][model_name]["refit"]["hyperparameters"]
+    except KeyError as exc:
+        raise RuntimeError(
+            f"{dataset}: missing baselines.{model_name}.refit.hyperparameters; "
+            "run Task 7 refit selection before plus_node_features"
+        ) from exc
+
+
+def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
+    config = get_dataset_config(dataset)
+    output_path = Path("results") / f"{dataset}_sota_baselines.json"
+    if not output_path.exists():
+        raise RuntimeError(
+            f"{dataset}: missing {output_path}; run Task 7 before plus_node_features"
+        )
+    payload = json.loads(output_path.read_text())
+    egraph_refit = _refit_hyperparameters(payload, dataset, "e_graphsage")
+    te_refit = _refit_hyperparameters(payload, dataset, "te_g_sage")
+
+    df, data = load_aligned_edges(config)
+    folds = torch.load(config.splits_path, weights_only=False)
+    x = data.x.float()
+    edge_index = data.edge_index
+    labels = data.edge_label
+    node_feat_dim = int(x.shape[1])
+
+    egraph_features = torch.from_numpy(egraphsage_edge_features(df)).float()
+
+    def egraph_factory() -> EGraphSAGE:
+        return EGraphSAGE(
+            edge_dim=egraph_features.shape[1],
+            hidden_dim=int(egraph_refit["hidden_dim"]),
+            num_layers=int(egraph_refit["num_layers"]),
+            num_classes=config.num_classes,
+            dropout=float(egraph_refit["dropout"]),
+            node_init="node_features",
+            node_feat_dim=node_feat_dim,
+        )
+
+    egraph_scores: list[dict[str, object]] = []
+    for seed in seeds:
+        preds = run_out_of_fold(
+            egraph_factory,
+            x,
+            edge_index,
+            egraph_features,
+            labels,
+            folds,
+            seed=seed,
+            class_weighting=str(egraph_refit["class_weighting"]),
+            eval_classes=config.eval_classes,
+            optimizer=str(egraph_refit["optimizer"]),
+            lr=float(egraph_refit["lr"]),
+            weight_decay=float(egraph_refit["weight_decay"]),
+            max_epochs=int(egraph_refit["max_epochs"]),
+            patience=int(egraph_refit["patience"]),
+        )
+        egraph_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
+
+    egraph_hyperparameters = {
+        **egraph_refit,
+        "node_init": "node_features",
+        "node_feat_dim": node_feat_dim,
+    }
+    egraph_entry = _result_entry(egraph_scores, egraph_hyperparameters)
+    egraph_entry["is_faithful_to_paper"] = False
+    egraph_entry["variant_label"] = "E-GraphSAGE + our node features"
+
+    te_features = torch.from_numpy(
+        te_g_sage_edge_features(
+            df, rare_min_freq=int(te_refit["rare_min_freq"])
+        )[0]
+    ).float()
+
+    def te_factory() -> TEGSage:
+        return TEGSage(
+            edge_dim=te_features.shape[1],
+            hidden_dim=int(te_refit["hidden_dim"]),
+            num_layers=int(te_refit["num_layers"]),
+            num_classes=config.num_classes,
+            dropout=float(te_refit["dropout"]),
+            edge_mlp_hidden=int(te_refit["edge_mlp_hidden"]),
+            node_init="node_features",
+            node_feat_dim=node_feat_dim,
+        )
+
+    te_scores: list[dict[str, object]] = []
+    for seed in seeds:
+        preds = run_out_of_fold(
+            te_factory,
+            x,
+            edge_index,
+            te_features,
+            labels,
+            folds,
+            seed=seed,
+            class_weighting=str(te_refit["class_weighting"]),
+            eval_classes=config.eval_classes,
+            optimizer=str(te_refit["optimizer"]),
+            lr=float(te_refit["lr"]),
+            weight_decay=float(te_refit["weight_decay"]),
+            max_epochs=int(te_refit["max_epochs"]),
+            patience=int(te_refit["patience"]),
+        )
+        te_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
+
+    te_hyperparameters = {
+        **te_refit,
+        "node_init": "node_features",
+        "node_feat_dim": node_feat_dim,
+    }
+    te_entry = _result_entry(te_scores, te_hyperparameters)
+    te_entry["is_faithful_to_paper"] = False
+    te_entry["variant_label"] = "TE-G-SAGE + our node features"
+
+    baselines = payload["baselines"]
+    baselines["e_graphsage"]["plus_node_features"] = egraph_entry
+    baselines["te_g_sage"]["plus_node_features"] = te_entry
+    output_path.write_text(json.dumps(payload, indent=2) + "\n")
+    return output_path
+
+
 def run(dataset: str, mode: str, seeds: list[int]) -> Path:
+    if mode == "plus_node_features":
+        return _run_plus_node_features(dataset, seeds)
     if mode == "refit":
         return _run_refit(dataset, seeds)
     if mode != "as_published":
@@ -557,7 +685,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", required=True)
     parser.add_argument(
-        "--mode", choices=["as_published", "refit"], default="as_published"
+        "--mode",
+        choices=["as_published", "refit", "plus_node_features"],
+        default="as_published",
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 1, 2])
     args = parser.parse_args()
