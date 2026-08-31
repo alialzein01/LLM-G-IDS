@@ -66,3 +66,32 @@ class ContractShapeTest(unittest.TestCase):
         for dev in payload["deviations"]:
             self.assertTrue(dev["reason"])
             self.assertTrue(dev["resolution"])
+
+
+class RefitSelectionTest(unittest.TestCase):
+    def test_selection_never_reads_test_masks(self) -> None:
+        """Selection must score on validation folds only."""
+        import inspect
+        from src.pipeline.baselines import run_baselines
+        source = inspect.getsource(run_baselines.select_refit)
+        self.assertNotIn("test_mask", source)
+
+    def test_published_config_is_reachable_in_the_grid(self) -> None:
+        """refit must be able to select each paper's own published setting,
+        otherwise it can score below as_published, which is incoherent."""
+        from src.pipeline.baselines.run_baselines import refit_grid
+
+        eg = refit_grid("e_graphsage")
+        self.assertTrue(
+            any(c["hidden_dim"] == 128 and c["num_layers"] == 2 and c["lr"] == 1e-3 for c in eg),
+            "E-GraphSAGE's published config must be a grid point",
+        )
+        tg = refit_grid("te_g_sage")
+        self.assertTrue(
+            any(
+                c["hidden_dim"] == 128 and c["num_layers"] == 2
+                and c["lr"] == 3e-4 and c["rare_min_freq"] == 50
+                for c in tg
+            ),
+            "TE-G-SAGE's published config must be a grid point",
+        )

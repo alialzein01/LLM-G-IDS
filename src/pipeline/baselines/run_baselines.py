@@ -4,10 +4,13 @@ import argparse
 import hashlib
 import json
 from datetime import date
+from itertools import product
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 from src.models.baselines.e_graphsage import (
     EGraphSAGE,
@@ -33,6 +36,7 @@ from src.pipeline.baselines.preprocess import (
     te_g_sage_edge_features,
 )
 from src.pipeline.common.datasets import get_dataset_config
+from src.pipeline.common.splits import eval_macro_f1, get_class_weights
 
 SCHEMA_VERSION = 1
 
@@ -154,7 +158,284 @@ def _result_entry(
     }
 
 
+def refit_grid(model_name: str) -> list[dict[str, int | float]]:
+    base = [
+        {"hidden_dim": hidden_dim, "num_layers": num_layers, "lr": lr}
+        for hidden_dim, num_layers, lr in product(
+            (32, 64, 128), (1, 2), (1e-3, 5e-4, 3e-4)
+        )
+    ]
+    if model_name == "e_graphsage":
+        return base
+    if model_name == "te_g_sage":
+        return [
+            {**config, "rare_min_freq": rare_min_freq}
+            for config in base
+            for rare_min_freq in (50, 2)
+        ]
+    raise ValueError(f"unknown model_name {model_name!r}")
+
+
+def _validation_score(
+    model_factory: Callable[[], nn.Module],
+    x: torch.Tensor,
+    edge_index: torch.Tensor,
+    edge_attr: torch.Tensor,
+    labels: torch.Tensor,
+    folds: list[dict[str, torch.Tensor]],
+    *,
+    seed: int,
+    lr: float,
+    weight_decay: float,
+    eval_classes: tuple[int, ...],
+) -> float:
+    fold_scores: list[float] = []
+    for fold_idx, fold in enumerate(folds):
+        torch.manual_seed(seed + fold_idx)
+        np.random.seed(seed + fold_idx)
+
+        model = model_factory()
+        opt = torch.optim.Adam(
+            model.parameters(), lr=lr, weight_decay=weight_decay
+        )
+        train_mask = fold["train_mask"]
+        val_mask = fold["val_mask"]
+        criterion = nn.CrossEntropyLoss(
+            weight=get_class_weights(labels, train_mask)
+        )
+
+        best_f1, stale = -1.0, 0
+        for _ in range(300):
+            model.train()
+            opt.zero_grad()
+            loss = criterion(
+                model(x, edge_index, edge_attr)[train_mask], labels[train_mask]
+            )
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
+
+            model.eval()
+            with torch.no_grad():
+                val_preds = model(x, edge_index, edge_attr)[val_mask].argmax(dim=1)
+            val_f1 = eval_macro_f1(labels[val_mask], val_preds, eval_classes)
+            if val_f1 > best_f1:
+                best_f1, stale = val_f1, 0
+            else:
+                stale += 1
+                if stale >= 25:
+                    break
+        fold_scores.append(best_f1)
+    return float(np.mean(fold_scores))
+
+
+def select_refit(dataset: str, model_name: str, seeds: list[int]) -> dict:
+    config = get_dataset_config(dataset)
+    df, data = load_aligned_edges(config)
+    folds = torch.load(config.splits_path, weights_only=False)
+    x = data.x.float()
+    edge_index = data.edge_index
+    labels = data.edge_label
+
+    egraph_features = torch.from_numpy(egraphsage_edge_features(df)).float()
+    te_features = {
+        rare_min_freq: torch.from_numpy(
+            te_g_sage_edge_features(df, rare_min_freq=rare_min_freq)[0]
+        ).float()
+        for rare_min_freq in (50, 2)
+    }
+
+    trace: list[dict[str, object]] = []
+    for candidate in refit_grid(model_name):
+        if model_name == "e_graphsage":
+            edge_attr = egraph_features
+
+            def model_factory() -> EGraphSAGE:
+                return EGraphSAGE(
+                    edge_dim=edge_attr.shape[1],
+                    hidden_dim=int(candidate["hidden_dim"]),
+                    num_layers=int(candidate["num_layers"]),
+                    num_classes=config.num_classes,
+                    dropout=EGRAPH_DROPOUT,
+                    node_init="ones",
+                )
+
+            weight_decay = 0.0
+        elif model_name == "te_g_sage":
+            edge_attr = te_features[int(candidate["rare_min_freq"])]
+
+            def model_factory() -> TEGSage:
+                return TEGSage(
+                    edge_dim=edge_attr.shape[1],
+                    hidden_dim=int(candidate["hidden_dim"]),
+                    num_layers=int(candidate["num_layers"]),
+                    num_classes=config.num_classes,
+                    dropout=TEG_DROPOUT,
+                    edge_mlp_hidden=TEG_EDGE_MLP_HIDDEN,
+                    node_init="learned_constant",
+                )
+
+            weight_decay = TEG_WEIGHT_DECAY
+        else:
+            raise ValueError(f"unknown model_name {model_name!r}")
+
+        seed_scores = [
+            {
+                "seed": seed,
+                "validation_macro_f1": _validation_score(
+                    model_factory,
+                    x,
+                    edge_index,
+                    edge_attr,
+                    labels,
+                    folds,
+                    seed=seed,
+                    lr=float(candidate["lr"]),
+                    weight_decay=weight_decay,
+                    eval_classes=config.eval_classes,
+                ),
+            }
+            for seed in seeds
+        ]
+        trace.append(
+            {
+                "hyperparameters": dict(candidate),
+                "validation_macro_f1": float(
+                    np.mean([row["validation_macro_f1"] for row in seed_scores])
+                ),
+                "seeds": seed_scores,
+            }
+        )
+
+    winner = max(trace, key=lambda row: row["validation_macro_f1"])
+    return {
+        "hyperparameters": winner["hyperparameters"],
+        "validation_macro_f1": winner["validation_macro_f1"],
+        "grid_trace": trace,
+    }
+
+
+def _run_refit(dataset: str, seeds: list[int]) -> Path:
+    config = get_dataset_config(dataset)
+    df, data = load_aligned_edges(config)
+    folds = torch.load(config.splits_path, weights_only=False)
+    x = data.x.float()
+    edge_index = data.edge_index
+    labels = data.edge_label
+
+    egraph_selection = select_refit(dataset, "e_graphsage", seeds)
+    egraph_winner = egraph_selection["hyperparameters"]
+    egraph_features = torch.from_numpy(egraphsage_edge_features(df)).float()
+
+    def egraph_factory() -> EGraphSAGE:
+        return EGraphSAGE(
+            edge_dim=egraph_features.shape[1],
+            hidden_dim=int(egraph_winner["hidden_dim"]),
+            num_layers=int(egraph_winner["num_layers"]),
+            num_classes=config.num_classes,
+            dropout=EGRAPH_DROPOUT,
+            node_init="ones",
+        )
+
+    egraph_scores: list[dict[str, object]] = []
+    for seed in seeds:
+        preds = run_out_of_fold(
+            egraph_factory,
+            x,
+            edge_index,
+            egraph_features,
+            labels,
+            folds,
+            seed=seed,
+            class_weighting="inverse_frequency",
+            eval_classes=config.eval_classes,
+            optimizer="adam",
+            lr=float(egraph_winner["lr"]),
+            weight_decay=0.0,
+        )
+        egraph_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
+
+    egraph_hyperparameters = {
+        **egraph_winner,
+        "dropout": EGRAPH_DROPOUT,
+        "optimizer": "adam",
+        "weight_decay": 0.0,
+        "class_weighting": "inverse_frequency",
+        "max_epochs": 300,
+        "patience": 25,
+        "node_init": "ones",
+    }
+    egraph_entry = _result_entry(egraph_scores, egraph_hyperparameters)
+    egraph_entry["validation_macro_f1"] = egraph_selection["validation_macro_f1"]
+    egraph_entry["grid_trace"] = egraph_selection["grid_trace"]
+
+    te_selection = select_refit(dataset, "te_g_sage", seeds)
+    te_winner = te_selection["hyperparameters"]
+    te_features = torch.from_numpy(
+        te_g_sage_edge_features(
+            df, rare_min_freq=int(te_winner["rare_min_freq"])
+        )[0]
+    ).float()
+
+    def te_factory() -> TEGSage:
+        return TEGSage(
+            edge_dim=te_features.shape[1],
+            hidden_dim=int(te_winner["hidden_dim"]),
+            num_layers=int(te_winner["num_layers"]),
+            num_classes=config.num_classes,
+            dropout=TEG_DROPOUT,
+            edge_mlp_hidden=TEG_EDGE_MLP_HIDDEN,
+            node_init="learned_constant",
+        )
+
+    te_scores: list[dict[str, object]] = []
+    for seed in seeds:
+        preds = run_out_of_fold(
+            te_factory,
+            x,
+            edge_index,
+            te_features,
+            labels,
+            folds,
+            seed=seed,
+            class_weighting="inverse_frequency",
+            eval_classes=config.eval_classes,
+            optimizer="adam",
+            lr=float(te_winner["lr"]),
+            weight_decay=TEG_WEIGHT_DECAY,
+        )
+        te_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
+
+    te_hyperparameters = {
+        **te_winner,
+        "dropout": TEG_DROPOUT,
+        "edge_mlp_hidden": TEG_EDGE_MLP_HIDDEN,
+        "optimizer": "adam",
+        "weight_decay": TEG_WEIGHT_DECAY,
+        "class_weighting": "inverse_frequency",
+        "max_epochs": 300,
+        "patience": 25,
+        "node_init": "learned_constant",
+    }
+    te_entry = _result_entry(te_scores, te_hyperparameters)
+    te_entry["validation_macro_f1"] = te_selection["validation_macro_f1"]
+    te_entry["grid_trace"] = te_selection["grid_trace"]
+
+    output_path = Path("results") / f"{dataset}_sota_baselines.json"
+    if output_path.exists():
+        payload = json.loads(output_path.read_text())
+    else:
+        payload = empty_payload(dataset)
+    baselines = payload.setdefault("baselines", {})
+    baselines.setdefault("e_graphsage", {})["refit"] = egraph_entry
+    baselines.setdefault("te_g_sage", {})["refit"] = te_entry
+    output_path.write_text(json.dumps(payload, indent=2) + "\n")
+    return output_path
+
+
 def run(dataset: str, mode: str, seeds: list[int]) -> Path:
+    if mode == "refit":
+        return _run_refit(dataset, seeds)
     if mode != "as_published":
         raise ValueError(f"mode {mode!r} is implemented in a later task")
 
@@ -276,7 +557,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", required=True)
     parser.add_argument(
-        "--mode", choices=["as_published"], default="as_published"
+        "--mode", choices=["as_published", "refit"], default="as_published"
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 1, 2])
     args = parser.parse_args()
