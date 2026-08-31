@@ -1373,19 +1373,30 @@ class StatisticalComparisonTest(unittest.TestCase):
         import json
         from pathlib import Path
 
-        payload = json.loads(Path("results/unsw_nb15_sota_baselines.json").read_text())
-        comparisons = payload["statistical_comparisons"]
-        for key, entry in comparisons.items():
-            for field in ("mean_diff", "ci_low", "ci_high", "prob_positive"):
-                self.assertIn(field, entry, key)
-            self.assertLessEqual(entry["ci_low"], entry["mean_diff"])
-            self.assertGreaterEqual(entry["ci_high"], entry["mean_diff"])
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = json.loads(
+                Path(f"results/{dataset}_sota_baselines.json").read_text()
+            )
+            comparisons = payload["statistical_comparisons"]
+            # Assert the expected keys EXIST. Iterating whatever happens to be
+            # present would pass vacuously on an empty dict.
+            for rung in ("gnn", "llm", "agaf", "feedback"):
+                for model in ("e_graphsage", "te_g_sage"):
+                    for mode in ("as_published", "refit", "plus_node_features"):
+                        key = f"{rung}_vs_{model}_{mode}"
+                        with self.subTest(dataset=dataset, key=key):
+                            entry = comparisons[key]
+                            for field in ("mean_diff", "ci_low", "ci_high", "prob_positive"):
+                                self.assertIn(field, entry, key)
+                            self.assertLessEqual(entry["ci_low"], entry["mean_diff"])
+                            self.assertGreaterEqual(entry["ci_high"], entry["mean_diff"])
 ```
 
 - [ ] **Step 3: Run to verify it fails**
 
 Run: `OMP_NUM_THREADS=1 python -m pytest tests/test_sota_baselines.py::StatisticalComparisonTest -v`
-Expected: FAIL with `KeyError: 'statistical_comparisons'`
+Expected: FAIL with `KeyError: 'statistical_comparisons'`. Note the test asserts the
+24 expected comparison keys exist per dataset, so it cannot pass on an empty dict.
 
 - [ ] **Step 4: Implement `compare_to_ladder`**
 
@@ -1473,12 +1484,33 @@ class SotaBaselineContractTest(unittest.TestCase):
                 )
 
     def test_every_deviation_is_explained(self) -> None:
-        payload = json.loads(Path("results/unsw_nb15_sota_baselines.json").read_text())
-        codes = {d["code"] for d in payload["deviations"]}
-        self.assertTrue({"D1", "D2", "D3", "D4", "D5"}.issubset(codes))
-        for dev in payload["deviations"]:
-            self.assertTrue(dev["reason"].strip())
-            self.assertTrue(dev["resolution"].strip())
+        for key in ("unsw_nb15", "ton_iot"):
+            with self.subTest(dataset=key):
+                payload = json.loads(
+                    Path(f"results/{key}_sota_baselines.json").read_text()
+                )
+                codes = {d["code"] for d in payload["deviations"]}
+                self.assertTrue({"D1", "D2", "D3", "D4", "D5"}.issubset(codes))
+                for dev in payload["deviations"]:
+                    self.assertTrue(dev["reason"].strip())
+                    self.assertTrue(dev["resolution"].strip())
+
+    def test_the_e_graphsage_ceiling_is_recorded(self) -> None:
+        """Step 0's known_ceilings block must reach both results files: the report
+        quotes it wherever an E-GraphSAGE number appears."""
+        for key in ("unsw_nb15", "ton_iot"):
+            with self.subTest(dataset=key):
+                payload = json.loads(
+                    Path(f"results/{key}_sota_baselines.json").read_text()
+                )
+                ceiling = payload["known_ceilings"]["e_graphsage_endpoint_only"]
+                self.assertIn("CONCAT(h_u, h_v)", ceiling["description"])
+                self.assertEqual(
+                    ceiling["edges_indistinguishable_by_endpoints"],
+                    {"unsw_nb15": 385, "ton_iot": 167},
+                )
+                self.assertTrue(ceiling["reporting_rule"].strip())
+                self.assertTrue(ceiling["not_an_epoch_artifact"].strip())
 ```
 
 - [ ] **Step 2: Run the full suite**
