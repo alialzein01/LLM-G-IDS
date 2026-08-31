@@ -1260,23 +1260,50 @@ vector, TE-G-SAGE via a learned constant embedding), so the ablation applies to 
 
 - [ ] **Step 1: Write the failing guard test**
 
+The driving test must assert the entries EXIST. A test that only checks a property of
+whatever happens to be present passes vacuously on an empty match set, goes green before
+any implementation, and can never produce Step 2's red state.
+
 ```python
 class VariantLabellingTest(unittest.TestCase):
-    def test_non_faithful_entries_carry_a_label(self) -> None:
+    def test_both_baselines_have_a_node_feature_variant(self) -> None:
+        """Driving test: the entries must exist, for both datasets and both models."""
         import json
         from pathlib import Path
 
-        payload = json.loads(Path("results/unsw_nb15_sota_baselines.json").read_text())
-        for model, entries in payload["baselines"].items():
-            for name, entry in entries.items():
-                if entry.get("is_faithful_to_paper") is False:
-                    self.assertTrue(entry.get("variant_label"), f"{model}.{name}")
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = json.loads(
+                Path(f"results/{dataset}_sota_baselines.json").read_text()
+            )
+            for model in ("e_graphsage", "te_g_sage"):
+                with self.subTest(dataset=dataset, model=model):
+                    entry = payload["baselines"][model]["plus_node_features"]
+                    self.assertIsInstance(entry["macro_f1"], float)
+                    self.assertFalse(entry["is_faithful_to_paper"])
+                    self.assertTrue(entry["variant_label"])
+
+    def test_no_unlabelled_non_faithful_entry_anywhere(self) -> None:
+        """Standing guard, not the driver: this one MAY pass vacuously, and that is
+        fine -- its job is to catch a future non-faithful entry added without a label."""
+        import json
+        from pathlib import Path
+
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = json.loads(
+                Path(f"results/{dataset}_sota_baselines.json").read_text()
+            )
+            for model, entries in payload["baselines"].items():
+                for name, entry in entries.items():
+                    if entry.get("is_faithful_to_paper") is False:
+                        self.assertTrue(entry.get("variant_label"), f"{model}.{name}")
 ```
 
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `OMP_NUM_THREADS=1 python -m pytest tests/test_baseline_harness.py::VariantLabellingTest -v`
-Expected: FAIL — no `plus_node_features` entry exists yet.
+Expected: `test_both_baselines_have_a_node_feature_variant` FAILS with
+`KeyError: 'plus_node_features'`. `test_no_unlabelled_non_faithful_entry_anywhere` passes
+vacuously, which is expected and correct — it is a guard, not the driver.
 
 - [ ] **Step 3: Implement the variant path and run it**
 
