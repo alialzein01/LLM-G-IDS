@@ -709,7 +709,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `src.pipeline.common.splits.eval_macro_f1`, `get_class_weights`; `src.pipeline.common.metrics.classification_metrics`
 - Produces:
-  - `run_out_of_fold(model_factory: Callable[[], nn.Module], x, edge_index, edge_attr, labels, folds, *, seed: int, class_weighting: str, eval_classes, max_epochs: int = 200, patience: int = 25, lr: float = 1e-3, weight_decay: float = 0.0, optimizer: str = "adam") -> numpy.ndarray`  # pooled OOF predictions `[E]`
+  - `run_out_of_fold(model_factory: Callable[[], nn.Module], x, edge_index, edge_attr, labels, folds, *, seed: int, class_weighting: str, eval_classes, max_epochs: int = 300, patience: int = 25, lr: float = 1e-3, weight_decay: float = 0.0, optimizer: str = "adam") -> numpy.ndarray`  # pooled OOF predictions `[E]`
   - `pooled_scores(labels, preds, config) -> dict[str, float]` with keys `macro_f1`, `accuracy`, `weighted_f1`
 
 - [ ] **Step 1: Write the failing test**
@@ -802,7 +802,7 @@ def run_out_of_fold(
     seed: int,
     class_weighting: str,
     eval_classes: tuple[int, ...],
-    max_epochs: int = 200,
+    max_epochs: int = 300,
     patience: int = 25,
     lr: float = 1e-3,
     weight_decay: float = 0.0,
@@ -995,7 +995,9 @@ DEVIATIONS = [
                   "overfitting.",
         "resolution": "Max 200 epochs, patience 25 on validation macro-F1, best state "
                       "restored before test prediction -- identical to the schedule our "
-                      "own rungs use, so neither side is advantaged.",
+                      "own rungs use (verify_gnn_baseline.py MAX_EPOCHS=300, "
+                      "train_unimodal_baselines.py MAX_EPOCHS=300), so neither side is "
+                      "advantaged by its epoch budget.",
     },
     {
         "code": "D4",
