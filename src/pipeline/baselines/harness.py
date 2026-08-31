@@ -27,7 +27,8 @@ def run_out_of_fold(
     max_epochs: int = 200,
     patience: int = 25,
     lr: float = 1e-3,
-    weight_decay: float = 5e-4,
+    weight_decay: float = 0.0,
+    optimizer: str = "adam",
 ) -> np.ndarray:
     """Train one model per fold, predict that fold's test edges, pool the result.
 
@@ -41,7 +42,10 @@ def run_out_of_fold(
         np.random.seed(seed + fold_idx)
 
         model = model_factory()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+        # Both source implementations use plain Adam, not AdamW. Defaulting to AdamW
+        # here would silently apply decoupled weight decay neither paper specifies.
+        opt_cls = {"adam": torch.optim.Adam, "adamw": torch.optim.AdamW}[optimizer]
+        opt = opt_cls(model.parameters(), lr=lr, weight_decay=weight_decay)
 
         train_mask, val_mask = fold["train_mask"], fold["val_mask"]
         if class_weighting == "inverse_frequency":
@@ -54,13 +58,13 @@ def run_out_of_fold(
         best_f1, best_state, stale = -1.0, None, 0
         for _ in range(max_epochs):
             model.train()
-            optimizer.zero_grad()
+            opt.zero_grad()
             loss = criterion(
                 model(x, edge_index, edge_attr)[train_mask], labels[train_mask]
             )
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
-            optimizer.step()
+            opt.step()
 
             model.eval()
             with torch.no_grad():
