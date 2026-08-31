@@ -44,7 +44,7 @@
     {
       "code": "D3",
       "reason": "Both released implementations train for a fixed epoch count with no validation split and no early stopping -- E-GraphSAGE runs range(1, 5000) (4999 epochs), TE-G-SAGE 20. A fixed schedule with no validation cannot be used here: our protocol selects on validation folds, and 4999 full-batch epochs on a 656-edge graph is unbounded overfitting.",
-      "resolution": "Max 200 epochs, patience 25 on validation macro-F1, best state restored before test prediction -- identical to the schedule our own rungs use, so neither side is advantaged."
+      "resolution": "Max 300 epochs, patience 25 on validation macro-F1, best state restored before test prediction -- identical to the schedule our own rungs use, so neither side is advantaged."
     },
     {
       "code": "D4",
@@ -301,7 +301,7 @@
           "weight_decay": 0.0,
           "class_weighting": "inverse_frequency",
           "published_epochs": 4999,
-          "max_epochs": 200,
+          "max_epochs": 300,
           "patience": 25,
           "node_init": "ones"
         },
@@ -553,7 +553,7 @@
           "weight_decay": 0.0001,
           "class_weighting": "inverse_frequency",
           "published_epochs": 20,
-          "max_epochs": 200,
+          "max_epochs": 300,
           "patience": 25,
           "node_init": "learned_constant"
         },
