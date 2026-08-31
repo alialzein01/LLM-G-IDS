@@ -119,7 +119,7 @@ Each baseline is reported in **two columns**:
   |---|---|
   | hidden dim | 32, 64, 128 |
   | layers (K) | 1, 2 |
-  | learning rate | 1e-3, 5e-4 |
+  | learning rate | 1e-3, 5e-4, 3e-4 (both papers' published values are reachable) |
   | dropout | as published (0.2 E-GraphSAGE / 0.3 TE-G-SAGE) |
   | TE-G-SAGE `rare_min_freq` | 50 (published), 2 |
 

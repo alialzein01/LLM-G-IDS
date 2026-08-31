@@ -1151,8 +1151,12 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes: Task 5 `run()`
-- Produces: `select_refit(dataset, model_name, seeds) -> dict` returning the winning
-  hyperparameters and the full grid trace
+- Produces:
+  - `refit_grid(model_name: str) -> list[dict]` — the fixed grid as a list of config
+    dicts. Keys: `hidden_dim`, `num_layers`, `lr` for both models, plus `rare_min_freq`
+    for `te_g_sage`. `dropout` is not swept; it stays at each paper's published value.
+  - `select_refit(dataset: str, model_name: str, seeds: list[int]) -> dict` — returns the
+    winning config and the full grid trace, scored on validation folds only.
 
 Grid, fixed by spec §5 and not to be widened after seeing results:
 
@@ -1160,9 +1164,18 @@ Grid, fixed by spec §5 and not to be widened after seeing results:
 |---|---|
 | hidden dim | 32, 64, 128 |
 | layers | 1, 2 |
-| learning rate | 1e-3, 5e-4 |
+| learning rate | 1e-3, 5e-4, 3e-4 |
 | dropout | as published (0.2 / 0.3) |
 | TE-G-SAGE `rare_min_freq` | 50, 2 |
+
+**The published configuration must be a grid point.** `3e-4` is on the lr axis so that
+TE-G-SAGE's published setting (hidden 128, 2 layers, lr 3e-4, `rare_min_freq` 50) is
+reachable, as is E-GraphSAGE's (hidden 128, 2 layers, lr 1e-3). Without this, `refit`
+could score below `as_published`, which is incoherent for a column that exists to show
+the baseline is not being starved.
+
+Grid sizes: E-GraphSAGE 3x2x3 = 18 configs; TE-G-SAGE 3x2x3x2 = 36. Times 3 seeds times
+5 folds. At 656-2127 edges this is minutes, not hours.
 
 - [ ] **Step 1: Write the failing selection test**
 
@@ -1174,6 +1187,26 @@ class RefitSelectionTest(unittest.TestCase):
         from src.pipeline.baselines import run_baselines
         source = inspect.getsource(run_baselines.select_refit)
         self.assertNotIn("test_mask", source)
+
+    def test_published_config_is_reachable_in_the_grid(self) -> None:
+        """refit must be able to select each paper's own published setting,
+        otherwise it can score below as_published, which is incoherent."""
+        from src.pipeline.baselines.run_baselines import refit_grid
+
+        eg = refit_grid("e_graphsage")
+        self.assertTrue(
+            any(c["hidden_dim"] == 128 and c["num_layers"] == 2 and c["lr"] == 1e-3 for c in eg),
+            "E-GraphSAGE's published config must be a grid point",
+        )
+        tg = refit_grid("te_g_sage")
+        self.assertTrue(
+            any(
+                c["hidden_dim"] == 128 and c["num_layers"] == 2
+                and c["lr"] == 3e-4 and c["rare_min_freq"] == 50
+                for c in tg
+            ),
+            "TE-G-SAGE's published config must be a grid point",
+        )
 ```
 
 - [ ] **Step 2: Run to verify it fails**
