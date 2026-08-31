@@ -47,3 +47,22 @@ class HarnessTest(unittest.TestCase):
     def test_same_seed_reproduces(self) -> None:
         config = get_dataset_config("unsw_nb15")
         self.assertIsNotNone(config)
+
+
+class ContractShapeTest(unittest.TestCase):
+    def test_payload_declares_provenance_and_deviations(self) -> None:
+        from src.pipeline.baselines.run_baselines import empty_payload
+
+        payload = empty_payload("unsw_nb15")
+        for key in (
+            "schema_version", "dataset", "dataset_key", "metric_protocol",
+            "primary_metric", "data_provenance", "deviations",
+            "preprocessing", "baselines",
+        ):
+            self.assertIn(key, payload)
+        self.assertEqual(payload["primary_metric"], "macro_f1")
+        codes = {d["code"] for d in payload["deviations"]}
+        self.assertTrue({"D1", "D2", "D3", "D4", "D5"}.issubset(codes))
+        for dev in payload["deviations"]:
+            self.assertTrue(dev["reason"])
+            self.assertTrue(dev["resolution"])
