@@ -58,7 +58,7 @@ DEVIATIONS = [
                   "validation cannot be used here: our protocol selects on validation "
                   "folds, and 4999 full-batch epochs on a 656-edge graph is unbounded "
                   "overfitting.",
-        "resolution": "Max 200 epochs, patience 25 on validation macro-F1, best state "
+        "resolution": "Max 300 epochs, patience 25 on validation macro-F1, best state "
                       "restored before test prediction -- identical to the schedule our "
                       "own rungs use, so neither side is advantaged.",
     },
@@ -175,7 +175,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
         "weight_decay": 0.0,
         "class_weighting": "inverse_frequency",
         "published_epochs": 4999,
-        "max_epochs": 200,
+        "max_epochs": 300,
         "patience": 25,
         "node_init": "ones",
     }
@@ -221,7 +221,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
         "weight_decay": TEG_WEIGHT_DECAY,
         "class_weighting": "inverse_frequency",
         "published_epochs": TEG_EPOCHS,
-        "max_epochs": 200,
+        "max_epochs": 300,
         "patience": 25,
         "node_init": "learned_constant",
     }
@@ -260,6 +260,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
         payload = json.loads(output_path.read_text())
     else:
         payload = empty_payload(dataset)
+    payload["deviations"] = list(DEVIATIONS)
     baselines = payload.setdefault("baselines", {})
     baselines.setdefault("e_graphsage", {})["as_published"] = _result_entry(
         egraph_scores, egraph_hyperparameters

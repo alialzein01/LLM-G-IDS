@@ -24,7 +24,7 @@ def run_out_of_fold(
     seed: int,
     class_weighting: str,
     eval_classes: tuple[int, ...],
-    max_epochs: int = 200,
+    max_epochs: int = 300,
     patience: int = 25,
     lr: float = 1e-3,
     weight_decay: float = 0.0,
