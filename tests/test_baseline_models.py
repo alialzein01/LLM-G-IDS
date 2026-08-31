@@ -52,6 +52,18 @@ class TEGSageShapeTest(unittest.TestCase):
         edge_index = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 2]], dtype=torch.long)
         edge_attr = torch.randn(4, 12)
         x = torch.randn(3, 10)
-        model = TEGSage(in_dim=10, edge_dim=12, num_classes=10)
-        logits = model(x, edge_index, edge_attr)
+        model = TEGSage(edge_dim=12, num_classes=10)
+        logits = model(None, edge_index, edge_attr)
         self.assertEqual(tuple(logits.shape), (4, 10))
+
+    def test_learned_constant_init_ignores_node_features(self) -> None:
+        """in_node == 0 in the released code: nodes carry a learned constant."""
+        edge_index = torch.tensor([[0, 1, 2, 0], [1, 2, 0, 2]], dtype=torch.long)
+        edge_attr = torch.randn(4, 12)
+        x = torch.randn(3, 10)
+        model = TEGSage(edge_dim=12, num_classes=10)
+        model.eval()
+        with torch.no_grad():
+            a = model(x, edge_index, edge_attr)
+            b = model(torch.randn_like(x) * 100.0, edge_index, edge_attr)
+        torch.testing.assert_close(a, b)
