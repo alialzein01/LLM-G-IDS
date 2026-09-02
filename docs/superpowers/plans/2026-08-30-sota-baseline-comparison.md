@@ -1359,11 +1359,16 @@ Our rungs' pooled OOF predictions already exist as logits under
 `assemble_ladder` reconstructs. Reuse `assemble_ladder`'s own loading path rather than
 re-deriving it, and apply `_masked_preds` so dropped classes are handled identically.
 
-- [ ] **Step 1: Persist baseline OOF predictions**
+- [ ] **Step 1: Persist PER-SEED baseline OOF predictions**
 
 Modify Task 5's `run()` to save pooled predictions alongside the JSON as
-`data/{dataset}/processed/baselines/{model}_{mode}_oof_preds.npy`, so CIs can be computed
+`data/{dataset}/processed/baselines/{model}_{mode}_oof_preds.npy` with shape
+**`[n_seeds, E]`**, one row per seed in the order seeds were run, so CIs can be computed
 without retraining.
+
+`[E]` is not sufficient: baseline point estimates are means over seeds 42, 1, 2 while our
+rungs are single-seed (42), so a single vector cannot test the number we report. See
+spec §9a.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -1390,6 +1395,11 @@ class StatisticalComparisonTest(unittest.TestCase):
                                 self.assertIn(field, entry, key)
                             self.assertLessEqual(entry["ci_low"], entry["mean_diff"])
                             self.assertGreaterEqual(entry["ci_high"], entry["mean_diff"])
+                            # The primary interval MUST propagate baseline seed variance.
+                            self.assertEqual(entry["resampled"], "edges_and_baseline_seed")
+                            self.assertEqual(entry["baseline_seeds"], 3)
+                            self.assertIn(key, payload["seed_matched_comparisons"])
+            self.assertTrue(payload["comparison_caveat"].strip())
 ```
 
 - [ ] **Step 3: Run to verify it fails**
@@ -1400,10 +1410,68 @@ Expected: FAIL with `KeyError: 'statistical_comparisons'`. Note the test asserts
 
 - [ ] **Step 4: Implement `compare_to_ladder`**
 
-For each `(baseline, mode)` and each rung in `(gnn, llm, agaf, feedback)`, compute
-`_bootstrap_ci(labels, rung_preds, baseline_preds, config.eval_classes)` and store it
-under `statistical_comparisons["<rung>_vs_<model>_<mode>"]`. Note the sign convention in
-the JSON: positive `mean_diff` means **our rung is ahead**.
+Two comparison families per `(rung, model, mode)`, per spec §9a. Sign convention in both:
+positive `mean_diff` means **our rung is ahead**.
+
+**Primary — two-level bootstrap**, stored under
+`statistical_comparisons["<rung>_vs_<model>_<mode>"]`:
+
+```python
+def bootstrap_ci_multiseed(
+    labels, preds_rung, preds_baseline_seeds, eval_classes, iters=2000, seed=42
+):
+    """CI of macro-F1(rung) - macro-F1(baseline), resampling edges AND baseline seed.
+
+    preds_rung:            [E]      our rung, seed 42 only (see the asymmetry note)
+    preds_baseline_seeds:  [S, E]   one row per baseline seed
+    """
+    from sklearn.metrics import f1_score
+
+    rng = np.random.default_rng(seed)
+    labels = np.asarray(labels)
+    pr = np.asarray(preds_rung)
+    pb = np.asarray(preds_baseline_seeds)
+    labs = list(eval_classes)
+
+    row = np.isin(labels, labs)
+    labels, pr, pb = labels[row], pr[row], pb[:, row]
+    n, n_seeds = len(labels), pb.shape[0]
+
+    diffs = np.empty(iters)
+    for i in range(iters):
+        idx = rng.integers(0, n, size=n)
+        s = rng.integers(0, n_seeds)
+        fa = f1_score(labels[idx], pr[idx], average="macro", labels=labs, zero_division=0)
+        fb = f1_score(labels[idx], pb[s][idx], average="macro", labels=labs, zero_division=0)
+        diffs[i] = fa - fb
+
+    return {
+        "mean_diff": float(diffs.mean()),
+        "ci_low": float(np.percentile(diffs, 2.5)),
+        "ci_high": float(np.percentile(diffs, 97.5)),
+        "prob_positive": float((diffs > 0).mean()),
+        "resampled": "edges_and_baseline_seed",
+        "rung_seeds": 1,
+        "baseline_seeds": int(n_seeds),
+    }
+```
+
+**Secondary — seed-matched**, stored under
+`seed_matched_comparisons["<rung>_vs_<model>_<mode>"]`: call
+`assemble_ladder._bootstrap_ci(labels, rung_preds, baseline_preds_seed42, eval_classes)`
+unchanged, so the numbers line up with the ladder CI table in
+`docs/RESULTS_ARCHIVE.md` §1.1.
+
+Also write, once per file:
+
+```python
+"comparison_caveat": (
+    "Our four rungs were run at seed 42 only, so no rung-side training "
+    "stochasticity enters these intervals. They are therefore NARROWER than a "
+    "symmetric multi-seed comparison would give. Re-running the ladder at seeds "
+    "1 and 2 is the highest-value follow-up."
+)
+```
 
 - [ ] **Step 5: Run and verify**
 

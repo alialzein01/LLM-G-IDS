@@ -254,6 +254,47 @@ Fixed before any number is produced, so the conclusion is not selected after the
   bootstrap protocol used in `docs/RESULTS_ARCHIVE.md` §1.1. Use
   **"highest point estimate"**, never "top rung".
 
+## 9a. Multi-seed comparison convention
+
+Two variance sources exist and only one was modelled.
+
+- `assemble_ladder._bootstrap_ci` resamples **edges**. It captures test-set sampling
+  variability, not training stochasticity.
+- Baseline point estimates are **means over seeds 42, 1, 2**. Our four rungs are
+  **single-seed (42)** — `results/*_current.json` `configuration.seed = 42`.
+
+So a seed-42-only CI would not test the baseline numbers we report, and a naive
+mean-vs-single comparison hides seed variance entirely. On NF-ToN-IoT that is decisive:
+E-GraphSAGE + our node features scores `[0.3989, 0.4775, 0.4311]` across seeds, and
+**seed 1 (0.4775) exceeds our Loop rung (0.4478)**. The sign of that comparison depends
+on the seed.
+
+### Convention (binding)
+
+**Primary — two-level bootstrap.** For each of 2000 resamples, draw edge indices with
+replacement **and** draw one baseline seed uniformly from the three, then record
+`macro_F1(rung, seed 42) − macro_F1(baseline, drawn seed)`. This propagates edge sampling
+and baseline training stochasticity into one interval, and it tests the multi-seed mean
+we actually report. Stored as `statistical_comparisons`.
+
+**Secondary — seed-matched.** Seed 42 on both sides, via `_bootstrap_ci` unchanged, so
+the numbers are directly comparable with the existing ladder CI table in
+`docs/RESULTS_ARCHIVE.md` §1.1. Stored as `seed_matched_comparisons`.
+
+Per-seed predictions are therefore persisted as `[n_seeds, E]`, not `[E]`.
+
+### Disclosed limitation
+
+The rung side contributes no seed variance, because our ladder was only ever run at
+seed 42. The resulting intervals are therefore **narrower than a fully symmetric
+comparison would give**, and the report must say so wherever a CI is quoted. Re-running
+the four rungs at seeds 1 and 2 would remove this asymmetry and is the single highest-value
+follow-up; it is out of scope here only because it requires re-running the full ladder
+pipeline, not because it is unimportant.
+
+Under no circumstances may a comparison be reported as separated on the strength of an
+interval that omits rung-side seed variance alone.
+
 ## 10a. Known architectural ceiling — E-GraphSAGE on an aggregated multigraph
 
 Measured 2026-08-31, before any headline run, so it cannot be a post-hoc explanation.
