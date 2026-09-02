@@ -2547,5 +2547,370 @@
         "variant_label": "TE-G-SAGE + our node features"
       }
     }
-  }
+  },
+  "statistical_comparisons": {
+    "gnn_vs_e_graphsage_as_published": {
+      "mean_diff": 0.015102132888270479,
+      "ci_low": -0.02755066501998439,
+      "ci_high": 0.05640765552322203,
+      "prob_positive": 0.7605,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "llm_vs_e_graphsage_as_published": {
+      "mean_diff": -0.13380178787719363,
+      "ci_low": -0.17555852423931054,
+      "ci_high": -0.09331117314653085,
+      "prob_positive": 0.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "agaf_vs_e_graphsage_as_published": {
+      "mean_diff": -0.08116617075548921,
+      "ci_low": -0.13619872295371158,
+      "ci_high": -0.022748917541932024,
+      "prob_positive": 0.003,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "feedback_vs_e_graphsage_as_published": {
+      "mean_diff": 0.03403244741082173,
+      "ci_low": -0.012061187249083807,
+      "ci_high": 0.08090669799644887,
+      "prob_positive": 0.9245,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "gnn_vs_e_graphsage_refit": {
+      "mean_diff": 0.015102132888270479,
+      "ci_low": -0.02755066501998439,
+      "ci_high": 0.05640765552322203,
+      "prob_positive": 0.7605,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "llm_vs_e_graphsage_refit": {
+      "mean_diff": -0.13380178787719363,
+      "ci_low": -0.17555852423931054,
+      "ci_high": -0.09331117314653085,
+      "prob_positive": 0.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "agaf_vs_e_graphsage_refit": {
+      "mean_diff": -0.08116617075548921,
+      "ci_low": -0.13619872295371158,
+      "ci_high": -0.022748917541932024,
+      "prob_positive": 0.003,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "feedback_vs_e_graphsage_refit": {
+      "mean_diff": 0.03403244741082173,
+      "ci_low": -0.012061187249083807,
+      "ci_high": 0.08090669799644887,
+      "prob_positive": 0.9245,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "gnn_vs_e_graphsage_plus_node_features": {
+      "mean_diff": -0.005616081997412339,
+      "ci_low": -0.0766856268349816,
+      "ci_high": 0.06711764170530579,
+      "prob_positive": 0.473,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "llm_vs_e_graphsage_plus_node_features": {
+      "mean_diff": -0.15452000276287645,
+      "ci_low": -0.227382967736803,
+      "ci_high": -0.08791381069668408,
+      "prob_positive": 0.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "agaf_vs_e_graphsage_plus_node_features": {
+      "mean_diff": -0.10188438564117201,
+      "ci_low": -0.1843360864132786,
+      "ci_high": -0.02176795002383573,
+      "prob_positive": 0.005,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "feedback_vs_e_graphsage_plus_node_features": {
+      "mean_diff": 0.013314232525138909,
+      "ci_low": -0.05973750405132553,
+      "ci_high": 0.08530136398819667,
+      "prob_positive": 0.616,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "gnn_vs_te_g_sage_as_published": {
+      "mean_diff": 0.23387976425667287,
+      "ci_low": 0.18028035854290217,
+      "ci_high": 0.28658604649628355,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "llm_vs_te_g_sage_as_published": {
+      "mean_diff": 0.08497584349120878,
+      "ci_low": 0.04307889584101581,
+      "ci_high": 0.12463013290342768,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "agaf_vs_te_g_sage_as_published": {
+      "mean_diff": 0.13761146061291318,
+      "ci_low": 0.07804395229988402,
+      "ci_high": 0.19599558387485624,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "feedback_vs_te_g_sage_as_published": {
+      "mean_diff": 0.2528100787792241,
+      "ci_low": 0.19737150551706467,
+      "ci_high": 0.30764794700623344,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "gnn_vs_te_g_sage_refit": {
+      "mean_diff": 0.1936791661685171,
+      "ci_low": 0.14187546742993476,
+      "ci_high": 0.23954569657126681,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "llm_vs_te_g_sage_refit": {
+      "mean_diff": 0.044775245403053006,
+      "ci_low": 0.003252161939309338,
+      "ci_high": 0.07909589917636069,
+      "prob_positive": 0.9835,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "agaf_vs_te_g_sage_refit": {
+      "mean_diff": 0.09741086252475742,
+      "ci_low": 0.041013118220623195,
+      "ci_high": 0.1499811745026675,
+      "prob_positive": 0.9995,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "feedback_vs_te_g_sage_refit": {
+      "mean_diff": 0.21260948069106833,
+      "ci_low": 0.153991623547609,
+      "ci_high": 0.26170585384486245,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "gnn_vs_te_g_sage_plus_node_features": {
+      "mean_diff": 0.07604549091021699,
+      "ci_low": 0.021497025936690208,
+      "ci_high": 0.1325803497222124,
+      "prob_positive": 0.9965,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "llm_vs_te_g_sage_plus_node_features": {
+      "mean_diff": -0.07285842985524711,
+      "ci_low": -0.12140423597815853,
+      "ci_high": -0.02592657817834005,
+      "prob_positive": 0.0005,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "agaf_vs_te_g_sage_plus_node_features": {
+      "mean_diff": -0.02022281273354268,
+      "ci_low": -0.0839189966838659,
+      "ci_high": 0.0426488124992596,
+      "prob_positive": 0.2715,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    },
+    "feedback_vs_te_g_sage_plus_node_features": {
+      "mean_diff": 0.09497580543276823,
+      "ci_low": 0.04032910223847508,
+      "ci_high": 0.15187191960351787,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_baseline_seed",
+      "rung_seeds": 1,
+      "baseline_seeds": 3
+    }
+  },
+  "seed_matched_comparisons": {
+    "gnn_vs_e_graphsage_as_published": {
+      "mean_diff": 0.01995814424480397,
+      "ci_low": -0.02050230929328221,
+      "ci_high": 0.0633894547703749,
+      "prob_positive": 0.81
+    },
+    "llm_vs_e_graphsage_as_published": {
+      "mean_diff": -0.12886489045038482,
+      "ci_low": -0.1678735051251036,
+      "ci_high": -0.08874682932200806,
+      "prob_positive": 0.0
+    },
+    "agaf_vs_e_graphsage_as_published": {
+      "mean_diff": -0.07626714794081796,
+      "ci_low": -0.136031670021569,
+      "ci_high": -0.01847842909128859,
+      "prob_positive": 0.007
+    },
+    "feedback_vs_e_graphsage_as_published": {
+      "mean_diff": 0.03885899250314266,
+      "ci_low": -0.007264377418095849,
+      "ci_high": 0.08607969147548027,
+      "prob_positive": 0.9515
+    },
+    "gnn_vs_e_graphsage_refit": {
+      "mean_diff": 0.01995814424480397,
+      "ci_low": -0.02050230929328221,
+      "ci_high": 0.0633894547703749,
+      "prob_positive": 0.81
+    },
+    "llm_vs_e_graphsage_refit": {
+      "mean_diff": -0.12886489045038482,
+      "ci_low": -0.1678735051251036,
+      "ci_high": -0.08874682932200806,
+      "prob_positive": 0.0
+    },
+    "agaf_vs_e_graphsage_refit": {
+      "mean_diff": -0.07626714794081796,
+      "ci_low": -0.136031670021569,
+      "ci_high": -0.01847842909128859,
+      "prob_positive": 0.007
+    },
+    "feedback_vs_e_graphsage_refit": {
+      "mean_diff": 0.03885899250314266,
+      "ci_low": -0.007264377418095849,
+      "ci_high": 0.08607969147548027,
+      "prob_positive": 0.9515
+    },
+    "gnn_vs_e_graphsage_plus_node_features": {
+      "mean_diff": 0.03089639166566595,
+      "ci_low": -0.016672902468206963,
+      "ci_high": 0.07561758703740429,
+      "prob_positive": 0.915
+    },
+    "llm_vs_e_graphsage_plus_node_features": {
+      "mean_diff": -0.11792664302952285,
+      "ci_low": -0.16094800112606916,
+      "ci_high": -0.07613714046170487,
+      "prob_positive": 0.0
+    },
+    "agaf_vs_e_graphsage_plus_node_features": {
+      "mean_diff": -0.06532890051995599,
+      "ci_low": -0.12430030580543673,
+      "ci_high": -0.008752750689070166,
+      "prob_positive": 0.015
+    },
+    "feedback_vs_e_graphsage_plus_node_features": {
+      "mean_diff": 0.049797239924004644,
+      "ci_low": -0.0009985326975204584,
+      "ci_high": 0.10077222383425045,
+      "prob_positive": 0.973
+    },
+    "gnn_vs_te_g_sage_as_published": {
+      "mean_diff": 0.21877752954781454,
+      "ci_low": 0.17463726138631974,
+      "ci_high": 0.2619341124949023,
+      "prob_positive": 1.0
+    },
+    "llm_vs_te_g_sage_as_published": {
+      "mean_diff": 0.06995449485262573,
+      "ci_low": 0.03898366697567825,
+      "ci_high": 0.09956829642868159,
+      "prob_positive": 1.0
+    },
+    "agaf_vs_te_g_sage_as_published": {
+      "mean_diff": 0.12255223736219259,
+      "ci_low": 0.07472630180619973,
+      "ci_high": 0.17300731501037378,
+      "prob_positive": 1.0
+    },
+    "feedback_vs_te_g_sage_as_published": {
+      "mean_diff": 0.2376783778061532,
+      "ci_low": 0.19309136280661493,
+      "ci_high": 0.2824421143728158,
+      "prob_positive": 1.0
+    },
+    "gnn_vs_te_g_sage_refit": {
+      "mean_diff": 0.19961682149750384,
+      "ci_low": 0.15485401793886822,
+      "ci_high": 0.24232887532378347,
+      "prob_positive": 1.0
+    },
+    "llm_vs_te_g_sage_refit": {
+      "mean_diff": 0.05079378680231507,
+      "ci_low": 0.018080032182397284,
+      "ci_high": 0.08204155442726292,
+      "prob_positive": 0.9975
+    },
+    "agaf_vs_te_g_sage_refit": {
+      "mean_diff": 0.10339152931188193,
+      "ci_low": 0.0527298876603108,
+      "ci_high": 0.1551149529603475,
+      "prob_positive": 1.0
+    },
+    "feedback_vs_te_g_sage_refit": {
+      "mean_diff": 0.21851766975584258,
+      "ci_low": 0.1722850041648133,
+      "ci_high": 0.2647315701246135,
+      "prob_positive": 1.0
+    },
+    "gnn_vs_te_g_sage_plus_node_features": {
+      "mean_diff": 0.05319518895970344,
+      "ci_low": 0.01209945366421633,
+      "ci_high": 0.09345766000383639,
+      "prob_positive": 0.9915
+    },
+    "llm_vs_te_g_sage_plus_node_features": {
+      "mean_diff": -0.09562784573548537,
+      "ci_low": -0.13192437597337137,
+      "ci_high": -0.061138692304310724,
+      "prob_positive": 0.0
+    },
+    "agaf_vs_te_g_sage_plus_node_features": {
+      "mean_diff": -0.0430301032259185,
+      "ci_low": -0.09930267465520742,
+      "ci_high": 0.013536454190240604,
+      "prob_positive": 0.066
+    },
+    "feedback_vs_te_g_sage_plus_node_features": {
+      "mean_diff": 0.07209603721804213,
+      "ci_low": 0.029464124553210524,
+      "ci_high": 0.1158357520477922,
+      "prob_positive": 1.0
+    }
+  },
+  "comparison_caveat": "Our four rungs were run at seed 42 only, so no rung-side training stochasticity enters these intervals. They are therefore NARROWER than a symmetric multi-seed comparison would give. Re-running the ladder at seeds 1 and 2 is the highest-value follow-up."
 }
