@@ -62,7 +62,7 @@ comparable across datasets, only ladder shape.
 | Dataset | top-k | scale | GNN | LLM | AGAF | Loop | Ladder holds |
 |---|---:|---:|---:|---:|---:|---:|:--:|
 | UNSW-NB15 (10 cls) | 31.0 | 2.0 | 0.7219 | 0.7353 | 0.7595 | **0.7728** | yes, by order (loop−AGAF CI touches zero, P=0.778) |
-| NF-ToN-IoT (8 cls) | 25.0 | 20.0 | 0.4290 | 0.2785 | 0.3334 | **0.4478** | no — AGAF < GNN (P=0.0005); loop is the top rung |
+| NF-ToN-IoT (8 cls) | 25.0 | 20.0 | 0.4290 | 0.2785 | 0.3334 | **0.4478** | no — AGAF < GNN (P=0.0005); loop is the highest point estimate |
 
 Contracts: `results/unsw_nb15_current.json`, `results/ton_iot_current.json`,
 `results/cross_dataset_comparison.json`.

@@ -63,7 +63,10 @@ instead to let them challenge and complement one another. Phase~1 runs the graph
 semantic encoders in parallel and combines their edge embeddings through Adaptive Gated
 Attention Fusion (AGAF). Phase~2 adds uncertainty-guided semantic feedback: edges with
 high-entropy GNN predictions are selected for semantic consultation, and the resulting
-signal is reintroduced as a bias in the next graph-attention update. In intuitive terms,
+signal is reintroduced by modifying the edge representations that the next graph update
+consumes. A second design, which biases graph attention directly, was also implemented
+and measured; it produced no change in prediction and is reported as a verified negative
+result. In intuitive terms,
 the graph branch indicates where it is uncertain, while the semantic branch supplies an
 additional judgement for those cases.
 
@@ -100,11 +103,16 @@ The study is organised around four research questions:
     comparisons?
 
     \item[RQ3.] Does uncertainty-guided semantic feedback add value beyond static
-    fusion? If so, does the gain come from semantic re-entry into graph attention or from
-    final-output fusion?
+    fusion? If so, does the gain come from semantic re-entry into the graph
+    representation or from final-output fusion?
 
     \item[RQ4.] How do graph topology, repeated endpoint pairs, class imbalance, and the
     strength of the semantic consultant affect fusion and feedback on NF-UNSW-NB15?
+
+    \item[RQ5.] How does the feedback loop compare against published graph-based
+    intrusion detection architectures re-trained on the same aggregated representation
+    under the same protocol, and how much of any observed difference is attributable to
+    representation and tuning rather than to architecture?
 \end{description}
 
 These questions deliberately allow a negative answer. The purpose of the experiments is
@@ -129,12 +137,14 @@ consistent protocol. The work makes four contributions.
     the target attack name or a synonymous relation label.
 
     \item It implements and compares two multimodal stages: AGAF for parallel structural--
-    semantic fusion, and uncertainty-guided semantic feedback that injects semantic
-    evidence into graph attention for uncertain edges.
+    semantic fusion, and uncertainty-guided semantic feedback that reintroduces semantic
+    evidence into the edge representations of uncertain edges.
 
     \item It provides a controlled evaluation on NF-UNSW-NB15, including unimodal
     baselines, fusion comparisons, uncertainty-selection ablations, trained-head
-    baselines, and mechanism-isolation tests. It reports both positive and negative
+    baselines, mechanism-isolation tests, and two published graph-based intrusion
+    detection architectures re-trained on the same representation. It reports both
+    positive and negative
     results to show which components carry the measured gain.
 \end{enumerate}
 
@@ -151,8 +161,8 @@ intrusion detection, cybersecurity language encoders, and the main ways graph an
 representations have been combined. The methodology section then describes the datasets,
 graph and text construction, the two encoders, AGAF, semantic feedback, and the evaluation
 protocol in enough detail to reproduce the experiments. The results section presents the
-NF-UNSW-NB15 performance ladder, statistical comparisons, ablations, and verified
-negative results. The final
+NF-UNSW-NB15 performance ladder, statistical comparisons, comparisons against published
+baselines, ablations, and verified negative results. The final
 section interprets those findings, distinguishes supported conclusions from open claims,
 and identifies the experiments needed to move from an offline research prototype toward
 a deployment-valid intrusion detection system.
