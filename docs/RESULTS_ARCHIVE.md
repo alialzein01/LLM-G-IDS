@@ -323,7 +323,126 @@ re-verified exact on all 4 rungs.
 
 ---
 
-## 5. Off-architecture code
+## 5. SOTA baseline comparison (2026-09-02)
+
+Two published graph-based intrusion-detection architectures were re-trained on the same
+aggregated edge rows, fold assignments, evaluation classes, and pooled out-of-fold
+macro-F1 protocol as the project ladder:
+
+- **E-GraphSAGE** (Lo et al., NOMS 2022): supervised edge-level GraphSAGE whose edge
+  classifier consumes `CONCAT(h_u, h_v)`.
+- **TE-G-SAGE** (2025): supervised edge-aware GraphSAGE whose edge head also consumes
+  the edge feature vector.
+
+Three candidates were rejected before running: **Anomal-E** is a binary anomaly detector
+and cannot produce the required multiclass macro-F1 as published; **XG-NID** requires both
+flow and packet modalities, while this project has no packet data; **GTCN-G** had neither
+verified code availability nor a verified matching dataset.
+
+**Claim boundary (verbatim from both results contracts):**
+
+> Published architectures re-trained on our aggregated flow-graph representation. NOT a
+> comparison against their published numbers, which were obtained on per-flow graphs
+> ~300x larger.
+
+### 5.1 Headline findings
+
+- On UNSW, the closest comparison is TE-G-SAGE + our node features. GNN `+0.0027`,
+  LLM `+0.0160`, and AGAF `+0.0400` are not separated from zero. Only feedback
+  `+0.0535`, CI `[+0.0102, +0.0990]`, is separated.
+- On ToN, E-GraphSAGE as published is significantly ahead of the LLM (`-0.1338`) and
+  AGAF (`-0.0812`) rungs. GNN and feedback are not separated from it.
+- The approximately `+0.60` UNSW margins against E-GraphSAGE are ceiling-limited by the
+  endpoint-only edge representation and are not evidence of architectural superiority.
+
+**CI caveat (verbatim from both results contracts):**
+
+> Our four rungs were run at seed 42 only, so no rung-side training stochasticity enters
+> these intervals. They are therefore NARROWER than a symmetric multi-seed comparison
+> would give. Re-running the ladder at seeds 1 and 2 is the highest-value follow-up.
+
+### 5.2 Baseline point estimates
+
+Values are mean pooled OOF macro-F1 over seeds 42, 1, and 2. `plus_node_features` is an
+explicit non-faithful ablation, not the published architecture.
+
+| Dataset | Architecture | as published | refit | + our node features |
+|---|---|---:|---:|---:|
+| UNSW | E-GraphSAGE | 0.1194 | 0.1368 | 0.1173 |
+| UNSW | TE-G-SAGE | 0.3841 | 0.5842 | 0.7196 |
+| ToN | E-GraphSAGE | 0.4141 | 0.4141 | 0.4358 |
+| ToN | TE-G-SAGE | 0.1931 | 0.2345 | 0.3523 |
+
+### 5.3 Full two-level bootstrap comparison
+
+Sign convention: `delta = project rung - re-trained baseline`. Positive values favour the
+project rung; negative values favour the baseline. Each cell is `delta [95% CI];
+P(delta > 0)`. The primary bootstrap resamples edges and draws one of the three baseline
+seeds, thereby propagating edge-sampling and baseline-seed variance.
+
+**UNSW CI caveat (verbatim):**
+
+> Our four rungs were run at seed 42 only, so no rung-side training stochasticity enters
+> these intervals. They are therefore NARROWER than a symmetric multi-seed comparison
+> would give. Re-running the ladder at seeds 1 and 2 is the highest-value follow-up.
+
+| Re-trained baseline | GNN | LLM | AGAF | Feedback |
+|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.6006 [+0.5581,+0.6419]; 1.0000 | +0.6139 [+0.5705,+0.6549]; 1.0000 | +0.6378 [+0.5958,+0.6772]; 1.0000 | +0.6513 [+0.6092,+0.6927]; 1.0000 |
+| E-GraphSAGE, refit | +0.5837 [+0.5405,+0.6264]; 1.0000 | +0.5970 [+0.5523,+0.6410]; 1.0000 | +0.6210 [+0.5782,+0.6639]; 1.0000 | +0.6344 [+0.5913,+0.6783]; 1.0000 |
+| E-GraphSAGE + our node features | +0.6037 [+0.5590,+0.6448]; 1.0000 | +0.6170 [+0.5738,+0.6583]; 1.0000 | +0.6410 [+0.5975,+0.6837]; 1.0000 | +0.6544 [+0.6100,+0.6985]; 1.0000 |
+| TE-G-SAGE, as published | +0.3375 [+0.2829,+0.3881]; 1.0000 | +0.3508 [+0.2972,+0.4015]; 1.0000 | +0.3748 [+0.3206,+0.4280]; 1.0000 | +0.3882 [+0.3363,+0.4418]; 1.0000 |
+| TE-G-SAGE, refit | +0.1374 [+0.0799,+0.1991]; 1.0000 | +0.1507 [+0.0942,+0.2157]; 1.0000 | +0.1747 [+0.1181,+0.2376]; 1.0000 | +0.1881 [+0.1307,+0.2521]; 1.0000 |
+| TE-G-SAGE + our node features | +0.0027 [-0.0372,+0.0452]; 0.5320 | +0.0160 [-0.0313,+0.0616]; 0.7675 | +0.0400 [-0.0029,+0.0836]; 0.9620 | **+0.0535 [+0.0102,+0.0990]; 0.9910** |
+
+**ToN CI caveat (verbatim):**
+
+> Our four rungs were run at seed 42 only, so no rung-side training stochasticity enters
+> these intervals. They are therefore NARROWER than a symmetric multi-seed comparison
+> would give. Re-running the ladder at seeds 1 and 2 is the highest-value follow-up.
+
+| Re-trained baseline | GNN | LLM | AGAF | Feedback |
+|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.0151 [-0.0276,+0.0564]; 0.7605 | **-0.1338 [-0.1756,-0.0933]; 0.0000** | **-0.0812 [-0.1362,-0.0227]; 0.0030** | +0.0340 [-0.0121,+0.0809]; 0.9245 |
+| E-GraphSAGE, refit | +0.0151 [-0.0276,+0.0564]; 0.7605 | **-0.1338 [-0.1756,-0.0933]; 0.0000** | **-0.0812 [-0.1362,-0.0227]; 0.0030** | +0.0340 [-0.0121,+0.0809]; 0.9245 |
+| E-GraphSAGE + our node features | -0.0056 [-0.0767,+0.0671]; 0.4730 | **-0.1545 [-0.2274,-0.0879]; 0.0000** | **-0.1019 [-0.1843,-0.0218]; 0.0050** | +0.0133 [-0.0597,+0.0853]; 0.6160 |
+| TE-G-SAGE, as published | +0.2339 [+0.1803,+0.2866]; 1.0000 | +0.0850 [+0.0431,+0.1246]; 1.0000 | +0.1376 [+0.0780,+0.1960]; 1.0000 | +0.2528 [+0.1974,+0.3076]; 1.0000 |
+| TE-G-SAGE, refit | +0.1937 [+0.1419,+0.2395]; 1.0000 | +0.0448 [+0.0033,+0.0791]; 0.9835 | +0.0974 [+0.0410,+0.1500]; 0.9995 | +0.2126 [+0.1540,+0.2617]; 1.0000 |
+| TE-G-SAGE + our node features | +0.0760 [+0.0215,+0.1326]; 0.9965 | **-0.0729 [-0.1214,-0.0259]; 0.0005** | -0.0202 [-0.0839,+0.0426]; 0.2715 | +0.0950 [+0.0403,+0.1519]; 1.0000 |
+
+The secondary seed-matched intervals are retained in
+`seed_matched_comparisons` in both contracts; the tables above use the required primary
+two-level intervals.
+
+### 5.4 Forced deviations from the papers
+
+The same five documented deviations apply to both datasets:
+
+| Code | Reason | Resolution |
+|---|---|---|
+| D1 | TE-G-SAGE publishes a 60/30/10 chronological split, but aggregation removed chronological order. | Use the project's stratified five-fold `folds.pt`. |
+| D2 | TE-G-SAGE fanout `[25,15]` and batch size 4096 exceed the available degree and graph size. | Use full-neighbourhood, full-batch training. |
+| D3 | The released implementations use fixed schedules: E-GraphSAGE 4999 epochs and TE-G-SAGE 20, with no validation split or early stopping. | Use max 300 epochs, patience 25 on validation macro-F1, and restore the best state, matching the project rungs. |
+| D4 | TE-G-SAGE `rare_min_freq=50` removes almost every port category at this aggregated scale. | Keep 50 in `as_published`; sweep it in `refit`. |
+| D5 | E-GraphSAGE paper Eq. 4 aggregates edge features alone, while the released notebook uses `W_msg([h_u || e_uv])`. | Follow the released implementation that produced the published results. |
+
+### 5.5 E-GraphSAGE endpoint-only ceiling
+
+E-GraphSAGE classifies an edge from `CONCAT(h_u, h_v)` without passing that edge's own
+features to the classifier. Parallel edges sharing an endpoint pair are therefore
+indistinguishable: 385 UNSW edges (58.7%) and 167 ToN edges (7.9%). This is a
+representation-architecture interaction, not evidence that E-GraphSAGE is weak, and the
+large UNSW margin must not be presented as a fusion win. A full 4999-epoch fold-0 run
+confirmed that the ceiling is not caused by the shortened training schedule: validation
+macro-F1 plateaued near 0.11 and peaked at 0.1384 at epoch 1400.
+
+Contracts: `results/unsw_nb15_sota_baselines.json` and
+`results/ton_iot_sota_baselines.json`. Prediction matrices:
+`results/predictions/{unsw_nb15,ton_iot}_{e_graphsage,te_g_sage}_{as_published,refit,plus_node_features}.pt`.
+
+---
+
+## 6. Off-architecture code
 
 Kept in the tree but unreachable from any canonical run: `enhanced12` feature profile,
 `sweep_fusion_variants.py`, non-default `fusion_mode` branches, extra fusion knobs (InfoNCE
