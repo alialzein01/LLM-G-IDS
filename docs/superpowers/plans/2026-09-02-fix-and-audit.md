@@ -42,7 +42,14 @@ Task 10 was never run. Follow it exactly as written in
     architectural evidence.
   - Quote the `comparison_caveat` wherever a CI appears.
 - [ ] **A5.** Step 4 — add the Traps bullet to `CLAUDE.md`.
-- [ ] **A6.** Commit.
+
+  `CLAUDE.md` is **intentionally untracked** — it was tracked in three early commits, then
+  gitignored at `0370523`, and `AGENTS.md` is ignored the same way. Edit it locally and
+  **do not `git add -f` it.** The durable record is `docs/RESULTS_ARCHIVE.md`, which is
+  tracked; CLAUDE.md is the working pointer loaded into context each session.
+
+- [ ] **A6.** Commit the tracked files only (results JSONs, tests, archive). Note in the
+  commit body that the CLAUDE.md trap bullet is local-only by design.
 
 ---
 
