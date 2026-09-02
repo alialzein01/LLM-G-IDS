@@ -158,6 +158,19 @@ def _result_entry(
     }
 
 
+def _save_oof_predictions(
+    dataset: str,
+    model_name: str,
+    mode: str,
+    predictions: list[np.ndarray],
+) -> Path:
+    output_dir = Path(f"data/{dataset}/processed/baselines")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{model_name}_{mode}_oof_preds.npy"
+    np.save(output_path, np.stack(predictions))
+    return output_path
+
+
 def refit_grid(model_name: str) -> list[dict[str, int | float]]:
     base = [
         {"hidden_dim": hidden_dim, "num_layers": num_layers, "lr": lr}
@@ -338,6 +351,7 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
         )
 
     egraph_scores: list[dict[str, object]] = []
+    egraph_predictions: list[np.ndarray] = []
     for seed in seeds:
         preds = run_out_of_fold(
             egraph_factory,
@@ -353,6 +367,7 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
             lr=float(egraph_winner["lr"]),
             weight_decay=0.0,
         )
+        egraph_predictions.append(preds)
         egraph_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
 
     egraph_hyperparameters = {
@@ -389,6 +404,7 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
         )
 
     te_scores: list[dict[str, object]] = []
+    te_predictions: list[np.ndarray] = []
     for seed in seeds:
         preds = run_out_of_fold(
             te_factory,
@@ -404,6 +420,7 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
             lr=float(te_winner["lr"]),
             weight_decay=TEG_WEIGHT_DECAY,
         )
+        te_predictions.append(preds)
         te_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
 
     te_hyperparameters = {
@@ -430,6 +447,10 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
     baselines.setdefault("e_graphsage", {})["refit"] = egraph_entry
     baselines.setdefault("te_g_sage", {})["refit"] = te_entry
     output_path.write_text(json.dumps(payload, indent=2) + "\n")
+    _save_oof_predictions(
+        dataset, "e_graphsage", "refit", egraph_predictions
+    )
+    _save_oof_predictions(dataset, "te_g_sage", "refit", te_predictions)
     return output_path
 
 
@@ -477,6 +498,7 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
         )
 
     egraph_scores: list[dict[str, object]] = []
+    egraph_predictions: list[np.ndarray] = []
     for seed in seeds:
         preds = run_out_of_fold(
             egraph_factory,
@@ -494,6 +516,7 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
             max_epochs=int(egraph_refit["max_epochs"]),
             patience=int(egraph_refit["patience"]),
         )
+        egraph_predictions.append(preds)
         egraph_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
 
     egraph_hyperparameters = {
@@ -524,6 +547,7 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
         )
 
     te_scores: list[dict[str, object]] = []
+    te_predictions: list[np.ndarray] = []
     for seed in seeds:
         preds = run_out_of_fold(
             te_factory,
@@ -541,6 +565,7 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
             max_epochs=int(te_refit["max_epochs"]),
             patience=int(te_refit["patience"]),
         )
+        te_predictions.append(preds)
         te_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
 
     te_hyperparameters = {
@@ -556,6 +581,12 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
     baselines["e_graphsage"]["plus_node_features"] = egraph_entry
     baselines["te_g_sage"]["plus_node_features"] = te_entry
     output_path.write_text(json.dumps(payload, indent=2) + "\n")
+    _save_oof_predictions(
+        dataset, "e_graphsage", "plus_node_features", egraph_predictions
+    )
+    _save_oof_predictions(
+        dataset, "te_g_sage", "plus_node_features", te_predictions
+    )
     return output_path
 
 
@@ -600,6 +631,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
         )
 
     egraph_scores: list[dict[str, object]] = []
+    egraph_predictions: list[np.ndarray] = []
     for seed in seeds:
         preds = run_out_of_fold(
             egraph_factory,
@@ -615,6 +647,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
             lr=EGRAPH_LR,
             weight_decay=0.0,
         )
+        egraph_predictions.append(preds)
         egraph_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
 
     te_features_np, _ = te_g_sage_edge_features(df, rare_min_freq=50)
@@ -647,6 +680,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
         )
 
     te_scores: list[dict[str, object]] = []
+    te_predictions: list[np.ndarray] = []
     for seed in seeds:
         preds = run_out_of_fold(
             te_factory,
@@ -662,6 +696,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
             lr=TEG_LR,
             weight_decay=TEG_WEIGHT_DECAY,
         )
+        te_predictions.append(preds)
         te_scores.append({"seed": seed, **pooled_scores(labels, preds, config)})
 
     output_path = Path("results") / f"{dataset}_sota_baselines.json"
@@ -678,6 +713,12 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
         te_scores, te_hyperparameters
     )
     output_path.write_text(json.dumps(payload, indent=2) + "\n")
+    _save_oof_predictions(
+        dataset, "e_graphsage", "as_published", egraph_predictions
+    )
+    _save_oof_predictions(
+        dataset, "te_g_sage", "as_published", te_predictions
+    )
     return output_path
 
 
