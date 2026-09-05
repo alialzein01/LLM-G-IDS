@@ -1,0 +1,258 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Graph-based network intrusion detection}
+
+Intrusion detection is conventionally divided into signature-based and anomaly-based
+approaches \citep{scarfone2007idps}, but either can be posed over a flow graph, and a flow
+graph makes the edge the natural prediction unit when the object to be classified is a
+communication event between two endpoints. Nodes represent communicating entities such as
+IP addresses; edges represent flows or aggregated flows. This formulation preserves the
+relational context around a connection without changing the classification target: the
+decision remains edge-level. It also separates information attached to the communicating
+endpoints from information carried by the flow itself.
+
+E-GraphSAGE is an important reference point for this formulation. It applies a GNN to
+intrusion detection and classifies an edge from the concatenation of the embeddings of its
+two endpoints \citep{lo2022egraphsage}. The edge's own features do not reach the
+classifier. That choice gives the classification head a purely endpoint-derived view of the
+connection. A direct consequence is that two parallel edges with the same ordered endpoints
+present the same pair of endpoint embeddings to the edge classifier, even if the edges
+differ in attributes that are not otherwise represented at the head. The architecture can
+express structural context around an endpoint pair, but its final edge representation does
+not preserve an explicit channel for the attributes of the particular edge being classified.
+
+TE-G-SAGE moves to an edge-aware GraphSAGE formulation: its supervised edge head consumes
+the edge's own features, and the model is paired with SHAP-based explanation
+\citep{tegsage2025}. This changes the representational question. Once the edge itself is
+allowed to carry predictive information, the model can distinguish endpoint context from
+flow-specific attributes rather than requiring the classifier to infer the latter
+indirectly from node embeddings.
+
+For network-flow intrusion detection that distinction matters, because the graph and the
+individual connection encode different kinds of evidence. The graph describes who
+communicates with whom and under what relational context; the edge describes the flow being
+classified. The graph-based IDS literature therefore motivates an edge-level representation
+retaining both endpoint structure and edge-specific content. The next question is whether
+edge content has to remain numeric, or whether some of it can be represented semantically.
+
+\subsection{Language models over security text and network traffic}
+
+Cybersecurity language encoders provide one route to domain-specific semantics. CySecBERT
+is a BERT-class encoder adapted to cybersecurity text \citep{bayer2022cysecbert}. Its
+relevance here is representational: a pretrained cybersecurity language encoder maps
+controlled security-related text into a dense embedding without requiring the graph encoder
+to interpret textual tokens itself.
+
+A separate line of work treats traffic as a language-like sequence. BSTFNet applies a
+BERT-class model, ET-BERT, to serialised packet-level traffic and combines that
+representation with a spatiotemporal branch for encrypted-traffic classification
+\citep{huang2024bstfnet}. It uses no graph encoder. The precedent that matters is the
+serialisation step itself: network observations that begin as structured traffic fields can
+be converted into a controlled token sequence and processed by a BERT-class encoder.
+
+These two lines solve different problems. Domain adaptation addresses the vocabulary and
+semantics of cybersecurity text; traffic serialisation creates text-like input from network
+measurements. Together they support a semantic branch in which a flow description is
+encoded as text rather than treating every field as a scalar magnitude. They do not, by
+themselves, determine how that semantic representation should interact with graph structure.
+
+That interaction is the central fusion problem. Once a system holds one representation
+derived from topology and another derived from text, the design space is no longer only
+about which encoder to choose. It is about where the two modalities meet, and whether their
+relative influence is fixed across samples or allowed to change from one sample to the next.
+
+\subsection{Fusing structural and semantic representations}
+
+Fusion methods organise along two related axes: how tightly the modalities interact, and
+whether the fusion rule assigns the same modality weighting to every sample or adapts that
+weighting to the input. The second axis is the more important one here. Four recurring
+families cover the relevant design space.
+
+The simplest family is late fusion with a fixed interface between branches. GMLM uses
+separate graph and language towers, concatenates their representations, and passes the
+result to an MLP \citep{sinha2025gmlm}; its own comparison explicitly distinguishes this
+design from cross-attention, gating, and learned modality weights. BertGCN gives an even
+cleaner example of fixed weighting: its final prediction linearly interpolates a GCN
+prediction and a BERT prediction using a global hyperparameter \citep{lin2021bertgcn}. Every
+sample receives the same interpolation coefficient. These methods keep the encoders modular,
+but the fusion rule never decides that one modality should matter more for one input and
+less for another.
+
+A second family introduces input-dependent gates. The Gated Multimodal Unit uses
+multiplicative gates to determine how each modality contributes to the fused activation
+\citep{arevalo2017gmu}. This is the canonical primitive for sample-adaptive modality
+weighting. A graph-and-text instance appears in the Dual-Stream Graph-Augmented Transformer
+for fake-news detection, where BERT runs in parallel with a GAT and Graph Transformer branch
+and a trainable scoring function emits a scalar weight for each modality for each input
+\citep{moorthy2025dualstream}. Mechanically this is the closest analogue in the literature
+surveyed here to a fusion stage whose balance changes per sample.
+
+A third family uses attention to let the modality representations interact directly.
+RAGFormer stacks the two branch embeddings as a short token sequence and applies
+self-attention over them with a residual connection \citep{li2024ragformer}. CAST uses
+cross-attention between graph and text representations in materials prediction and motivates
+the text branch by arguing that graph conversion can discard global information which
+textual descriptions restore \citep{lee2025cast}; the semantic representation is therefore
+not a duplicate encoding of graph structure. BiGTex goes further and interleaves a two-way
+exchange: structural information enters the language model as a soft prompt, and text
+returns to the graph side through cross-attention with the query supplied from the graph
+side \citep{beiranvand2025bigtex}. Attention-based interaction differs from global
+interpolation because its interaction weights are derived from the representations of the
+current input.
+
+The fourth family removes a distinct late-fusion stage altogether by interleaving structural
+and semantic processing throughout the encoder. DET uses exactly the terms ``structural
+encoder'' and ``semantic encoder'' and argues against late fusion of separate encoders,
+preferring interleaved interaction \citep{guo2024det}. GL-Fusion sits at the opposite end of
+the coupling spectrum from independent towers: message passing is folded into every
+transformer layer, leaving no separate fusion module \citep{yang2024glfusion}. These designs
+mix the modalities repeatedly rather than preserving two independent representations until
+classification.
+
+The taxonomy separates two questions that are often collapsed. One is where graph and text
+meet: after separate encoding, inside a dedicated attention mechanism, or repeatedly
+throughout the encoder. The other is whether the relative influence of the modalities is
+globally fixed or varies with the sample. The second distinction becomes sharper on moving
+from general graph--text systems to intrusion detection, where the available GNN--language
+combinations tend to assign the two components sequential roles rather than fusing their
+representations.
+
+\subsection{GNN and LLM combinations in intrusion detection}
+
+Within the intrusion-detection works surveyed here, graph models and language models are
+combined sequentially rather than fused as two representations of the same edge-level
+decision. XG-NID is the clearest example. Its heterogeneous GNN performs the intrusion
+classification, and an LLM is used only after prediction, to produce human-readable
+explanations \citep{farrukh2024xgnid}. The system's ``dual modality'' refers to flow-level
+and packet-level data inside the graph pipeline, not to graph and text embeddings fused for
+classification.
+
+Agent-based analysis for GNN robustness reverses the order. An LLM agent analyses textual
+descriptions of node interactions and flags, removes, or reweights suspicious nodes and
+edges before the GNN processes the graph \citep{zhan2025agentgnn}. The language component
+acts as a preprocessing filter: its output changes the graph presented to the GNN, but the
+two components are never combined as concurrent representations at the classifier.
+
+Other intrusion-detection systems occupy adjacent points in the design space without forming
+a GNN--language pair at all. GCN-2-Former combines a GCN with a temporal transformer and
+fuses the two by global average pooling and concatenation \citep{gcn2former2025}; the second
+tower is a temporal transformer, not a language model. CPS-IDS uses gated fusion between a
+DeBERTa payload-semantic branch and a statistical branch \citep{xiong2026cpsids}, so it has
+both a language-based semantic component and an explicit fusion mechanism, but no graph
+encoder.
+
+The distinction is functional rather than terminological. In this literature the language
+model either explains a GNN output after classification or alters graph inputs before
+message passing. The parallel-fusion examples occupy nearby configurations but either
+replace the language model with a non-language temporal transformer or replace the graph
+encoder with a statistical branch. Representation-level fusion and graph--language feedback
+therefore have to be examined in the broader graph-learning literature rather than inferred
+from the intrusion-detection examples alone.
+
+\subsection{Iterative GNN--LLM feedback}
+
+The broader GNN--LLM literature already contains the feedback mechanisms this report builds
+on. They are prior work and are not claimed here as contributions.
+
+DAS is the closest prior work to the feedback mechanism used in this report. It implements
+an explicit closed feedback loop between a frozen GNN and an LLM: GNN predictions provide
+implicit supervision that steers semantic refinement, and the refined semantics are fed back
+to update the same graph learner \citep{thapaliya2025das}. DAS also constructs node
+descriptions by expressing structural statistics in natural language --- degree,
+betweenness, closeness, clustering coefficient, and square clustering coefficient --- and
+gives a Majorization--Minimization argument under which its refinement loop monotonically
+decreases a task-adaptive surrogate objective. Its setting is node-level, over general
+text-rich graphs. Closed graph--language feedback, and the conversion of structural
+statistics into natural-language descriptions, therefore already exist in the literature.
+
+LOGIN already couples uncertainty selection to language-model consultation. It uses
+MC-dropout variance to identify uncertain nodes, prompts the LLM with node text and one-hop
+topology, and receives a predicted label together with a free-text explanation
+\citep{qiao2024login}. Incorporation depends on correctness: if the LLM's label matches the
+ground-truth label, the explanation is appended to the node text and the augmented text is
+re-embedded; if the label is wrong, edges in the node's one-hop neighbourhood are pruned.
+The LLM remains outside autograd and edits the learning inputs between training rounds.
+Selecting uncertain graph elements for semantic consultation is therefore also established.
+
+GLANCE makes the decision to consult the language model itself learnable. A lightweight
+router decides per node whether querying is worthwhile from inexpensive node features, and
+an advantage-based objective trains that router on the outcome of querying versus not
+querying, because the LLM call is non-differentiable \citep{loveland2025glance}. Its gains
+concentrate on heterophilous and structurally ambiguous nodes. This addresses the same
+allocation problem as uncertainty-based consultation --- directing language-model effort at
+selected graph elements rather than applying it uniformly --- with a learned criterion in
+place of a fixed uncertainty rule.
+
+RoGRAD places iterative refinement, rather than static one-shot signal injection, at the
+centre of its formulation \citep{wang2025rograd}. It studies that refinement under graph
+deficiencies including noise, sparsity, and label scarcity, and its abstract claims priority
+for moving language-model augmentation of graphs from static injection to an iterative
+refinement paradigm. Iterative semantic refinement is therefore already an explicit
+contribution claim in the prior literature.
+
+These four anchors settle the component question plainly. Closed GNN--language feedback
+already exists. Iterative semantic refinement already exists. Structural statistics have
+already been expressed as natural-language input. Uncertainty and learned routing have
+already been used to decide which graph elements receive language-model consultation. Taken
+component by component, the feedback mechanism is not the contribution of this report.
+
+\subsection{Positioning}
+
+The contribution is an edge-level intrusion-detection instantiation, and a measurement
+question about how such a feedback channel is used. The comparison therefore has to be made
+at the level of configuration rather than of individual mechanisms.
+
+The four feedback anchors operate at node level, whereas the present setting treats a
+network flow as an edge and makes the classification decision there. Their semantic
+consultants are prompted generative LLMs; here the semantic branch is a frozen sentence
+encoder whose embeddings are scored against class prototypes. Their feedback actions refine
+semantic inputs or edit graph inputs; here the accepted semantic signal modifies the edge
+representations consumed by the next graph update. These are differences of instantiation,
+not claims that the underlying ideas originated here
+\citep{qiao2024login,thapaliya2025das,loveland2025glance,wang2025rograd}.
+
+Two signals travel in opposite directions in the resulting loop, and it is worth stating
+precisely which. The graph model's per-edge uncertainty determines \emph{which} edges are
+routed to the semantic branch, and that selection is recomputed as predictions shift; the
+semantic branch returns a per-edge judgement that re-enters the graph model's edge
+representations. The coupling is bidirectional in this routing sense. It is not bidirectional
+in content: the consultant's verdict on an edge depends on that edge's text alone, not on
+what the graph model currently believes about it.
+
+The final classification stage adds a further dimension to the configuration. Structural and
+semantic edge representations are combined through joint attention-based fusion with
+sample-dependent modality weighting, rather than assigning the semantic component a
+preprocessing or post-hoc role. Sample-adaptive fusion is itself established outside this
+setting: gated multimodal units provide input-dependent modality control, and the
+Dual-Stream Graph-Augmented Transformer assigns per-input scalar modality weights to
+parallel text and graph representations \citep{arevalo2017gmu,moorthy2025dualstream}.
+Representation-level graph--text interaction is likewise established, through
+self-attention, cross-attention, and interleaved exchange
+\citep{li2024ragformer,beiranvand2025bigtex,lee2025cast}. None of those mechanisms is a
+contribution claim here.
+
+Within the limits of the literature search represented by this survey, we are not aware of
+prior work combining all three of the following in one system: bidirectional iterative
+coupling between a graph model and a semantic branch, joint attention-based fusion for the
+final classification, and edge-level network intrusion detection. This is a statement about
+the configuration space our search covered. It does not imply a performance advantage, and
+it does not change the prior-art status of any individual component.
+
+That positioning leaves a narrower research question. Existing feedback work asks whether a
+language-model-driven refinement process improves the graph-learning task, with the model
+revising semantics, modifying inputs, or selectively augmenting graph elements
+\citep{qiao2024login,thapaliya2025das,loveland2025glance,wang2025rograd}. The present work
+instead instantiates the loop in network-flow intrusion detection with a deliberately more
+constrained consultant, and asks a diagnostic question: whether such a consultant exploits a
+feedback channel that has the capacity to influence subsequent graph updates. That question
+is underexplored in the work surveyed here. No claim about its answer belongs in this
+section.
+
+The contribution is best described as instantiation plus measurement. The system instantiates
+bidirectional feedback and sample-adaptive structural--semantic fusion for edge-level network
+intrusion detection, then measures whether the constrained semantic consultant makes use of
+the channel it is given. It does not rest on inventing GNN--LLM feedback loops, iterative
+semantic refinement, natural-language descriptions of graph statistics, or selective semantic
+consultation. Those mechanisms have clear precedents. The point of this configuration is to
+make their interaction measurable in an edge-level network-IDS setting.
