@@ -1,0 +1,337 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Datasets and Common Processing Pipeline}
+
+We evaluate on NF-UNSW-NB15 and NF-ToN-IoT, the NetFlow-standardised variants of their
+respective intrusion-detection corpora \citep{moustafa2015unsw,sarhan2021netflow}. One
+pipeline processes both, and every architectural choice is shared between them. Only two
+quantities are permitted to differ, and both are selected on validation folds: the
+uncertainty threshold $k$ and the feedback injection scale. This restriction is deliberate.
+A cross-dataset comparison in which the two ladders use different components measures the
+components, not the datasets.
+
+The pipeline converts flow records into a graph, derives node and edge attributes, trains an
+edge-level structural model, builds label-free semantic representations for the same edges,
+and combines the two modalities through adaptive fusion. Every classification decision is
+edge-level: a flow, or an aggregate of flows sharing a grouping key, is an edge, never a node.
+
+\subsection{Directed Multigraph Construction}
+
+Flows are aggregated into a directed multigraph keyed on
+
+\[
+(\text{source IP},\ \text{destination IP},\ \text{attack type}).
+\]
+
+Parallel edges therefore exist between an ordered IP pair whenever those flows carry
+different attack types. Nodes are the distinct IP addresses. The resulting graphs are small:
+NF-UNSW-NB15 yields 49 nodes and 656 edges, NF-ToN-IoT 1{,}501 nodes and 2{,}127 edges.
+
+Each node carries ten centrality columns: betweenness, PageRank, degree, closeness,
+eigenvector, $k$-core, $k$-truss, global betweenness, global PageRank, and modularity
+vitality. These are computed on an unweighted IP-to-IP graph with self-loops removed.
+Betweenness (normalised), PageRank, closeness and eigenvector centrality are computed on the
+directed graph; degree is \emph{in-degree} centrality; $k$-core and $k$-truss are computed on
+the undirected projection. Modularity vitality is the leave-one-node-out drop in modularity
+under a greedy modularity partition of the undirected projection. Eigenvector centrality and
+the truss decomposition fall back to constants when they fail to converge. A node's feature
+vector is the mean of these values over all incident edges, taking the node in both its
+source and destination roles.
+
+One property of this feature set should be stated rather than left for a reader to discover.
+On NF-UNSW-NB15 the ``global'' variants are populated from the same computation as their
+local counterparts, so \texttt{global\_betweenness} and \texttt{global\_pagerank} are exact
+duplicates of \texttt{betweenness} and \texttt{pagerank}; the ten columns span eight distinct
+measures. On NF-ToN-IoT, whose centralities were computed upstream, the global variants
+differ from the local ones. We report ten input channels because that is what the model
+receives, but the effective rank of the node features is lower on NF-UNSW-NB15.
+
+Each edge carries five attributes. Three are numeric: the number of constituent flows
+(\texttt{flow\_count}), their summed byte count (\texttt{total\_bytes}), and their mean
+duration (\texttt{avg\_duration}). Two are categorical: the modal protocol and the modal
+port, with ties broken toward the smaller value.
+
+Because attack type is part of the aggregation key, the label participates in defining edge
+identity. This is a property of the protocol, not a bookkeeping detail. Two flows between the
+same IP pair that differ only in their label become two distinct edges, and a deployed system
+observing unlabelled traffic could not perform this separation. The scores reported in this
+work therefore compare representations and mechanisms under a controlled protocol. They are
+not deployment-valid detection estimates, and we do not present them as such.
+
+\subsection{Edge Feature Encoding}
+
+The encoding separates quantities from identifiers. Columns 0--2 receive a $\log(1+x)$
+transform, then Z-scoring. Columns 3--4 are rewritten as contiguous vocabulary indices and
+consumed by learned embedding tables of width 4 (protocol) and 32 (port). Concatenation gives
+a $3 + 4 + 32 = 39$-dimensional encoded edge vector. The vocabularies are small: 7 protocols
+and 169 ports on NF-UNSW-NB15, 4 and 235 on NF-ToN-IoT.
+
+This corrects a specific defect in an earlier version of the pipeline, which passed protocol
+and port through as raw magnitudes. Port then entered the network at roughly $11{,}000\times$
+the scale of every normalised column, and the ordering it imposed is meaningless: port 443 is
+not ``more'' than port 80. The embedding tables let the model represent protocol and port
+identity without inheriting the arithmetic of their indices.
+
+The Z-score statistics and the two vocabularies are fitted once over all edges, before the
+cross-validation split. This is transductive, and we flag it explicitly. It is standard for a
+single fixed graph, and it transfers no label information, but it is not the same as fitting
+scalers inside each training fold.
+
+\subsection{Structural Branch}
+
+Each structural encoder is a two-layer GATv2 network \citep{brody2022gatv2}. The first layer
+uses eight heads of width $64/8 = 8$, concatenated to 64; the second uses a single head of
+width 64. Both layers receive the 39-dimensional encoded edge vector as an attention input and
+add no self-loops. Each layer applies, in order, the GATv2 convolution, batch normalisation,
+an ELU nonlinearity, and a residual connection; dropout at $p = 0.2$ is applied before the
+residual in the first layer only. The first layer's residual passes through a linear
+projection from the 10 input channels to 64; the second's is an identity. The final node
+embedding is 64-dimensional.
+
+We use GATv2 rather than GAT because of the static-attention limitation
+\citep{brody2022gatv2}: in GAT the ranking a node induces over its neighbours can be
+independent of the query node, so attention degenerates into a global neighbour scoring.
+GATv2 applies its attention MLP after the concatenation of both endpoints, which restores
+query-dependent ranking. On a graph with 49 nodes and heavy parallel-edge structure, that
+distinction is not cosmetic.
+
+Three encoders run in parallel --- \emph{temporal}, \emph{content}, and \emph{behavioural}.
+They are architecturally identical and differ only in a fixed diagonal reweighting of the
+encoded edge vector, given in Table~\ref{tab:focus}. The protocol weight is broadcast across
+all 4 protocol-embedding dimensions and the port weight across all 32, so each variant keeps
+the same relative emphasis it would have had on the five raw columns. The reweighted edge
+vector is used both inside the attention computation and in the edge representation that
+follows, so a variant's emphasis shapes its message passing as well as its readout.
+
+\begin{table}[t]
+\centering
+\caption{Per-variant edge focus weights. Applied as a fixed diagonal scaling of the encoded
+edge vector; the protocol and port weights are broadcast across their embedding blocks.}
+\label{tab:focus}
+\begin{tabular}{lccccc}
+\toprule
+Variant & flow\_count & total\_bytes & avg\_duration & protocol & port \\
+\midrule
+temporal    & 1.25 & 0.75 & 1.50 & 0.50 & 0.25 \\
+content     & 0.50 & 1.50 & 0.50 & 1.00 & 1.25 \\
+behavioural & 1.25 & 0.75 & 1.00 & 0.75 & 1.50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Within a variant, the representation of a directed edge $e = (u,v)$ concatenates the two
+endpoint embeddings, their elementwise product, their elementwise absolute difference, and the
+variant's reweighted edge vector $\tilde{\mathbf{x}}_{e}$:
+
+\[
+\mathbf{z}_{e}
+=
+\left[\,
+\mathbf{h}_{u},\;
+\mathbf{h}_{v},\;
+\mathbf{h}_{u}\odot\mathbf{h}_{v},\;
+\left|\mathbf{h}_{u}-\mathbf{h}_{v}\right|,\;
+\tilde{\mathbf{x}}_{e}
+\,\right]
+\in \mathbb{R}^{4\cdot 64 + 39} = \mathbb{R}^{295}.
+\]
+
+The product and absolute-difference terms matter here. Endpoint concatenation alone cannot
+separate parallel edges, and 58.7\% of NF-UNSW-NB15 edges share an IP pair with at least one
+other edge; the elementwise terms are symmetric functions of the endpoints and do not fix
+this on their own, but $\tilde{\mathbf{x}}_{e}$ does, by carrying the edge's own features into
+the classifier.
+
+Each variant projects $\mathbf{z}_{e}$ to 64 dimensions through a linear layer and ReLU. The
+three projections are concatenated and passed through a linear layer to 64, ReLU, and dropout,
+yielding the fused 64-dimensional edge embedding consumed by every downstream stage; a final
+linear layer emits class logits. Each variant additionally carries its own classification head
+--- a two-layer MLP over $\mathbf{z}_{e}$ with a 64-unit hidden layer, ReLU and dropout ---
+whose loss is added to the objective with weight $0.30$. The auxiliary term keeps each variant
+directly supervised rather than letting the fusion layer absorb all gradient.
+
+\subsection{Semantic Branch}
+
+The second modality describes each edge in controlled natural language. The continuous edge
+quantities are first discretised into five rank-based quantile bands, computed globally across
+all edges, and the band label rather than the raw number enters the sentence. A template then
+renders endpoints, connection frequency, transferred volume, per-flow byte magnitude,
+duration band, protocol name, and a coarse port role (web, remote-access, well-known,
+registered, or ephemeral) into one sentence per edge, of the form: \emph{``Observed traffic
+from source \dots to destination \dots with \dots connection frequency, transferring \dots as
+\dots, \dots, over \dots, to a \dots port \dots''}
+
+Sentences are encoded by CySecBERT \citep{bayer2022cysecbert}, a BERT-class encoder
+domain-adapted to cybersecurity text. It is frozen throughout; no gradient reaches it. Inputs
+are tokenised with padding and truncation at 128 tokens, and the final hidden states are
+mean-pooled with padding positions masked out, giving one 768-dimensional vector per edge.
+We use it strictly as a sentence encoder. It is not prompted, not asked to reason, and not
+generative, and we avoid describing it as an LLM for that reason.
+
+Label freedom is enforced in code, not by convention. Before any sentence reaches the encoder,
+an assertion scans every generated sentence for every attack term present in the dataset and
+raises on the first match, naming the offending index and sentence. The pipeline halts. This
+is what makes the semantic branch an independent view of the edge rather than a relabelling
+of it.
+
+\subsection{Adaptive Gated Attention Fusion}
+
+AGAF projects each modality into a shared 128-dimensional space through a linear layer, batch
+normalisation and ReLU --- 64 to 128 for the structural embedding, 768 to 128 for the semantic
+one. A gate consumes the concatenated projections and emits two logits, softmaxed at
+temperature 1.0 into weights $(\alpha_{g}, \alpha_{l})$ that convexly combine them:
+
+\[
+\mathbf{f}_{e} = \alpha_{g}(e)\,\mathbf{g}_{e} + \alpha_{l}(e)\,\mathbf{l}_{e},
+\qquad
+\alpha_{g}(e) + \alpha_{l}(e) = 1 .
+\]
+
+The weights are per-edge, so the balance between structure and semantics is free to vary
+across the graph rather than being fixed at concatenation time. A two-layer MLP over
+$\mathbf{f}_{e}$ produces class logits. Both inputs are standardised before entering the
+module; the scalers are held in the trainer and persisted separately, so the module's
+\texttt{state\_dict} stays free of fitted statistics.
+
+One constraint on this stage is load-bearing. AGAF consumes \emph{per-fold out-of-fold}
+structural embeddings only. It never receives embeddings from a GNN fitted on all edges,
+because such a model has already seen the test edges' labels, and those labels would reach
+the fusion classifier through its own input features --- a leak that no split downstream of it
+could detect. For each held-out fold, the structural embeddings supplied to AGAF come from a
+model that never saw that fold's labels. Earlier runs in this project violated this rule, and
+the reproduction entry point now enforces it.
+
+\subsection{Uncertainty-Guided Semantic Feedback}
+
+The feedback stage routes semantic information to the edges the structural model is least sure
+about, and only there.
+
+\paragraph{Selection.} For each edge we compute the Shannon entropy, in nats, of the GNN's
+predictive distribution, and flag the edges above the $(1 - k/100)$ quantile. The threshold is
+calibrated once and reused, so the flagged set is a fixed-size top-$k\%$ rather than a moving
+target. We select $k$ on validation folds only: $k = 31.0$ on NF-UNSW-NB15, $k = 25.0$ on
+NF-ToN-IoT.
+
+\paragraph{Consultation.} The semantic consultant is a whitened prototype scorer. Within each
+fold, we centre the training-fold semantic embeddings, fit a ZCA whitener by eigendecomposition
+of their covariance with a floor on small eigenvalues --- necessary because the training fold
+has fewer rows than the 768 embedding dimensions --- and take the class-wise mean in the
+whitened space as that class's prototype. At inference an edge is whitened with the same
+fold-local transform and scored by cosine similarity against the prototypes. Whitening is not
+incidental: the earlier L2-normalise-average-renormalise scheme collapsed per-class spread
+until random and real advice became indistinguishable. Every rung uses this same scorer; none
+uses a trained supervised head, which would make the loop echo a classifier it already
+contains.
+
+\paragraph{Gating.} Being uncertain in the structural view does not make an edge a good
+candidate for semantic advice. Among the flagged edges we keep only the most confident half by
+the consultant's own maximum class probability, a semantic confidence fraction of $0.50$. The
+effective feedback rate is thus $15.5\%$ of edges on NF-UNSW-NB15 and $12.5\%$ on NF-ToN-IoT.
+
+\paragraph{Injection.} Accepted advice is injected into the \emph{edge representation}
+consumed by the next graph update. The consultant's class logits are projected linearly to the
+39-dimensional edge width, scaled by a learned strength, written into a full-graph bias tensor
+that is exactly zero on unflagged edges, and added to the reweighted edge vector:
+
+\[
+\tilde{\mathbf{x}}_{e} \leftarrow \tilde{\mathbf{x}}_{e} + s \cdot \mathbf{b}_{e},
+\qquad
+\mathbf{b}_{e} = \mathbf{0} \ \text{for unflagged } e ,
+\]
+
+with injection scale $s = 2.0$ on NF-UNSW-NB15 and $s = 20.0$ on NF-ToN-IoT, both selected on
+validation folds. Because $\tilde{\mathbf{x}}_{e}$ enters both attention and readout, the
+injected signal propagates structurally rather than only shifting a final logit. The scale is
+re-selected whenever the edge encoding or the injection path changes, since it is expressed in
+the units of that encoding.
+
+\paragraph{Iteration.} Predictions are recomputed, entropies re-derived, and the cycle repeats.
+We measure \emph{churn}, the fraction of edges whose predicted class changed since the previous
+iteration, and stop when churn falls below $0.01$ or after three iterations, whichever comes
+first.
+
+\paragraph{An alternative that was implemented and measured.} We also built a variant that adds
+the projected semantic signal to GATv2's unnormalised attention logits, before the per-edge
+softmax --- injecting into the attention mechanism rather than the edge representation. It is
+zero-initialised, so an untrained bias reproduces stock GATv2 exactly. It is evaluated under
+the identical protocol and reported in Section~\ref{sec:results} as a negative result. We
+retain it in the paper because the two variants isolate \emph{where} in the network a semantic
+signal must land in order to have any effect at all, which is a question the positive result
+alone does not answer.
+
+\subsection{Baseline Protocol}
+
+We compare against re-implementations of two published graph-based intrusion detectors,
+E-GraphSAGE \citep{lo2022egraphsage} and TE-G-SAGE \citep{tegsage2025}, retrained on the same
+aggregated edges, the same labels and the same folds. Each baseline keeps its own published
+featurisation rather than ours --- E-GraphSAGE standard-scales all five NetFlow columns;
+TE-G-SAGE applies log1p, standard scaling, correlation pruning at 0.995, and one-hot
+categoricals with rare-category folding.
+
+Each baseline is run in three configurations. \texttt{as\_published} reproduces the released
+implementation. \texttt{refit} re-selects capacity and schedule on our validation folds only.
+\texttt{plus\_node\_features} is deliberately non-faithful: it hands the baseline our ten
+centrality node features, isolating how much of any gap is representation rather than
+architecture. We label it as non-faithful wherever it appears; it is not E-GraphSAGE and it is
+not TE-G-SAGE.
+
+Five deviations from the published specifications were unavoidable at this graph scale, and we
+record them rather than absorb them. (D1) TE-G-SAGE's chronological 60/30/10 split cannot be
+reconstructed, because aggregation collapses per-flow timestamps; our stratified folds are used
+for all models. (D2) TE-G-SAGE's neighbour fanout of $(25, 15)$ and batch size of 4096 both
+exceed the entire graph, so training is full-neighbourhood and full-batch. (D3) Both released
+implementations train for a fixed epoch count with no validation split and no early stopping
+--- 4999 epochs for E-GraphSAGE, 20 for TE-G-SAGE --- which is incompatible with a protocol
+that selects on validation folds; baselines are given 300 epochs with patience 25 on validation
+macro-F1 and the best state restored. (D4) TE-G-SAGE's \texttt{rare\_min\_freq} of 50 removes
+almost every port category at our scale; it is applied as published in \texttt{as\_published}
+and swept in \texttt{refit}. (D5) E-GraphSAGE's published Eq.~4 aggregates edge features alone,
+but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}_u \Vert
+\mathbf{e}_{uv}])$; we follow the code, since the published numbers came from it.
+
+Two asymmetries remain and should be weighed when reading the comparison. Our rungs train
+under a focal objective with patience 40, whereas the baselines use class-weighted
+cross-entropy with patience 25, each keeping its own published loss. And E-GraphSAGE
+classifies an edge from $[\mathbf{h}_u \Vert \mathbf{h}_v]$ alone, so parallel edges between
+one IP pair are mathematically indistinguishable to it --- 58.7\% of NF-UNSW-NB15 edges and
+7.9\% of NF-ToN-IoT edges fall in such groups. That is an interaction between its architecture
+and our aggregated representation, not evidence that E-GraphSAGE is a weak detector, and we do
+not read it as one.
+
+\subsection{Evaluation and Training Protocol}
+
+We use stratified five-fold cross-validation over edges with partition seed 42, represented as
+boolean masks. Within each fold the held-out fifth is the test partition, and the remaining
+four-fifths are split 75/25 into training and validation with seed $42 + \text{fold index}$,
+giving approximately $60/20/20$. Test masks are used once, for prediction.
+
+The primary metric is pooled out-of-fold macro-F1: each edge is predicted only while held out,
+and the five sets of out-of-fold predictions are pooled before a single macro-F1 is computed.
+Model selection uses validation folds exclusively. The uncertainty threshold $k$ was selected
+by a validation sweep over $[15, 35]$ averaged across three seeds (42, 1, 2); the remaining
+architectural hyperparameters were fixed a priori and not swept. We note this as a limitation:
+$k$ was selected on rotating validation folds rather than by nested cross-validation, so the
+final estimate is not fully unbiased with respect to that one choice.
+
+Training uses AdamW with learning rate $10^{-3}$ and weight decay $5\times10^{-4}$, at most 300
+epochs, early stopping with patience 40 on validation macro-F1 with the best state restored,
+and gradient clipping at norm 1.0. The objective is focal loss with $\gamma = 2.0$ and $\alpha$
+set to inverse-frequency class weights computed on the training fold, normalised to sum to the
+class count; classes absent from a training fold receive weight zero. Focal loss down-weights
+already-correct examples, which matters when rare attack classes hold 12--35 edges against a
+benign majority. We do not additionally oversample: combining oversampling with these weights
+double-corrects the imbalance and collapses the fusion stage.
+
+Every run exports \texttt{OMP\_NUM\_THREADS=1}. Graph-attention message passing sums neighbour
+contributions in thread-completion order, and floating-point addition is not associative, so
+thread count alone moves pooled macro-F1 by roughly 0.012 at a fixed seed --- larger than
+several of the effects this paper reports. Semantic encoding is likewise pinned to a single
+device, because MPS and CPU produce slightly different embeddings and every downstream number
+inherits the difference.
+
+Two NF-ToN-IoT classes are smaller than the five-fold minimum: \texttt{dos} with 4 edges and
+\texttt{ransomware} with 3. They remain in the graph and continue to participate in message
+passing, but are excluded from the reported metric, so NF-ToN-IoT macro-F1 is computed over 8
+classes and NF-UNSW-NB15 over 10. The two are therefore not comparable in absolute level, and
+we compare only the shape of the ladder across datasets, never the values.
