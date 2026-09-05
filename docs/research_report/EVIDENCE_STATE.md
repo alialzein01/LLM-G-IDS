@@ -174,10 +174,38 @@ Confirmed to exist, with matching titles and authors, and **no editorial notices
 | `10.48550/arXiv.2510.10849` | Glance for Context: Learning When to Leverage LLMs for Node-Aware GNN-LLM Fusion | Loveland, Yang, Koutra | 2025 |
 | `10.48550/arXiv.2510.01910` | Are LLMs Better GNN Helpers? Rethinking Robust Graph Learning under Deficiencies with Iterative Refinement (RoGRAD) | Wang, Gao, Kharel | 2025 |
 
-**NOT yet verified:** DAS (`arXiv 2512.21106`, cited in `docs/feedback_loop_mechanisms.md`).
-Task P2 must confirm it before it enters `references.bib`.
+| `10.48550/arXiv.2512.21106` | Semantic Refinement with LLMs for Graph Representations (DAS) | Thapaliya, Wang, Li | 2025 |
 
-### Two competing-novelty findings — read before drafting any novelty claim
+All four anchors are verified. DAS is open access under CC-BY.
+
+### DAS is the CLOSEST prior work — closer than LOGIN
+
+Verified 2026-09-05 from the paper's own abstract and full text. DAS:
+
+- "couples a fixed graph neural network (GNN) and a large language model (LLM) in a
+  **closed feedback loop**. The GNN provides implicit supervisory signals to guide the
+  semantic refinement of LLM, and the refined semantics are **fed back to update the same
+  graph learner**" — structurally our Phase 2;
+- builds node descriptions by expressing **structural statistics in natural language**,
+  explicitly "degree, betweenness, closeness, clustering coefficient, and square clustering
+  coefficient" — the same idea as our 10 centrality measures plus label-free serialisation;
+- gives a Majorization-Minimization argument that its iterative refinement loop
+  monotonically decreases a task-adaptive surrogate objective.
+
+**What still separates our work — state the contribution in exactly these terms:**
+
+| | DAS | This work |
+|---|---|---|
+| granularity | node-level | **edge-level** (a flow is the unit) |
+| domain | general text-rich / text-free graphs | **network-flow intrusion detection** |
+| injection target | refines LLM semantics | **edge representations** consumed by the next graph update |
+| headline result | consistent improvements | **the consultant does not exploit a channel that demonstrably has capacity** (Gate 0) |
+
+The mechanism is **not** the contribution. The IDS instantiation and the negative
+diagnostic result are. Any sentence implying we invented GNN-LLM feedback, iterative
+semantic refinement, or structural-statistics-as-text is refuted by DAS.
+
+### Two further competing-novelty findings — read before drafting any novelty claim
 
 1. **RoGRAD's abstract explicitly claims "RoGRAD is the first iterative paradigm"** that
    moves LLM augmentation for graphs "from static signal injection into dynamic
