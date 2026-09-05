@@ -179,10 +179,39 @@ messages as `W_msg([h_u ‖ e_uv])` → the code's form is used.
    as results** — but they mean the claim *"the feedback loop is the strongest rung"* is
    **not established**. The 3-seed re-run is postponed. See `EVIDENCE_STATE.md` §4.
 
-0b. **NARROW NOVELTY.** LOGIN (arXiv 2405.13902), DAS (2512.21106), GLANCE (2510.10849)
-   and RoGRAD (2510.01910) are documented in `docs/feedback_loop_mechanisms.md`. **Never
-   claim the first GNN-LLM feedback system.** Confine novelty to IDS / network-flow /
-   edge-level feedback.
+0b. **NARROW NOVELTY — the framing is settled; do not re-derive or widen it.**
+   All four prior-art anchors were verified via Scite on 2026-09-05 (see
+   `EVIDENCE_STATE.md` §7b). Each of the following would-be claims is **refuted by a
+   specific published paper**:
+
+   | Do NOT claim | Refuted by |
+   |---|---|
+   | a closed GNN-LLM feedback loop | **DAS** (2512.21106) — its abstract describes exactly this |
+   | iterative semantic refinement | **DAS** (with an MM convergence argument); **RoGRAD** (2510.01910) claims "the first iterative paradigm" |
+   | structural statistics serialised to natural language | **DAS** — builds node text from degree, betweenness, closeness, clustering |
+   | selective / uncertainty-guided consultation | **GLANCE** (2510.10849) — a per-node router deciding when to query the LLM |
+   | LLM-consulted GNN training | **LOGIN** (2405.13902) |
+
+   **DAS is the closest prior work — closer than LOGIN.**
+
+   **The four things that DO survive, and the only basis for the contribution:**
+
+   1. **Edge-level granularity.** All four prior works are node-level; here a flow is the
+      classified unit.
+   2. **Network-flow intrusion detection.** None of the four touch IDS.
+   3. **Injection into edge representations** consumed by the next graph update, rather
+      than refining LLM semantics.
+   4. **Gate 0** — a channel with demonstrated capacity that no realistic consultant
+      exploits. DAS reports consistent improvements; this work reports why that does not
+      transfer.
+
+   **Canonical framing sentence — use this shape wherever novelty is stated:**
+
+   > We instantiate an established GNN-semantic feedback mechanism in edge-level network
+   > intrusion detection and measure where it fails.
+
+   Not *"we built a GNN-LLM feedback loop."* The mechanism is not the contribution; the
+   instantiation and the negative diagnostic result are.
 
 0c. **DEPLOYMENT VALIDITY.** `src/pipeline/step1/graph_construction.py:215` groups by
    `[SRC_COL, DST_COL, ATTACK_COL]` — the attack label defines edge identity. These are not
@@ -294,14 +323,24 @@ limitations, Gate 0, the SOTA comparison, and the E-GraphSAGE ceiling.
 
 ### Task P2 — Novelty and related-literature verification
 
-Use `/ars-lit-review`. Confirm against current literature that the narrow novelty claim
-holds: interactive GNN-semantic feedback applied to **edge-level network-flow intrusion
-detection**. LOGIN, DAS, GLANCE and RoGRAD are prior art for the mechanism in general —
-the contribution is the IDS instantiation and its measured limits, not the mechanism.
+**The four core anchors are already verified** (LOGIN, DAS, GLANCE, RoGRAD — DOIs, titles,
+authors, no editorial notices; `EVIDENCE_STATE.md` §7b), and **the novelty framing is
+already settled** (trap 0b). Do not redo either.
 
-Add every cited work to `references.bib`. **Do not cite anything you have not confirmed
-exists.** Scite was disconnected on 2026-09-03; use `/ars-citation-check` plus
-`WebSearch`/`WebFetch`, or ask the user to reconnect Scite.
+P2's remaining job is narrower:
+
+1. Use `/ars-lit-review` to check for work **published since 2026-09-05**, and for any
+   **edge-level or IDS-specific** GNN-semantic feedback work the four anchors do not cover.
+   A hit there would threaten survivor #1 or #2 in trap 0b and must be reported immediately.
+2. Assemble the rest of `references.bib` — it holds 6 entries and needs roughly 30.
+   Sources for the broader map: `docs/Full 25-Work Comparison Table (Parallel GNN+LLM
+   Fusion).md` and `docs/Step 3 Fusion Literature Survey.md`.
+3. Verify every DOI resolves before it enters `references.bib`. **Scite is reconnected**
+   (verified working 2026-09-05). Search by **DOI or exact title, not keywords** — Scite's
+   free-text search failed to surface LOGIN, while the DOI lookup found it immediately.
+
+**Do not cite anything you have not confirmed exists.** This project has previously
+retracted a claim and caught two fabricated numbers.
 
 ### Task P3 — Missing experiments and publication risks
 
@@ -349,6 +388,11 @@ map (GNN-only, LLM-only, sequential GNN→LLM, sequential LLM→GNN, interactive
 frozen), and be explicit that the closest prior work is identified rather than hidden.
 
 Introduce E-GraphSAGE and TE-G-SAGE here, since Part 4 compares against them.
+
+**The related-work section must position DAS, LOGIN, GLANCE and RoGRAD honestly and
+early** — they are the mechanism's prior art, and DAS is the closest. Present the gap as
+trap 0b states it: the mechanism exists; its edge-level IDS instantiation, and the question
+of whether a realistic consultant can drive it, do not.
 
 `references.bib` currently holds **6 entries** and will need roughly 30. Add entries as you
 cite; do not cite anything you have not confirmed exists.
@@ -401,7 +445,10 @@ from E-GraphSAGE and two of our rungs are significantly behind it. The decomposi
 ~14% of the naive gap is architectural.
 
 Gate 0 is the intellectual centre of the discussion: the feedback channel demonstrably has
-capacity, and no realistic consultant exploits it. Say what that implies for future work —
+capacity, and no realistic consultant exploits it. This is also where the contribution is
+stated in its narrow form (trap 0b) — DAS reports consistent gains from a closed GNN-LLM
+refinement loop; this work shows that result does not transfer to edge-level network-flow
+IDS, and isolates why. Say what that implies for future work —
 calibration and trust of consultant logits, not a bigger consultant.
 
 Open work: deployment-valid graph construction where edge identity does not depend on the
