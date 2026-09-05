@@ -19,22 +19,47 @@ what an interaction represents. An intrusion detection system that sees only one
 these views is therefore working with an incomplete account of the traffic.
 
 This report investigates whether structural and semantic evidence can be combined in a
-single edge-level intrusion detection framework using NF-UNSW-NB15. One experimental
-boundary must be stated from the outset: the current graph construction aggregates flows
-by source IP, destination IP, and attack class. Ground-truth labels therefore participate
-in defining edge identity, even though the attack name is excluded from the model's input
-features and generated text. The consequence is explicit: the resulting scores compare
-representations and interaction mechanisms under a controlled protocol, but they are not
-deployment-valid estimates of detection performance on unseen, unlabelled traffic.
+single edge-level intrusion detection framework using NF-UNSW-NB15 and NF-ToN-IoT. One
+experimental boundary must be stated from the outset: the current graph construction
+aggregates flows by source IP, destination IP, and attack class. Ground-truth labels
+therefore participate in defining edge identity, even though the attack name is excluded
+from the model's input features and generated text. The consequence is explicit: the
+resulting scores compare representations and interaction mechanisms under a controlled
+protocol, but they are not deployment-valid estimates of detection performance on unseen,
+unlabelled traffic.
 
-The original UNSW-NB15 benchmark was created from a mixture of normal activity and
-contemporary attacks in the UNSW Canberra Cyber Range
-Laboratory~\citep{moustafa2015unsw}. Its NetFlow derivative expresses that traffic
-through a compact, practically relevant feature set intended to support reproducible
-intrusion-detection research~\citep{sarhan2021netflow}. This study uses that dataset to
-examine what each branch learns, whether their combination is useful, and whether
-semantic feedback improves the graph representation rather than merely changing the
-final classifier.
+NF-UNSW-NB15 derives from UNSW-NB15, whose original benchmark was created from a mixture
+of normal activity and contemporary attacks in the UNSW Canberra Cyber Range
+Laboratory~\citep{moustafa2015unsw}. NF-ToN-IoT derives from the TON\_IoT datasets and
+provides an IoT-focused telemetry setting~\citep{moustafa2021toniot}. This study uses both
+in their NetFlow-standardised forms~\citep{sarhan2021netflow}. One identical processing
+and modelling pipeline is applied to the two datasets. Every architectural choice is
+shared between them; only two quantities selected on validation data differ.
+
+The two datasets were chosen because they occupy very different points on the
+class-imbalance axis. After aggregation, NF-UNSW-NB15 contains 656 edges, is 47.4\%
+benign, and has a most-to-least-frequent class ratio of $12.4{:}1$. Eight of its nine
+attack classes contain 40 edges and the ninth contains 25, so just one falls at or below
+that threshold. NF-ToN-IoT contains 2{,}127 edges, is 82.1\% benign, and has a most-to-least-frequent
+class ratio of $582{:}1$. Seven of its nine attack classes contain 35 edges or fewer. Its
+distribution is far more skewed, with benign traffic dominant and most attack classes
+represented by a few dozen edges or fewer. By the most-to-least class ratio, the two
+graphs differ by roughly a factor of 47 in imbalance severity.
+
+That difference is the methodological reason for using two datasets. A single dataset
+cannot separate a property of the architecture from a property of the class distribution
+that architecture happened to face. Holding the architecture fixed while changing the
+imbalance regime by roughly $47\times$ makes that distinction experimentally addressable.
+RQ4 already asks how class imbalance affects fusion and feedback; the two-dataset design
+gives that question two substantially different regimes to compare. No stage is assumed in
+advance to be sensitive or insensitive to that change.
+
+The scoring protocol also differs in one necessary respect. Macro-F1 covers ten classes on
+NF-UNSW-NB15 and eight classes on NF-ToN-IoT, because two NF-ToN-IoT classes are too small
+to survive five-fold splitting. Their edges remain in the graph for message passing but
+are excluded from the metric. Because the class counts differ, absolute scores are not
+comparable across the two datasets; only the shape of the model ladder is. This constraint
+applies throughout the report.
 
 \subsection{Why combine graph and language representations?}
 
@@ -50,36 +75,47 @@ connection to a particular service may signify.
 
 A pretrained cybersecurity language encoder offers a complementary view. The same
 aggregated flow can be written as a short, controlled sentence describing its endpoints,
-protocol, port, frequency, volume, and duration. A language encoder can then map that
-description into a semantic embedding. The implementation uses CySecBERT, a BERT model adapted to
-cybersecurity text and evaluated by its authors on domain-specific representation and
-classification tasks~\citep{bayer2022cysecbert}. Throughout this report, this component
-is called the \emph{semantic branch}. The deployed encoder is a BERT-class pretrained
-language model rather than a generative large language model; the more precise term
-prevents the project shorthand ``LLM'' from overstating its role.
+protocol, port, frequency, volume, and duration. The implementation uses CySecBERT, a
+BERT-class model adapted to cybersecurity text and evaluated by its authors on
+domain-specific representation and classification tasks~\citep{bayer2022cysecbert}. It is
+frozen and used purely as a sentence encoder. Throughout this report, this component is
+called the \emph{semantic branch}. That terminology distinguishes its representational
+role from that of a generative large language model.
 
 Neither representation is assumed to be superior in every case. The central idea is
-instead to let them challenge and complement one another. Phase~1 runs the graph and
-semantic encoders in parallel and combines their edge embeddings through Adaptive Gated
-Attention Fusion (AGAF). Phase~2 adds uncertainty-guided semantic feedback: edges with
-high-entropy GNN predictions are selected for semantic consultation, and the resulting
-signal is reintroduced by modifying the edge representations that the next graph update
-consumes. A second design, which biases graph attention directly, was also implemented
-and measured; it produced no change in prediction and is reported as a verified negative
-result. In intuitive terms,
-the graph branch indicates where it is uncertain, while the semantic branch supplies an
-additional judgement for those cases.
+instead to let them challenge and complement one another. The parallel fusion stage runs
+the graph and semantic encoders side by side and combines their edge embeddings through
+Adaptive Gated Attention Fusion (AGAF). The feedback stage adds uncertainty-guided
+semantic feedback: edges with high-entropy GNN predictions are selected for semantic
+consultation, and the resulting signal is reintroduced by modifying the edge
+representations that the next graph update consumes. A second design, which biases graph
+attention directly, was also implemented and measured; it produced no change in prediction
+and is reported as a verified negative result.
+
+The coupling is bidirectional in routing. The graph model's per-edge uncertainty decides
+which edges are consulted, while the semantic branch returns a per-edge judgement that
+re-enters the edge representations consumed by the next graph update. It is not
+bidirectional in content: the consultant's judgement depends on that edge's text alone,
+not on the graph model's current belief about the edge.
 
 This general dual-stream idea is not novel by itself. Parallel BERT and graph encoders
 with attention-based fusion have already been studied outside network security, for
 example in misinformation detection~\citep{moorthy2025dualstream}. Work in network
-intrusion detection has also combined GNNs and generative language models, but sometimes
-for a different purpose. XG-NID, for instance, performs intrusion classification with a
-heterogeneous GNN and uses an LLM after classification to generate explanations and
-remedial guidance~\citep{farrukh2024xgnid}. The gap addressed here is narrower and more
-testable: a shared NetFlow pipeline in which a graph encoder and a cybersecurity language
-encoder both contribute directly to edge classification, followed by an explicit test of
-whether iterative semantic feedback improves the classifier beyond late fusion alone.
+intrusion detection has also combined GNNs and generative language models for a different
+role: XG-NID performs intrusion classification with a heterogeneous GNN and uses an LLM
+after classification to generate explanations and remedial guidance
+\citep{farrukh2024xgnid}. DAS is the closest prior work to the feedback mechanism
+considered here. It already implements a closed feedback loop between a frozen GNN and an
+LLM, feeds refined semantics back to update the same graph learner, and constructs node
+descriptions by expressing structural statistics in natural language; its setting is
+node-level and concerns general text-rich graphs~\citep{thapaliya2025das}. The
+contribution here is therefore instantiation plus measurement: an edge-level
+network-intrusion-detection instantiation, together with a diagnostic question about
+whether a constrained semantic consultant exploits a feedback channel that has the
+capacity to influence the next graph update. Within the literature reviewed here, we are
+not aware of prior work combining bidirectional iterative coupling between a graph model
+and a semantic branch, joint attention-based fusion for the final classification, and
+edge-level network intrusion detection.
 
 \subsection{Research problem and questions}
 
@@ -94,25 +130,26 @@ and the iterative update itself.
 The study is organised around five research questions:
 
 \begin{description}
-    \item[RQ1.] How do the structural GNN branch and the semantic branch
-    perform individually on NF-UNSW-NB15 under the same five-fold out-of-fold evaluation
-    protocol?
+    \item[RQ1.] How do the structural GNN branch and the semantic branch perform
+    individually on NF-UNSW-NB15 and NF-ToN-IoT under the same five-fold out-of-fold
+    evaluation protocol?
 
-    \item[RQ2.] Does AGAF outperform both single-branch baselines on NF-UNSW-NB15, and
-    are the observed differences supported by uncertainty estimates and robust
-    comparisons?
+    \item[RQ2.] Does AGAF outperform both single-branch baselines on NF-UNSW-NB15 and
+    NF-ToN-IoT, and are the observed differences supported by uncertainty estimates and
+    robust comparisons?
 
-    \item[RQ3.] Does uncertainty-guided semantic feedback add value beyond static
-    fusion? If so, does the gain come from semantic re-entry into the graph
-    representation or from final-output fusion?
+    \item[RQ3.] Does uncertainty-guided semantic feedback add value beyond static fusion
+    on NF-UNSW-NB15 and NF-ToN-IoT? If so, does the gain come from semantic re-entry into
+    the graph representation or from final-output fusion?
 
     \item[RQ4.] How do graph topology, repeated endpoint pairs, class imbalance, and the
-    strength of the semantic consultant affect fusion and feedback on NF-UNSW-NB15?
+    strength of the semantic consultant affect fusion and feedback on NF-UNSW-NB15 and
+    NF-ToN-IoT?
 
     \item[RQ5.] How does the feedback loop compare against published graph-based
     intrusion detection architectures re-trained on the same aggregated representation
-    under the same protocol, and how much of any observed difference is attributable to
-    representation and tuning rather than to architecture?
+    under the same protocol on NF-UNSW-NB15 and NF-ToN-IoT, and how much of any observed
+    difference is attributable to representation and tuning rather than to architecture?
 \end{description}
 
 These questions deliberately allow a negative answer. The purpose of the experiments is
@@ -123,8 +160,8 @@ if each higher rung is compared fairly with the strongest relevant lower rung.
 \subsection{Objectives and contributions}
 
 The practical objective is to build one reproducible pipeline that transforms
-NF-UNSW-NB15 NetFlow records into two aligned views and evaluates every stage under one
-consistent protocol. The work makes four contributions.
+NF-UNSW-NB15 and NF-ToN-IoT NetFlow records into two aligned views and evaluates every
+stage under one consistent protocol. The work makes five contributions.
 
 \begin{enumerate}
     \item It implements a directed, edge-classification graph pipeline in which flows are
@@ -140,12 +177,16 @@ consistent protocol. The work makes four contributions.
     semantic fusion, and uncertainty-guided semantic feedback that reintroduces semantic
     evidence into the edge representations of uncertain edges.
 
-    \item It provides a controlled evaluation on NF-UNSW-NB15, including unimodal
-    baselines, fusion comparisons, uncertainty-selection ablations, trained-head
+    \item It provides a controlled evaluation on NF-UNSW-NB15 and NF-ToN-IoT, including
+    unimodal baselines, fusion comparisons, uncertainty-selection ablations, trained-head
     baselines, mechanism-isolation tests, and two published graph-based intrusion
     detection architectures re-trained on the same representation. It reports both
-    positive and negative
-    results to show which components carry the measured gain.
+    positive and negative results to show which components carry the measured gain.
+
+    \item It provides a cross-dataset comparison under one shared architecture across two
+    substantially different class-imbalance regimes, testing whether the behaviour of each
+    stage in the model ladder is a property of the method or of the class distribution it
+    faces.
 \end{enumerate}
 
 The contribution is therefore not presented as a universal improvement over existing
@@ -156,13 +197,20 @@ identity can be determined without access to the target class.
 
 \subsection{Report structure}
 
-The remainder of the report follows four stages. The next section reviews graph-based
-intrusion detection, cybersecurity language encoders, and the main ways graph and language
-representations have been combined. The methodology section then describes the datasets,
-graph and text construction, the two encoders, AGAF, semantic feedback, and the evaluation
-protocol in enough detail to reproduce the experiments. The results section presents the
-NF-UNSW-NB15 performance ladder, statistical comparisons, comparisons against published
-baselines, ablations, and verified negative results. The final
-section interprets those findings, distinguishes supported conclusions from open claims,
-and identifies the experiments needed to move from an offline research prototype toward
-a deployment-valid intrusion detection system.
+The report is organised into five sections. This Introduction defines the problem,
+experimental scope, research questions, and contribution. Section~\ref{sec:related}
+reviews graph-based intrusion detection, cybersecurity language encoders,
+structural--semantic fusion, and iterative graph--language feedback, and positions the
+study against the closest prior mechanisms. Section~\ref{sec:method} describes the two
+datasets, graph and text construction, the structural and semantic branches, AGAF,
+uncertainty-guided semantic feedback, the baseline protocol, and the shared evaluation
+procedure.
+
+The Results section reports the predefined model ladder, baseline comparisons, ablations,
+and mechanism-isolation measurements for both NF-UNSW-NB15 and NF-ToN-IoT, while keeping
+the different scored class sets explicit. The Discussion section interprets those
+measurements against the research questions, including the cross-dataset imbalance
+comparison and the distinction between a feedback channel having capacity and a
+constrained semantic consultant making use of that channel. It also returns to the
+controlled-protocol limitation and the work still required for deployment-valid
+intrusion detection.
