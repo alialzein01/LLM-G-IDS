@@ -163,6 +163,37 @@ loop outranking AGAF.
 
 ---
 
+## 7b. Verified citations (Scite, 2026-09-05)
+
+Confirmed to exist, with matching titles and authors, and **no editorial notices**
+(no retractions or concerns) at time of check:
+
+| DOI | Work | Authors | Year |
+|---|---|---|---|
+| `10.48550/arXiv.2405.13902` | LOGIN: A Large Language Model Consulted Graph Neural Network Training Framework | Qiao, Ao, Liu | 2024 |
+| `10.48550/arXiv.2510.10849` | Glance for Context: Learning When to Leverage LLMs for Node-Aware GNN-LLM Fusion | Loveland, Yang, Koutra | 2025 |
+| `10.48550/arXiv.2510.01910` | Are LLMs Better GNN Helpers? Rethinking Robust Graph Learning under Deficiencies with Iterative Refinement (RoGRAD) | Wang, Gao, Kharel | 2025 |
+
+**NOT yet verified:** DAS (`arXiv 2512.21106`, cited in `docs/feedback_loop_mechanisms.md`).
+Task P2 must confirm it before it enters `references.bib`.
+
+### Two competing-novelty findings — read before drafting any novelty claim
+
+1. **RoGRAD's abstract explicitly claims "RoGRAD is the first iterative paradigm"** that
+   moves LLM augmentation for graphs "from static signal injection into dynamic
+   refinement." Our loop is also iterative refinement. Do not phrase our contribution in a
+   way that collides with this claim.
+2. **GLANCE trains a lightweight router that decides, per node, whether to query the LLM**,
+   using inexpensive per-node signals. This is conceptually very close to our
+   uncertainty-guided selection of high-entropy edges. Our selection policy is therefore
+   **not** novel in itself; what is untried is the edge-level network-flow IDS setting and
+   the measured finding that the consultant fails to exploit the channel.
+
+**Practical note on Scite:** free-text search did **not** surface LOGIN; the DOI lookup
+did. Search by DOI or exact title, not keywords.
+
+---
+
 ## 8. Readiness assessment
 
 **Ready:** the evidence base is well governed. Limitations are self-declared in the
