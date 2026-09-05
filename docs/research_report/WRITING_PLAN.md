@@ -25,6 +25,26 @@ re-run. Write every separation claim so it survives either outcome (wording belo
 
 ---
 
+## Which workflow governs (added 2026-09-05)
+
+Academic Research Skills (**ARS v3.21.1**) is installed as a Claude Code plugin. It is the
+**planning and quality-control layer**. It does not replace the deliverable's structure.
+
+- **Structure** = the supervisor-accepted five-part M2 shape in `REPORT_WORKFLOW.md`.
+- **Manuscript** = LaTeX: `main.tex` + `sections/*.tex`, compiled by `./build.sh`.
+  ARS defaults to Markdown / APA 7.0 / DOCX. **Do not produce a parallel Markdown
+  manuscript** — that forks the source of truth. ARS outputs are planning artifacts only.
+- **Scientific truth** = the LLM-G-IDS artifacts named in this plan, never ARS's own
+  summaries of them.
+
+**Do not run `/ars-full`.** The sequence is in "Tasks" below.
+
+Relevant ARS commands: `/ars-plan`, `/ars-outline`, `/ars-lit-review`, `/ars-reviewer`,
+`/ars-citation-check`. Note ARS installs a `PreToolUse` write-scope guard on
+`Write|Edit|Bash`; it is benign and runs on every such call.
+
+---
+
 ## How to use this plan (token discipline)
 
 This plan is the context pack. **Do not explore the repository.** Every number you need
@@ -33,10 +53,13 @@ to write Parts 2–5 is below.
 Read exactly these, in this order:
 
 1. This plan.
-2. `docs/research_report/REPORT_WORKFLOW.md` — writing standards, terminology lock, section states.
-3. `docs/research_report/sections/01_introduction.tex` — what Part 1 already says, so you don't repeat or contradict it.
-4. `docs/RESULTS_ARCHIVE.md` — **only the sections a given task names**, not the whole file.
-5. For Part 2 only: `docs/Full 25-Work Comparison Table (Parallel GNN+LLM Fusion).md` and `docs/Step 3 Fusion Literature Survey.md`.
+2. `docs/research_report/EVIDENCE_STATE.md` — the verification of the project's scientific
+   state, completed 2026-09-03 against artifacts and source. **That work is done; do not
+   repeat it.**
+3. `docs/research_report/REPORT_WORKFLOW.md` — writing standards, terminology lock, section states.
+4. `docs/research_report/sections/01_introduction.tex` — what Part 1 already says, so you don't repeat or contradict it.
+5. `docs/RESULTS_ARCHIVE.md` — **only the sections a given task names**, not the whole file.
+6. For Part 2 only: `docs/Full 25-Work Comparison Table (Parallel GNN+LLM Fusion).md` and `docs/Step 3 Fusion Literature Survey.md`.
 
 Open a `results/*.json` **only** when you are about to cite a number not listed in this
 plan. Do not read source code unless Part 3 requires a specific implementation detail.
@@ -148,6 +171,23 @@ messages as `W_msg([h_u ‖ e_uv])` → the code's form is used.
 
 ## Traps — violating any of these is a factual error
 
+0. **MULTI-SEED INVERSION — read this before writing any headline.**
+   `unsw_nb15_current.json` → `multi_seed_caveat` records **agaf_mean 0.7757 vs loop_mean
+   0.7545** over three seeds — the *reverse* of the single-seed headline (AGAF 0.7595, Loop
+   0.7728). `loop_vs_agaf` already crosses zero. That field is explicitly
+   *"not re-verified against a saved artifact"*, so **those two numbers may never be cited
+   as results** — but they mean the claim *"the feedback loop is the strongest rung"* is
+   **not established**. The 3-seed re-run is postponed. See `EVIDENCE_STATE.md` §4.
+
+0b. **NARROW NOVELTY.** LOGIN (arXiv 2405.13902), DAS (2512.21106), GLANCE (2510.10849)
+   and RoGRAD (2510.01910) are documented in `docs/feedback_loop_mechanisms.md`. **Never
+   claim the first GNN-LLM feedback system.** Confine novelty to IDS / network-flow /
+   edge-level feedback.
+
+0c. **DEPLOYMENT VALIDITY.** `src/pipeline/step1/graph_construction.py:215` groups by
+   `[SRC_COL, DST_COL, ATTACK_COL]` — the attack label defines edge identity. These are not
+   deployment-valid estimates. State it plainly wherever results are presented.
+
 1. **Absolute levels are NOT comparable across datasets.** UNSW scores 10 classes, ToN 8
    (classes 3 `dos` and 7 `ransomware` have 4 and 3 edges; they stay in the graph but are
    excluded from the metric). **Compare ladder *shape* across datasets, never absolute
@@ -227,9 +267,61 @@ difference. This is the single most common failure mode in this project's histor
 
 ## Tasks
 
-Work in order. After each part: run `./docs/research_report/build.sh`, confirm it
-compiles, update the status table in `REPORT_WORKFLOW.md`, commit, then **stop and report
-to the user**.
+**Preparation tasks P1-P3 come first. Drafting does not begin until the user approves the
+outline.** After every task: commit, then **stop and report to the user**. After any task
+that changes a `.tex` file, run `./docs/research_report/build.sh` first and confirm it
+compiles, and update the status table in `REPORT_WORKFLOW.md`.
+
+---
+
+### Task P1 — Claim-evidence map
+
+Write `docs/research_report/CLAIM_EVIDENCE_MAP.md`. One row per claim the paper could make.
+
+| column | content |
+|---|---|
+| claim | stated as it would appear in the paper |
+| evidence | the exact artifact + field, or `NONE` |
+| status | `separated` / `not separated` / `unsupported` / `retracted` |
+| notes | the caveat that must travel with it |
+
+Source the rows from this plan's numbers and `EVIDENCE_STATE.md` §§4-6. Every claim whose
+status is not `separated` must carry the wording it will be written with. A claim with
+`NONE` in the evidence column may not enter the manuscript at all.
+
+Include, explicitly: the loop-vs-AGAF ordering (§4 inversion), the three declared
+limitations, Gate 0, the SOTA comparison, and the E-GraphSAGE ceiling.
+
+### Task P2 — Novelty and related-literature verification
+
+Use `/ars-lit-review`. Confirm against current literature that the narrow novelty claim
+holds: interactive GNN-semantic feedback applied to **edge-level network-flow intrusion
+detection**. LOGIN, DAS, GLANCE and RoGRAD are prior art for the mechanism in general —
+the contribution is the IDS instantiation and its measured limits, not the mechanism.
+
+Add every cited work to `references.bib`. **Do not cite anything you have not confirmed
+exists.** Scite was disconnected on 2026-09-03; use `/ars-citation-check` plus
+`WebSearch`/`WebFetch`, or ask the user to reconnect Scite.
+
+### Task P3 — Missing experiments and publication risks
+
+From `EVIDENCE_STATE.md` §6 plus anything P1 and P2 surface, write a short risk register:
+what a reviewer will attack, what evidence would answer it, and whether that evidence is
+obtainable before submission. Flag which risks are accepted-and-disclosed versus which
+need work.
+
+### Task P4 — `/ars-plan`, then `/ars-outline`
+
+Run `/ars-plan` for framing and positioning. Report, stop.
+
+Then `/ars-outline`. **The outline must not fix a headline claim that depends on the loop
+outranking AGAF** (trap 0). Report, stop, and wait for explicit user approval.
+
+**Drafting begins only after the user approves the outline.**
+
+---
+
+## Drafting tasks (blocked until the outline is approved)
 
 ### Task 0 — Re-scope Part 1 and the workflow to both datasets
 
@@ -349,4 +441,8 @@ Before declaring any part done:
 - Start the 3-seed rung re-run. The user postponed it.
 - Re-run any experiment or "improve" any number. Writing only.
 - Generate figures without first requesting them per the diagram protocol.
-- Read the whole repository. This plan is the context pack.
+- Read the whole repository. This plan and `EVIDENCE_STATE.md` are the context pack.
+- Run `/ars-full`. The staged sequence in Tasks P1-P4 is deliberate.
+- Produce a Markdown manuscript alongside the LaTeX one. ARS outputs are planning artifacts.
+- Begin drafting before the user approves the `/ars-outline` output.
+- Cite `multi_seed_caveat`'s agaf_mean / loop_mean as results — they are not artifact-backed.
