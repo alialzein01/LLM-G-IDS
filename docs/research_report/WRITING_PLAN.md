@@ -179,39 +179,56 @@ messages as `W_msg([h_u ‖ e_uv])` → the code's form is used.
    as results** — but they mean the claim *"the feedback loop is the strongest rung"* is
    **not established**. The 3-seed re-run is postponed. See `EVIDENCE_STATE.md` §4.
 
-0b. **NARROW NOVELTY — the framing is settled; do not re-derive or widen it.**
-   All four prior-art anchors were verified via Scite on 2026-09-05 (see
-   `EVIDENCE_STATE.md` §7b). Each of the following would-be claims is **refuted by a
-   specific published paper**:
+0b. **NOVELTY — two claims at different levels. Hold BOTH; do not collapse them.**
+
+   **CLAIM A — the configuration (PERMITTED).** The *conjunction* of
+   (1) bidirectional iterative GNN-semantic coupling, (2) joint classification by
+   attention-fusion of structural and semantic embeddings in one classifier, and
+   (3) network intrusion detection on an IP/flow graph, is not occupied by prior work.
+   The four verified anchors each break at least one conjunct:
+
+   | Work | (1) iterative | (2) joint fusion head | (3) IDS |
+   |---|---|---|---|
+   | **DAS** (2512.21106) | yes | **no** — refined semantics feed a fixed GNN that classifies alone | **no** |
+   | **GLANCE** (2510.10849) | **no** — single-round routing | **no** — selective delegation, not two-branch fusion | **no** |
+   | **RoGRAD** (2510.01910) | yes | **no** | **no** |
+   | **LOGIN** (2405.13902) | training-only | **no** — GNN classifies alone | **no** |
+
+   Supporting analysis: `docs/Full 25-Work Comparison Table (Parallel GNN+LLM Fusion).md`.
+
+   **Conditions on Claim A.** Write it as *"we are not aware of prior work combining …"*,
+   never "confirmed unique", "first", or "no prior art exists" — an absence-of-evidence
+   claim cannot be verified and this project has retracted overclaims before. It is a
+   **positioning** claim for Related Work, not a result.
+
+   **CLAIM B — the components (FORBIDDEN).** No individual mechanism here is novel. Each of
+   these is refuted by a specific verified paper:
 
    | Do NOT claim | Refuted by |
    |---|---|
-   | a closed GNN-LLM feedback loop | **DAS** (2512.21106) — its abstract describes exactly this |
-   | iterative semantic refinement | **DAS** (with an MM convergence argument); **RoGRAD** (2510.01910) claims "the first iterative paradigm" |
-   | structural statistics serialised to natural language | **DAS** — builds node text from degree, betweenness, closeness, clustering |
-   | selective / uncertainty-guided consultation | **GLANCE** (2510.10849) — a per-node router deciding when to query the LLM |
-   | LLM-consulted GNN training | **LOGIN** (2405.13902) |
+   | a closed GNN-LLM feedback loop | **DAS** — its abstract describes exactly this |
+   | iterative semantic refinement | **DAS** (with an MM convergence argument); **RoGRAD** claims "the first iterative paradigm" |
+   | structural statistics serialised to natural language | **DAS** — node text from degree, betweenness, closeness, clustering |
+   | selective / uncertainty-guided consultation | **GLANCE** — a per-node router deciding when to query the LLM |
+   | LLM-consulted GNN training | **LOGIN** |
 
-   **DAS is the closest prior work — closer than LOGIN.**
+   **DAS is the closest prior work — closer than LOGIN.** See `EVIDENCE_STATE.md` §7b.
 
-   **The four things that DO survive, and the only basis for the contribution:**
+   **CLAIM C — performance (BOUNDED BY EVIDENCE).** Architectural novelty is not a result.
+   A reviewer will grant Claim A and immediately ask whether it helps. The honest answer:
+   AGAF is **not separated** from the GNN on UNSW and is **significantly below** it on ToN;
+   the loop is not separated from AGAF; and the multi-seed field (trap 0) may invert the
+   ordering. Never let Claim A imply Claim C.
 
-   1. **Edge-level granularity.** All four prior works are node-level; here a flow is the
-      classified unit.
-   2. **Network-flow intrusion detection.** None of the four touch IDS.
-   3. **Injection into edge representations** consumed by the next graph update, rather
-      than refining LLM semantics.
-   4. **Gate 0** — a channel with demonstrated capacity that no realistic consultant
-      exploits. DAS reports consistent improvements; this work reports why that does not
-      transfer.
+   **How the three fit together:**
 
-   **Canonical framing sentence — use this shape wherever novelty is stated:**
+   > The configuration is, as far as we are aware, unoccupied (A). Its individual
+   > mechanisms are established prior art (B). What this work contributes is the
+   > edge-level intrusion-detection instantiation and the measured finding that a
+   > realistic consultant does not exploit a channel with demonstrated capacity (C).
 
-   > We instantiate an established GNN-semantic feedback mechanism in edge-level network
-   > intrusion detection and measure where it fails.
-
-   Not *"we built a GNN-LLM feedback loop."* The mechanism is not the contribution; the
-   instantiation and the negative diagnostic result are.
+   Related Work carries A. Method carries the honest description of B. Results and
+   Discussion carry C.
 
 0c. **DEPLOYMENT VALIDITY.** `src/pipeline/step1/graph_construction.py:215` groups by
    `[SRC_COL, DST_COL, ATTACK_COL]` — the attack label defines edge identity. These are not
@@ -331,7 +348,15 @@ P2's remaining job is narrower:
 
 1. Use `/ars-lit-review` to check for work **published since 2026-09-05**, and for any
    **edge-level or IDS-specific** GNN-semantic feedback work the four anchors do not cover.
-   A hit there would threaten survivor #1 or #2 in trap 0b and must be reported immediately.
+   A hit there would break Claim A in trap 0b and must be reported immediately.
+1b. **Re-run the conjunction check against DAS, GLANCE and RoGRAD.** The existing
+   gap analysis (`docs/Full 25-Work Comparison Table (Parallel GNN+LLM Fusion).md`, and the
+   slide derived from it) predates all three — DAS is December 2025, GLANCE and RoGRAD
+   October 2025. Trap 0b's table records my assessment that none of them breaks the
+   conjunction; confirm it against the papers themselves before Claim A is written.
+1c. **Fix a known error in that gap analysis.** Its LOGIN entry is headed as satisfying
+   the IDS conjunct while its body correctly states "Not IDS, not joint classification."
+   The body is right; the header label is wrong. Correct it wherever it is reused.
 2. Assemble the rest of `references.bib` — it holds 6 entries and needs roughly 30.
    Sources for the broader map: `docs/Full 25-Work Comparison Table (Parallel GNN+LLM
    Fusion).md` and `docs/Step 3 Fusion Literature Survey.md`.
@@ -390,9 +415,10 @@ frozen), and be explicit that the closest prior work is identified rather than h
 Introduce E-GraphSAGE and TE-G-SAGE here, since Part 4 compares against them.
 
 **The related-work section must position DAS, LOGIN, GLANCE and RoGRAD honestly and
-early** — they are the mechanism's prior art, and DAS is the closest. Present the gap as
-trap 0b states it: the mechanism exists; its edge-level IDS instantiation, and the question
-of whether a realistic consultant can drive it, do not.
+early** — they are the mechanism's prior art, and DAS is the closest. **This is where
+Claim A belongs** (trap 0b): present the conjunction table, and state the gap as
+"we are not aware of prior work combining …". Do not state Claim A anywhere else, and do
+not let it imply a performance result.
 
 `references.bib` currently holds **6 entries** and will need roughly 30. Add entries as you
 cite; do not cite anything you have not confirmed exists.
