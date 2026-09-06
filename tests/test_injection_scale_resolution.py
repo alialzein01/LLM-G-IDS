@@ -202,31 +202,60 @@ def test_v1_multiseed_ladder_is_annotated_invalid():
 
 # --- 3.5 ---------------------------------------------------------------------
 
-def test_legacy_flags_reproduce_the_pre_fix_behaviour(tmp_path):
-    """Both defects must be reproducible on purpose, not only by checking out an
-    old commit."""
-    import src.pipeline.step4.train_feedback as tf
-
+def test_defaults_are_condition_a_the_contract_configuration(tmp_path):
+    """A plain `train_feedback --dataset X` must reproduce what
+    `results/*_current.json` was measured under: selector head unsupervised and
+    the consultant temperature pinned at the T=10 init. The two "signal fixes"
+    are real fixes, but they measured WORSE at 3 seeds, so they are not the
+    default -- the default has to be the configuration the contracts describe."""
     root = tmp_path / "fb"
     _write_config(root, injection_scale=2.0)
-    _run_feedback(root, selector_head_loss_weight=0.0, legacy_temperature=True)
+    _run_feedback(root)
     benchmark = json.loads((root / "benchmark_summary.json").read_text())
     assert benchmark["selector_head_loss_weight"] == 0.0
     assert benchmark["legacy_temperature"] is True
     trace = json.loads((root / "feedback_trace_real.json").read_text())
     diag = trace["folds"][0]["bias_diagnostics"]
-    # T=10 on whitened cosines is the uniform softmax the fix removed.
+    # T=10 on whitened cosines is the near-uniform softmax of condition A.
     assert diag["consultant_temperature"] == pytest.approx(10.0, rel=1e-3)
     assert diag["mean_disagreement"] > 0.85
 
 
-def test_defaults_are_the_fixed_behaviour(tmp_path):
+def test_fixed_signals_stay_reachable_by_flag(tmp_path):
+    """Condition B/C must be reproducible on purpose, not only by checking out an
+    old commit."""
     root = tmp_path / "fb"
     _write_config(root, injection_scale=2.0)
-    _run_feedback(root)
+    _run_feedback(root, selector_head_loss_weight=1.0, legacy_temperature=False)
     benchmark = json.loads((root / "benchmark_summary.json").read_text())
     assert benchmark["selector_head_loss_weight"] == 1.0
     assert benchmark["legacy_temperature"] is False
     trace = json.loads((root / "feedback_trace_real.json").read_text())
     diag = trace["folds"][0]["bias_diagnostics"]
     assert diag["consultant_temperature"] < 1.0
+
+
+def test_cli_calibrate_temperature_flag_maps_to_legacy_temperature():
+    """--calibrate-temperature is the ONLY way to turn calibration on; absent it
+    the CLI must pass legacy_temperature=True."""
+    import src.pipeline.step4.train_feedback as tf
+
+    captured = {}
+    parser_argv = ["prog", "--dataset", DATASET]
+    import sys as _sys
+    saved_argv, saved_fn = _sys.argv, tf.train_feedback
+    tf.train_feedback = lambda *a, **k: captured.update(k)
+    try:
+        _sys.argv = parser_argv
+        tf.main()
+        assert captured["legacy_temperature"] is True
+        assert captured["selector_head_loss_weight"] == 0.0
+
+        captured.clear()
+        _sys.argv = parser_argv + ["--calibrate-temperature",
+                                   "--selector-head-loss-weight", "1.0"]
+        tf.main()
+        assert captured["legacy_temperature"] is False
+        assert captured["selector_head_loss_weight"] == 1.0
+    finally:
+        _sys.argv, tf.train_feedback = saved_argv, saved_fn

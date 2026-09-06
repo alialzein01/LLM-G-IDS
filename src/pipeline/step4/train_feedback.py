@@ -81,7 +81,18 @@ AUX_LOSS_WEIGHT = 0.30
 # makes the "most uncertain" edge set, and therefore where the advice lands,
 # arbitrary. Not applied in `head_only`, where the head IS the output and the
 # term would merely double the loss.
-SELECTOR_HEAD_LOSS_WEIGHT = 1.0
+#
+# DEFAULT 0.0 — condition A, the configuration `results/*_current.json` was
+# measured under. Supervising this head (1.0) and calibrating the consultant
+# temperature (--calibrate-temperature) are the two "signal fixes": they do turn
+# the mechanism on, and at 3 seeds they made the loop WORSE (RESULTS_ARCHIVE
+# 2026-09-06, Findings 1-3). They stay reachable, but the default must reproduce
+# the contracts.
+SELECTOR_HEAD_LOSS_WEIGHT = 0.0
+
+# Skip the consultant's per-fold temperature calibration and pin T=10 (the init
+# that made the softmax near-uniform). True is condition A, i.e. the contracts.
+DEFAULT_LEGACY_TEMPERATURE = True
 
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 5e-4
@@ -263,7 +274,7 @@ def _train_one_fold(
     injection_mode: str = "edge",
     injection_scale: float | None = None,
     selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
-    legacy_temperature: bool = False,
+    legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -717,7 +728,7 @@ def _build_benchmark_summary(
     injection_mode: str = "edge",
     injection_scale: float | None = None,
     selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
-    legacy_temperature: bool = False,
+    legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
     trace_summary_by_mode: dict[str, dict[str, float]] | None = None,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
@@ -804,7 +815,7 @@ def train_feedback(
     injection_mode: str = "edge",
     injection_scale: float | None = None,
     selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
-    legacy_temperature: bool = False,
+    legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     # Edge injection needs a bias exactly as wide as edge_attr and a live
@@ -1094,13 +1105,15 @@ def main() -> None:
     parser.add_argument(
         "--selector-head-loss-weight", type=float, default=SELECTOR_HEAD_LOSS_WEIGHT,
         help="Weight on the direct supervision of the head the uncertainty selector "
-             "ranks. 0.0 reproduces the pre-fix behaviour, where that head was trained "
-             "only as a gate feature and collapsed onto one class.",
+             "ranks. Default 0.0 is canonical (condition A): that head is trained only "
+             "as a gate feature. 1.0 supervises it directly — measured worse at 3 seeds.",
     )
     parser.add_argument(
-        "--legacy-temperature", action="store_true",
-        help="Skip the consultant's per-fold temperature calibration and pin T=10, "
-             "reproducing the pre-fix uniform softmax (mean_disagreement 0.900).",
+        "--calibrate-temperature", action="store_true",
+        help="Calibrate the consultant's temperature per fold on the train-fold "
+             "embeddings. Off by default: the canonical runs behind "
+             "results/*_current.json pin T=10 (the near-uniform pre-fix softmax), "
+             "and calibrating it measured worse at 3 seeds.",
     )
     parser.add_argument(
         "--seed", type=int, default=SEED,
@@ -1166,7 +1179,7 @@ def main() -> None:
             injection_mode=args.injection_mode,
             injection_scale=args.injection_scale,
             selector_head_loss_weight=args.selector_head_loss_weight,
-            legacy_temperature=args.legacy_temperature,
+            legacy_temperature=not args.calibrate_temperature,
         )
 
 
