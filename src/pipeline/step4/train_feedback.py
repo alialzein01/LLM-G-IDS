@@ -73,6 +73,14 @@ EDGE_ATTR_DIM = 5
 HEADS = 8
 DROPOUT = 0.2
 AUX_LOSS_WEIGHT = 0.30
+# Weight on the direct supervision of `fusion_out`, the head whose entropy the
+# UncertaintySelector ranks. In the canonical prototype path `_output_fusion`
+# returns only `correction`, so without this term that head reaches the loss
+# solely through two scalar gate features and collapses onto one class — which
+# makes the "most uncertain" edge set, and therefore where the advice lands,
+# arbitrary. Not applied in `head_only`, where the head IS the output and the
+# term would merely double the loss.
+SELECTOR_HEAD_LOSS_WEIGHT = 1.0
 
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 5e-4
@@ -317,6 +325,13 @@ def _train_one_fold(
                 total_loss = (
                     balanced(all_logits, all_labels) + AUX_LOSS_WEIGHT * aux_loss
                 )
+        if mode != "head_only" and model._last_edge_emb is not None:
+            # `classify_repr` is `fusion_out` applied to the same post-dropout
+            # embedding `_one_pass` used, so this is exactly the head's own logits.
+            selector_logits = model.classify_repr(model._last_edge_emb)
+            total_loss = total_loss + SELECTOR_HEAD_LOSS_WEIGHT * criterion(
+                selector_logits[train_mask], labels[train_mask]
+            )
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
         optimizer.step()
@@ -373,8 +388,23 @@ def _train_one_fold(
     with torch.no_grad():
         bm = model.bias_module
         semantic = model._semantic_logits(emb, mode, None, head_logits)
+        # Quality of the head the UncertaintySelector ranks, on this fold's test
+        # edges. Read from the model's own stash rather than the trace, because
+        # `FeedbackLoopClassifier.forward` overwrites the last trace entry's logits
+        # with the fused output and a single-iteration run has no other entry.
+        selector_head_f1 = (
+            _macro_f1(
+                model._last_selector_logits, labels, test_mask,
+                eval_classes, dropped_classes,
+            )
+            if model._last_selector_logits is not None
+            else float("nan")
+        )
         if semantic is None:
-            bias_diag = {"mode_has_no_semantic_signal": True}
+            bias_diag = {
+                "mode_has_no_semantic_signal": True,
+                "selector_head_macro_f1": selector_head_f1,
+            }
         else:
             probs = eval_logits.softmax(dim=-1)
             flagged = model.selector(probs).nonzero(as_tuple=False).squeeze(-1)
@@ -390,6 +420,7 @@ def _train_one_fold(
                 "n_flagged_edges": int(flagged.numel()),
                 "iterations_run": len(trace),
                 "final_churn": trace[-1]["churn"] if trace else float("nan"),
+                "selector_head_macro_f1": selector_head_f1,
             }
     print(
         f"    [{mode}] fold {fold_idx} DONE best_val={best_val_f1:.4f} "

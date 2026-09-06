@@ -728,6 +728,11 @@ class FeedbackLoopClassifier(nn.Module):
             )
 
         self._last_edge_emb: torch.Tensor | None = None
+        # Raw iteration-1 output of `fusion_out` — the head whose entropy drives
+        # uncertainty selection. Stashed for diagnostics only: the last trace entry
+        # is overwritten with the fused logits, so the trace cannot report it once
+        # the loop converges after a single iteration.
+        self._last_selector_logits: torch.Tensor | None = None
         self.selector = UncertaintySelector(top_k_percent=top_k_percent)
         self.scorer = WhitenedPrototypeScorer(
             num_classes=num_classes, embed_dim=embed_dim
@@ -1066,6 +1071,8 @@ class FeedbackLoopClassifier(nn.Module):
         edge_emb: torch.Tensor | None = None
         for it in range(self.max_iterations):
             logits, aux_logits, edge_emb = self._one_pass(x, edge_index, edge_attr, bias)
+            if it == 0:
+                self._last_selector_logits = logits.detach()
             probs = logits.softmax(dim=-1)
             pred = probs.argmax(dim=-1)
 
