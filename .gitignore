@@ -32,3 +32,11 @@ results/dev/**/scalers.pt
 results/dev/**/edge_embeddings.pt
 results/dev/**/gate_weights.pt
 results/dev/**/feature_attention_weights.pt
+
+# results/dev keeps only small JSON evidence in git: benchmark/ablation/
+# mechanism_diagnostics/selected_feedback_config and the hand-written summaries.
+# Tensors, per-epoch dumps and logs stay local.
+results/dev/**/*.pt
+results/dev/**/*.npy
+results/dev/**/run.log
+results/dev/**/*.log

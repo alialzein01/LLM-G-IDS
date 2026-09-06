@@ -602,3 +602,138 @@ Closed at four points: `resolve_injection_scale` raises rather than defaulting;
 `_build_model`/`_train_one_fold` require the value; `assemble_ladder` reports the knobs
 that RAN from `benchmark_summary.json`; `aggregate_multiseed` pins per-capture knobs and
 refuses to pool seeds that disagree.
+
+---
+
+## 2026-09-07 — Four mechanism fixes, seed 42
+
+Four things were tried against the canonical condition-A loop: reliability-weighted
+advice in two forms (E1), AGAF's fusion block transplanted into the loop (E3), and — from
+the day before — the trained LLM head as the loop's consultant (the head-echo test).
+**None is kept.** All numbers below are seed 42 only, pooled five-fold OOF, with
+`OMP_NUM_THREADS=1 IDS_FORCE_CPU=1`. No bootstrap across seeds was run on these arms, so
+nothing here is a separation claim — they are single-seed orderings against a baseline
+that itself moves ±0.023 (UNSW) / ±0.005 (ToN) across training seeds.
+
+Artifacts: `results/dev/e1e3_summary.json`, `results/dev/head_echo/`,
+`results/dev/{e1,e3}/<dataset>/<arm>/mechanism_diagnostics.json`. Row-level log:
+`docs/experiment_log.md`.
+
+### UNSW-NB15 (10 classes)
+
+| arm | real | head_only | random | real − head_only [95% CI] P | flagged acc GNN/proto/loop | churn all/flagged | flips +/− flagged | flagged_bias_absmean | fusion params |
+|---|---:|---:|---:|---|---|---|---|---:|---:|
+| A baseline | 0.7642 | 0.7543 | 0.6529 | +0.0098 [-0.018, +0.038] P=0.766 | 0.603 / 0.672 / 0.652 | 0.087 / 0.221 | +19 / −9 | 0.0767 | 125,266 |
+| E1 gate | 0.7679 | 0.7543 | 0.6845 | +0.0134 [-0.019, +0.047] P=0.789 | 0.603 / 0.672 / 0.642 | 0.110 / 0.294 | +24 / −16 | 0.1114 | 125,266 |
+| E1 gate+scale | 0.7699 | 0.7543 | 0.6635 | +0.0153 [-0.016, +0.047] P=0.823 | 0.603 / 0.672 / 0.647 | 0.102 / 0.265 | +22 / −13 | 0.1066 | 125,266 |
+| E3 agaf | 0.6114 | 0.7543 | 0.3970 | -0.1438 [-0.193, -0.096] P=0.000 | 0.603 / 0.672 / 0.534 | 0.235 / 0.417 | +19 / −33 | 0.0591 | 199,242 |
+
+### NF-ToN-IoT (8 classes)
+
+| arm | real | head_only | random | real − head_only [95% CI] P | flagged acc GNN/proto/loop | churn all/flagged | flips +/− flagged | flagged_bias_absmean | fusion params |
+|---|---:|---:|---:|---|---|---|---|---:|---:|
+| A baseline | 0.4414 | 0.3809 | 0.3966 | +0.0603 [+0.026, +0.096] P=1.000 | 0.359 / 0.348 / 0.573 | 0.126 / 0.423 | +135 / −21 | 0.0234 | 125,266 |
+| E1 gate | 0.4307 | 0.3809 | 0.3796 | +0.0497 [+0.014, +0.087] P=0.995 | 0.359 / 0.348 / 0.551 | 0.133 / 0.429 | +122 / −20 | 0.0356 | 125,266 |
+| E1 gate+scale | 0.4507 | 0.3809 | 0.3853 | +0.0689 [+0.034, +0.105] P=1.000 | 0.359 / 0.348 / 0.592 | 0.134 / 0.442 | +142 / −18 | 0.0370 | 125,266 |
+| E3 agaf | 0.3312 | 0.3809 | 0.2613 | -0.0493 [-0.086, -0.010] P=0.006 | 0.359 / 0.348 / 0.449 | 0.196 / 0.560 | +107 / −59 | 0.0216 | 199,242 |
+
+`head_only` is bit-identical across every arm on both datasets
+(0.7542650444992878 / 0.38090190800088425). It is the same plain-GNN-in-a-loop run in all
+of them, so every row is read against the same baseline.
+
+### E1 — reliability-weighted advice (`--advice-reliability {gate,gate+scale}`)
+
+`w[c]` is the precision of the prototype consultant's argmax for class `c`, measured on the
+fold's TRAIN edges only (0 where it never predicts `c` there). `gate` multiplies the
+confidence gate's ranking score by `w[argmax]`; `gate+scale` additionally scales the advice
+handed to the bias module, so injected magnitude is proportional to how often that verdict
+is right. Mean `w` over the five folds (both arms compute it identically):
+
+| Dataset | class 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| UNSW-NB15 | 1.000 | 0.852 | 0.976 | 0.893 | 0.961 | 0.662 | 0.895 | 0.984 | 1.000 | 0.960 |
+| NF-ToN-IoT | 1.000 | 0.071 | 0.179 | 0.021 | 0.570 | 0.740 | 0.226 | 0.020 | 0.095 | 0.089 |
+
+The two datasets' `w` vectors are the finding, not the macro-F1 deltas. On UNSW the
+consultant is already reliable almost everywhere — six of ten classes at ≥0.9, minimum
+0.662 — so reweighting has little to reorder. On ToN six of ten classes sit at or below
+0.226 (`dos` 0.021, `ransomware` 0.020, `backdoor` 0.071, `xss` 0.089, `scanning` 0.095,
+`ddos` 0.179), which is the same weakness §2.4 measures as the binding constraint, now
+quantified per class from train labels alone.
+
+**Verdicts.** `gate` is reverted: +0.0038 UNSW, −0.0107 ToN. `gate+scale` is not kept:
++0.0057 UNSW / +0.0094 ToN, both below the pre-set 0.02 threshold and inside the training-
+seed band. Both flags stay in the tree at their `off` default with tests, so the arms are
+reproducible; neither becomes canonical.
+
+### E3 — the loop's output fusion with AGAF's gate (`--fusion-block agaf`)
+
+Hypothesis: AGAF's UNSW lead is its fusion block, not its inputs. The loop's 5-parameter
+scalar gate plus concat→MLP was replaced by AGAF's feature-wise gate over
+`[h, s, |h−s|, h·s]` followed by its feature attention — through the shared functions
+`agaf_feature_gate_fuse` / `agaf_feature_attention` extracted from
+`AGAFFusionEdgeClassifier`, which now calls them itself, so there is one implementation
+rather than a copy that can drift. Output-fusion capacity rose from 125,266 to 199,242
+parameters (projections included; only the block in use is allocated).
+
+**Verdict: revert.** −0.1528 UNSW, −0.1101 ToN. This **refutes the premise** that AGAF's
+lead is its gate: given the loop's own inputs, AGAF's fusion block is much worse than the
+loop's own, at 1.6× the parameters. Whatever AGAF's advantage is, it is not the block.
+
+#### The RNG-stream finding (a defect, caught by the `head_only` invariant)
+
+The first E3 implementation moved `head_only` — 100% of logit elements, up to 0.064 — in a
+mode that never reaches `_output_fusion` at all. The cause was not the fusion arithmetic:
+the `agaf` block's differently shaped layers consume a different number of draws from the
+**global RNG stream** during `__init__`, which shifted every dropout mask drawn afterwards
+in training. Backbone and projection weights were verified bit-identical; only the RNG
+position after construction differed. Fixed by always drawing the canonical `loop` block
+from the main stream (discarded when unused) and building `agaf` under
+`torch.random.fork_rng`, so the stream ends in the same place either way.
+
+**General lesson for this repo:** any change to *what modules a model allocates* — not just
+to what it computes — can move every other arm of an ablation through the shared RNG
+stream. An unrelated-mode invariant (`head_only` unchanged) is what caught it; a macro-F1
+comparison alone would not have. Pinned by
+`tests/test_fusion_block.py::test_the_fusion_block_does_not_shift_the_global_rng_stream`.
+
+### Trained head as consultant, v2, seed 42: echo confirmed
+
+Re-measurement of the v1-era head-echo result (loop 0.8258 < head-alone 0.8321 ≈ AGAF-head
+0.8331 on UNSW) under the v2 encoding. `llm_head_logits.pt` was verified current rather
+than rebuilt: shapes `[5, 656, 10]` / `[5, 2127, 10]`, built 2026-08-30 from inputs that
+all predate it, and re-scored to the same pooled OOF macro-F1 its build log reports. AGAF
+consumed `edge_embeddings_oof.pt`, passed explicitly.
+
+| Dataset | rung | macro-F1 | accuracy |
+|---|---|---:|---:|
+| UNSW-NB15 | head alone | 0.8321 | 0.8796 |
+| UNSW-NB15 | AGAF-head | 0.8331 | 0.8811 |
+| UNSW-NB15 | loop-head (real) | 0.8351 | 0.8872 |
+| UNSW-NB15 | loop-head (head_only) | 0.7543 | 0.8171 |
+| UNSW-NB15 | loop-head (random) | 0.6565 | 0.7607 |
+| NF-ToN-IoT | head alone | 0.5165 | 0.9149 |
+| NF-ToN-IoT | AGAF-head | 0.5141 | 0.9140 |
+| NF-ToN-IoT | loop-head (real) | 0.5064 | 0.9093 |
+| NF-ToN-IoT | loop-head (head_only) | 0.3809 | 0.8049 |
+| NF-ToN-IoT | loop-head (random) | 0.3756 | 0.8373 |
+
+ToN's AGAF figure is the 8-eval-class macro-F1 recomputed from `metrics.json["predictions"]`;
+that file's own `overall_macro_f1` (0.4532) is a 10-class macro and is not a reportable ToN
+number.
+
+Mechanism detail on the two loop-head runs:
+
+| Dataset | flagged | gated | flagged acc GNN / head / loop | churn all / flagged | flips +/− on flagged | flagged_bias_absmean |
+|---|---|---|---|---|---|---:|
+| UNSW-NB15 | 204/656 | 102 | 0.603 / 0.770 / 0.750 | 0.149 / 0.338 | +43 / −13 | 1.3430 |
+| NF-ToN-IoT | 532/2127 | 266 | 0.359 / 0.759 / 0.724 | 0.189 / 0.609 | +225 / −31 | 1.3291 |
+
+On both datasets the loop given the trained head lands within ~0.005 of head-alone and
+AGAF-head (UNSW 0.8351 vs 0.8321 / 0.8331; ToN 0.5064 vs 0.5165 / 0.5141): it tracks its
+consultant rather than improving on it. The v1 ordering (loop below both) does not survive
+on UNSW under v2 — the loop is now the highest of the three by 0.0020 — but the three
+remain within a span of 0.0030, and it does survive on ToN, where the loop is the lowest of
+the three. **The echo characterisation stands on both datasets.** The trained head remains
+a separate, stronger baseline and never the ladder's LLM rung (PROJECT_NOTES.md, §5).
+

@@ -187,11 +187,11 @@ never runs in that mode.
 | Date | Commit | Task | Dataset | Seed | top_k | scale | Consultant | sel-head | temp | Fusion | real | head_only | random | Flagged acc (GNN / consultant / loop) | Churn all / flagged | Verdict |
 |---|---|---|---|---|---:|---:|---|---:|---|---|---:|---:|---:|---|---|---|
 | 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `off` (A) | 0.7642 | 0.7543 | 0.6529 | 0.603 / 0.672 / 0.652 | 0.087 / 0.221 | baseline |
-| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `gate` | 0.7679 | 0.7543 | 0.6845 | 0.603 / 0.672 / 0.642 | 0.110 / 0.294 | info |
-| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `gate+scale` | 0.7699 | 0.7543 | 0.6635 | 0.603 / 0.672 / 0.647 | 0.102 / 0.265 | info |
+| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `gate` | 0.7679 | 0.7543 | 0.6845 | 0.603 / 0.672 / 0.642 | 0.110 / 0.294 | **revert** |
+| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `gate+scale` | 0.7699 | 0.7543 | 0.6635 | 0.603 / 0.672 / 0.647 | 0.102 / 0.265 | **not kept** (+0.006 vs A, below the pre-set 0.02 threshold, inside the seed band) |
 | 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `off` (A) | 0.4414 | 0.3809 | 0.3966 | 0.359 / 0.348 / 0.573 | 0.126 / 0.423 | baseline |
-| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `gate` | 0.4307 | 0.3809 | 0.3796 | 0.359 / 0.348 / 0.551 | 0.133 / 0.429 | info |
-| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `gate+scale` | 0.4507 | 0.3809 | 0.3853 | 0.359 / 0.348 / 0.592 | 0.134 / 0.442 | info |
+| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `gate` | 0.4307 | 0.3809 | 0.3796 | 0.359 / 0.348 / 0.551 | 0.133 / 0.429 | **revert** |
+| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `gate+scale` | 0.4507 | 0.3809 | 0.3853 | 0.359 / 0.348 / 0.592 | 0.134 / 0.442 | **not kept** (+0.009 vs A, below the pre-set 0.02 threshold, inside the seed band) |
 
 Mean `w` over the five folds (the two E1 arms compute it identically):
 
@@ -223,8 +223,8 @@ Condition A re-checked bit-for-bit after the code change: UNSW
 
 | Date | Commit | Task | Dataset | Seed | top_k | scale | Consultant | sel-head | temp | Fusion | real | head_only | random | Flagged acc (GNN / consultant / loop) | Churn all / flagged | Verdict |
 |---|---|---|---|---|---:|---:|---|---:|---|---|---:|---:|---:|---|---|---|
-| 2026-09-06 | `7ba0a65` | E3 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | agaf (199,242) | 0.6114 | 0.7543 | 0.3970 | 0.603 / 0.672 / 0.534 | 0.235 / 0.417 | info |
-| 2026-09-06 | `7ba0a65` | E3 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | agaf (199,242) | 0.3312 | 0.3809 | 0.2613 | 0.359 / 0.348 / 0.449 | 0.196 / 0.560 | info |
+| 2026-09-06 | `7ba0a65` | E3 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | agaf (199,242) | 0.6114 | 0.7543 | 0.3970 | 0.603 / 0.672 / 0.534 | 0.235 / 0.417 | **revert** (−0.153; refutes "AGAF's lead is its gate") |
+| 2026-09-06 | `7ba0a65` | E3 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | agaf (199,242) | 0.3312 | 0.3809 | 0.2613 | 0.359 / 0.348 / 0.449 | 0.196 / 0.560 | **revert** (−0.110; refutes "AGAF's lead is its gate") |
 
 `head_only` is bit-identical to the A baseline in both E3 runs, which is the
 condition that makes the comparison readable — but it was NOT so at first. The
@@ -238,4 +238,24 @@ stream ends in the same place either way. Pinned by
 `tests/test_fusion_block.py::test_the_fusion_block_does_not_shift_the_global_rng_stream`.
 
 Artifacts: `results/dev/e3/{unsw_nb15,ton_iot}/{A_recheck,agaf}/`.
+
+---
+
+## Task A — E1 and E3 closed: not kept
+
+Both flags stay in the tree at their OFF defaults (`--advice-reliability off`,
+`--fusion-block loop`) with their tests, so the arms are reproducible; neither
+becomes canonical. Condition A re-verified at the closing commit, from a fresh
+run of the current code (`results/dev/taskA/<dataset>/A_recheck/`):
+UNSW real 0.7641720503342035, ToN 0.4413700353170879 — both identical, with
+`advice_reliability=off fusion_block=loop` recorded in the benchmark.
+
+| Arm | UNSW Δ vs A | ToN Δ vs A | Verdict |
+|---|---:|---:|---|
+| E1 `gate` | +0.0038 | −0.0107 | revert |
+| E1 `gate+scale` | +0.0057 | +0.0094 | not kept — below the pre-set 0.02 threshold, inside the seed band |
+| E3 `agaf` | −0.1528 | −0.1101 | revert — refutes "AGAF's lead is its gate" |
+
+Written up in `docs/RESULTS_ARCHIVE.md`, section "2026-09-07 — Four mechanism
+fixes, seed 42".
 
