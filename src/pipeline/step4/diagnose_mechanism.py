@@ -375,6 +375,10 @@ def _print(d: dict) -> None:
           f"conf_frac={rc['bias_confidence_fraction']} "
           f"selector_head_loss_weight={rc['selector_head_loss_weight']} "
           f"legacy_temperature={rc['legacy_temperature']}")
+    # Both consultants are always scored below; this says which one the run
+    # actually consulted, so the other is a reference column, not the mechanism.
+    print(f"consultant IN THIS RUN: "
+          f"{'trained_llm_head' if rc['trained_llm_head'] else 'prototype_consultant'}")
     if d["pooled_macro_f1"]:
         print("pooled macro-F1: " + "  ".join(
             f"{k}={v:.4f}" for k, v in d["pooled_macro_f1"].items()))

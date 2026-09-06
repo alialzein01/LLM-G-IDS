@@ -1,0 +1,127 @@
+# Experiment log
+
+One row per run. Append, never rewrite: a row is a record of what was measured,
+not a claim about what is true. Interpretation belongs in
+`docs/RESULTS_ARCHIVE.md`; authoritative numbers belong in `results/*.json`.
+
+Conventions:
+
+- **Commit** — the code state the run executed under, not the commit that added
+  the row.
+- Every run: `OMP_NUM_THREADS=1 IDS_FORCE_CPU=1`, seed 42, five-fold pooled OOF.
+- **Consultant** — `proto` = whitened prototype scorer, `head` = trained per-fold
+  LLM head (`llm_head_logits.pt`).
+- **sel-head / temp** — the two "signal" knobs. `0.0` / `T=10` is condition A,
+  the configuration `results/*_current.json` was measured under; `1.0` /
+  `calib` is condition B/C.
+- **Flagged-subset accuracy** — accuracy on the edges the entropy selector flags
+  at the run's `top_k`, from `diagnose_mechanism.py`. GNN = `head_only`,
+  consultant = whichever consultant that run used, loop = `real`.
+- **Churn** — fraction of test edges where `real` and `head_only` disagree
+  (all / flagged).
+- ToN macro-F1 is over its 8 eval classes; classes 3 and 7 are excluded.
+  UNSW is 10 classes. Levels are not comparable across datasets.
+
+---
+
+## Task 0 — restore condition A as the default and verify it reproduces
+
+Reason for the run: `selected_feedback_config.json` had drifted to the
+condition-C knobs while the contracts still described A, and the two signal
+knobs defaulted to B/C in code. A bare `train_feedback --dataset X` therefore
+ran C and reported it as the canonical ladder.
+
+| Date | Commit | Task | Dataset | Seed | top_k | scale | Consultant | sel-head | temp | Fusion | real | head_only | random | Flagged acc (GNN / consultant / loop) | Churn all / flagged | Verdict |
+|---|---|---|---|---|---:|---:|---|---:|---|---|---:|---:|---:|---|---|---|
+| 2026-09-06 | `cc353d8` | 0 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | — | **0.7642** | 0.7543 | 0.6529 | 0.6029 / 0.6716 / 0.6520 | 0.087 / 0.221 | keep — bit-for-bit equal to the contract |
+| 2026-09-06 | `cc353d8` | 0 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | — | **0.4414** | 0.3809 | 0.3966 | 0.3590 / 0.3477 / 0.5733 | 0.126 / 0.423 | keep — bit-for-bit equal to the contract |
+
+Artifacts: `results/dev/task0/{unsw_nb15,ton_iot}/` (`benchmark_summary.json`,
+`mechanism_diagnostics.json`, `run.log`, and the `selected_feedback_config.json`
+each run consumed — `data/` is gitignored, so that copy is the record of the
+knobs the run actually used).
+
+Exact values, against each contract's `feedback_ablations_per_seed["42"]`:
+
+| Dataset | mode | measured | contract |
+|---|---|---|---|
+| UNSW-NB15 | real | 0.7641720503342035 | 0.7641720503342035 |
+| UNSW-NB15 | head_only | 0.7542650444992878 | 0.7542650444992878 |
+| UNSW-NB15 | random | 0.6528851550083634 | 0.6528851550083634 |
+| NF-ToN-IoT | real | 0.4413700353170879 | 0.44137003531708785 |
+| NF-ToN-IoT | head_only | 0.3809019080008843 | 0.38090190800088425 |
+| NF-ToN-IoT | random | 0.3966189058554975 | 0.3966189058554975 |
+
+Note on the diagnostics' expected sanity values: GNN, prototype and trained-head
+flagged accuracy matched the pre-computed expectations to <0.001 on both
+datasets. The *loop* row did not — 0.6520 vs 0.623 (UNSW), 0.5733 vs 0.585
+(ToN). Cause found, not a defect: the expectations for the loop were computed
+from `data/{ds}/processed/step4_feedback/feedback_oof_real.pt`, which is a stale
+run at `injection_scale=10.0` on **both** datasets (the injection-scale trap
+run). Re-scored on the flagged set, that stale tensor gives exactly 0.6225 and
+0.5846. The other three rungs match because `head_only`, the prototypes and the
+trained head are all independent of `injection_scale`.
+
+---
+
+## Task 2 — head-echo test: does the loop beat AGAF given the SAME consultant?
+
+Reason for the run: under v1 encoding the loop consulting the trained head
+scored 0.8258, below head-alone 0.8321 and AGAF-head 0.8331 — i.e. it echoed
+its consultant rather than improving on it. Re-measured under v2.
+
+`llm_head_logits.pt` verified current before the runs: shapes `[5, 656, 10]` /
+`[5, 2127, 10]`, built 2026-08-30 (`results/raw/build_llm_heads_*_gate05.log`)
+from inputs that all predate it (graphs 2026-08-26, embeddings 2026-08-13/18,
+folds 2026-08-04/13), and re-scored here to the same pooled OOF macro-F1 the
+build log reports (0.8321 / 0.5165). Not rebuilt.
+
+AGAF ran on `data/{ds}/processed/step3_gnn/edge_embeddings_oof.pt`, passed
+explicitly — `train_fusion`'s default is the leaky `edge_embeddings.pt`. The
+consumed path is echoed in each `agaf_head/run.log`.
+
+| Date | Commit | Task | Dataset | Seed | top_k | scale | Consultant | sel-head | temp | Fusion | real | head_only | random | Flagged acc (GNN / consultant / loop) | Churn all / flagged | Verdict |
+|---|---|---|---|---|---:|---:|---|---:|---|---|---:|---:|---:|---|---|---|
+| 2026-09-06 | `cc353d8` | 2 | UNSW-NB15 | 42 | — | — | head | — | — | head alone | 0.8321 | — | — | — / 0.7696 / — | — | info |
+| 2026-09-06 | `cc353d8` | 2 | UNSW-NB15 | 42 | — | — | head | — | — | AGAF `--use-head-logits` | 0.8331 | — | — | — | — | info |
+| 2026-09-06 | `cc353d8` | 2 | UNSW-NB15 | 42 | 31.0 | 2.0 | head | 0.0 | T=10 | loop `--use-llm-head` | 0.8351 | 0.7543 | 0.6565 | 0.6029 / 0.7696 / 0.7500 | 0.149 / 0.338 | info |
+| 2026-09-06 | `cc353d8` | 2 | NF-ToN-IoT | 42 | — | — | head | — | — | head alone | 0.5165 | — | — | — / 0.7594 / — | — | info |
+| 2026-09-06 | `cc353d8` | 2 | NF-ToN-IoT | 42 | — | — | head | — | — | AGAF `--use-head-logits` | 0.5141 | — | — | — | — | info |
+| 2026-09-06 | `cc353d8` | 2 | NF-ToN-IoT | 42 | 25.0 | 20.0 | head | 0.0 | T=10 | loop `--use-llm-head` | 0.5064 | 0.3809 | 0.3756 | 0.3590 / 0.7594 / 0.7237 | 0.189 / 0.609 | info |
+
+Accuracy alongside macro-F1:
+
+| Dataset | rung | macro-F1 | accuracy |
+|---|---|---:|---:|
+| UNSW-NB15 | head alone | 0.8321 | 0.8796 |
+| UNSW-NB15 | AGAF-head | 0.8331 | 0.8811 |
+| UNSW-NB15 | loop-head (real) | 0.8351 | 0.8872 |
+| UNSW-NB15 | loop-head (head_only) | 0.7543 | 0.8171 |
+| UNSW-NB15 | loop-head (random) | 0.6565 | 0.7607 |
+| NF-ToN-IoT | head alone | 0.5165 | 0.9149 |
+| NF-ToN-IoT | AGAF-head | 0.5141 | 0.9140 |
+| NF-ToN-IoT | loop-head (real) | 0.5064 | 0.9093 |
+| NF-ToN-IoT | loop-head (head_only) | 0.3809 | 0.8049 |
+| NF-ToN-IoT | loop-head (random) | 0.3756 | 0.8373 |
+
+ToN's AGAF number is the 8-eval-class macro-F1 recomputed from
+`metrics.json["predictions"]`. The `overall_macro_f1` field in that file is a
+10-class macro (0.4532) and is not a reportable ToN number.
+
+Mechanism detail from `diagnose_mechanism.py` on the two loop runs:
+
+| Dataset | flagged | gated | wrong→correct / correct→wrong on flagged | share of all changes on flagged | mean flagged_bias_absmean | mean iters |
+|---|---|---|---|---|---:|---:|
+| UNSW-NB15 | 204/656 | 102 | +43 / −13 | 0.704 | 1.3430 | 3.00 |
+| NF-ToN-IoT | 532/2127 | 266 | +225 / −31 | 0.806 | 1.3291 | 3.00 |
+
+For contrast, the same quantities on the Task-0 prototype runs: UNSW +19/−9,
+bias_absmean 0.0767; ToN +135/−21, bias_absmean 0.0234.
+
+All numbers are single-seed (42). Nothing here is a separation claim; no
+bootstrap was run on these rungs.
+
+Artifacts: `results/dev/head_echo/{unsw_nb15,ton_iot}/{loop,agaf_head}/`,
+`results/dev/head_echo/head_alone.json`,
+`results/dev/head_echo/agaf_head_pooled.json`,
+`results/dev/head_echo/summary.json`.

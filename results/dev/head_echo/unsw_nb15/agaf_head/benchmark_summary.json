@@ -1,0 +1,71 @@
+{
+  "dataset": "unsw_nb15",
+  "model_name": "agaf_fusion",
+  "cv_val_macro_f1_mean": 0.8271286733551685,
+  "cv_val_macro_f1_std": 0.01533873878376678,
+  "cv_test_macro_f1_mean": 0.8316087766517903,
+  "cv_test_macro_f1_std": 0.05123639282386125,
+  "pooled_cv_accuracy": 0.8810975609756098,
+  "pooled_cv_macro_f1": 0.8330803709964035,
+  "pooled_cv_weighted_f1": 0.8854183406163904,
+  "per_class_support": [
+    {
+      "class_id": 0,
+      "class_name": "Normal",
+      "support": 311
+    },
+    {
+      "class_id": 1,
+      "class_name": "Analysis",
+      "support": 25
+    },
+    {
+      "class_id": 2,
+      "class_name": "Backdoors",
+      "support": 40
+    },
+    {
+      "class_id": 3,
+      "class_name": "DoS",
+      "support": 40
+    },
+    {
+      "class_id": 4,
+      "class_name": "Exploits",
+      "support": 40
+    },
+    {
+      "class_id": 5,
+      "class_name": "Fuzzers",
+      "support": 40
+    },
+    {
+      "class_id": 6,
+      "class_name": "Generic",
+      "support": 40
+    },
+    {
+      "class_id": 7,
+      "class_name": "Reconnaissance",
+      "support": 40
+    },
+    {
+      "class_id": 8,
+      "class_name": "Shellcode",
+      "support": 40
+    },
+    {
+      "class_id": 9,
+      "class_name": "Worms",
+      "support": 40
+    }
+  ],
+  "artifact_paths": {
+    "model": "results/dev/head_echo/unsw_nb15/agaf_head/model.pt",
+    "scalers": "results/dev/head_echo/unsw_nb15/agaf_head/scalers.pt",
+    "edge_embeddings": "results/dev/head_echo/unsw_nb15/agaf_head/edge_embeddings.pt",
+    "gate_weights": "results/dev/head_echo/unsw_nb15/agaf_head/gate_weights.pt",
+    "feature_attention_weights": "results/dev/head_echo/unsw_nb15/agaf_head/feature_attention_weights.pt",
+    "metrics": "results/dev/head_echo/unsw_nb15/agaf_head/metrics.json"
+  }
+}

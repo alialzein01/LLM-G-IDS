@@ -7,8 +7,15 @@ so that head never enters the loss except as two scalar gate features
 top-k% "most uncertain" set it produces — the set the semantic advice is aimed
 at — is arbitrary.
 
-These tests pin the head to a real classifier, and pin `head_only` to the plain
-GNN it is supposed to be so the ablation cannot drift under the fix.
+These tests pin the head to a real classifier *when it is supervised*, and pin
+`head_only` to the plain GNN it is supposed to be so the ablation cannot drift
+under the fix.
+
+Supervising it is NOT the default. `SELECTOR_HEAD_LOSS_WEIGHT` defaults to 0.0,
+condition A, the configuration `results/*_current.json` was measured under —
+turning the signal on measured worse at 3 seeds. So the two tests about the
+fixed head ask for the supervision explicitly, and a companion test pins that
+the default still collapses. Both facts have to stay true.
 """
 
 from __future__ import annotations
@@ -42,10 +49,15 @@ def _artifacts():
     return cfg, root
 
 
-def train_fold0(mode: str):
-    """Train one UNSW fold on a short schedule; cached per mode."""
-    if mode in _CACHE:
-        return _CACHE[mode]
+def train_fold0(mode: str, selector_head_loss_weight: float | None = None):
+    """Train one UNSW fold on a short schedule; cached per (mode, weight).
+
+    `selector_head_loss_weight=None` means "whatever the code default is", which
+    is the point of the default-behaviour test below.
+    """
+    key = (mode, selector_head_loss_weight)
+    if key in _CACHE:
+        return _CACHE[key]
     import src.pipeline.step4.train_feedback as tf
 
     cfg, root = _artifacts()
@@ -55,6 +67,10 @@ def train_fold0(mode: str):
     folds = torch.load(cfg.splits_path, weights_only=False)
     protos = torch.load(root / "prototypes.pt", weights_only=False)
     sel = load_feedback_config(DATASET)
+    extra = (
+        {} if selector_head_loss_weight is None
+        else {"selector_head_loss_weight": selector_head_loss_weight}
+    )
 
     saved = tf.MAX_EPOCHS
     tf.MAX_EPOCHS = SHORT_EPOCHS
@@ -68,10 +84,11 @@ def train_fold0(mode: str):
             dropped_classes=cfg.dropped_classes,
             injection_mode=sel.get("injection_mode", "edge"),
             injection_scale=float(sel.get("injection_scale", 10.0)),
+            **extra,
         )
     finally:
         tf.MAX_EPOCHS = saved
-    _CACHE[mode] = result
+    _CACHE[key] = result
     return result
 
 
@@ -80,10 +97,10 @@ def _iter1_row(result):
     return result.iterations[0]
 
 
-def test_selector_head_predicts_more_than_one_class():
+def test_selector_head_predicts_more_than_one_class_when_supervised():
     """Iteration-1 head must have nonzero F1 on >= 6 of the 10 eval classes."""
     cfg, _ = _artifacts()
-    row = _iter1_row(train_fold0("real"))
+    row = _iter1_row(train_fold0("real", selector_head_loss_weight=1.0))
     per_class = row["per_class_f1"]
     nonzero = [c for c in cfg.eval_classes if per_class[c] > 0.0]
     assert len(nonzero) >= 6, (
@@ -92,9 +109,9 @@ def test_selector_head_predicts_more_than_one_class():
     )
 
 
-def test_selector_head_tracks_head_only_quality():
+def test_selector_head_tracks_head_only_quality_when_supervised():
     """Iteration-1 head macro-F1 must be within 0.15 of the plain-GNN rung."""
-    row = _iter1_row(train_fold0("real"))
+    row = _iter1_row(train_fold0("real", selector_head_loss_weight=1.0))
     head_only_f1 = train_fold0("head_only").test_macro_f1
     gap = head_only_f1 - row["test_macro_f1"]
     assert gap < 0.15, (
@@ -137,4 +154,22 @@ def test_head_only_logits_unchanged_by_the_selector_fix():
     preds = mask_dropped_logits(got[tm], cfg.dropped_classes).argmax(1)
     assert eval_macro_f1(labels[tm], preds, cfg.eval_classes) == pytest.approx(
         train_fold0("head_only").test_macro_f1, abs=1e-9
+    )
+
+
+def test_default_selector_head_collapses_as_condition_a_says():
+    """The mirror of the two tests above. At the default weight of 0.0 the head
+    reaches the loss only as two scalar gate features and collapses onto one or
+    two classes. That is the documented condition-A behaviour, and the ladder in
+    `results/*_current.json` was measured with it. If this starts passing on
+    many classes, the default has silently moved off A."""
+    import src.pipeline.step4.train_feedback as tf
+
+    assert tf.SELECTOR_HEAD_LOSS_WEIGHT == 0.0
+    cfg, _ = _artifacts()
+    per_class = _iter1_row(train_fold0("real"))["per_class_f1"]
+    nonzero = [c for c in cfg.eval_classes if per_class[c] > 0.0]
+    assert len(nonzero) <= 2, (
+        f"default selector head has nonzero F1 on {len(nonzero)} classes "
+        f"({nonzero}) — expected the collapse condition A describes"
     )

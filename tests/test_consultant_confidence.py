@@ -9,6 +9,12 @@ vector itself. Both were ranking noise, and `mean_disagreement` sat pinned at
 1 - 1/C = 0.900 in every fold of both datasets.
 
 These tests pin the consultant's softmax to something a gate can rank.
+
+Calibration is NOT the default: the canonical runs behind `results/*_current.json`
+pin T=10 on purpose (condition A), because turning the signal on measured worse
+at 3 seeds. So the training test below asks for calibration explicitly, and a
+companion test pins that the default is still the legacy pin. Both facts matter:
+the fix must keep working, and it must stay off by default.
 """
 
 from __future__ import annotations
@@ -99,6 +105,9 @@ def _train_fold0_real(dataset: str):
             dropped_classes=cfg.dropped_classes,
             injection_mode=sel.get("injection_mode", "edge"),
             injection_scale=float(sel.get("injection_scale", 10.0)),
+            # Explicit: this test is about the calibrated consultant, which is
+            # reachable but not the default.
+            legacy_temperature=False,
         )
     finally:
         tf.MAX_EPOCHS = saved
@@ -121,3 +130,35 @@ def test_trained_consultant_confidence_is_reported_and_moved(dataset):
         f"[{dataset}] post-training consultant_mean_max_prob "
         f"{diag['consultant_mean_max_prob']:.4f} <= {MIN_MAX_PROB}"
     )
+
+
+@pytest.mark.parametrize("dataset", DATASETS)
+def test_legacy_pin_is_what_a_default_fold_gets(dataset):
+    """The mirror of the test above: with no flag, the consultant is the T=10
+    near-uniform softmax the contracts were measured under. If this starts
+    failing, the default silently moved off condition A."""
+    import src.pipeline.step4.train_feedback as tf
+    from src.pipeline.step4.feedback_config import load_feedback_config
+
+    cfg, emb, folds, protos = _fold0(dataset)
+    data = torch.load(cfg.graph_path, weights_only=False)
+    tf.IN_DIM = data.x.shape[1]
+    sel = load_feedback_config(dataset)
+    saved = tf.MAX_EPOCHS
+    tf.MAX_EPOCHS = 3
+    try:
+        result = tf._train_one_fold(
+            data, emb, folds[FOLD], protos["folds"][FOLD], FOLD, "real",
+            top_k_percent=float(sel["top_k_percent"]),
+            bias_confidence_fraction=float(sel["bias_confidence_fraction"]),
+            gate_mode=sel.get("gate_mode", "confidence"),
+            eval_classes=cfg.eval_classes,
+            dropped_classes=cfg.dropped_classes,
+            injection_mode=sel.get("injection_mode", "edge"),
+            injection_scale=float(sel.get("injection_scale", 10.0)),
+        )
+    finally:
+        tf.MAX_EPOCHS = saved
+    diag = result.bias_diagnostics or {}
+    assert diag["consultant_temperature"] == pytest.approx(10.0, rel=1e-3)
+    assert diag["mean_disagreement"] > MAX_DISAGREEMENT
