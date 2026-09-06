@@ -616,6 +616,49 @@ INJECTION_MODES = ("attention", "edge")
 # branch has the same capacity as the AGAF rung it is compared against.
 DEFAULT_FUSION_DIM = 128
 GATE_MODES = ("confidence", "disagreement", "both")
+# E1 — how the consultant's measured per-class reliability enters the mechanism.
+#   off        — it does not (canonical, condition A).
+#   gate       — the confidence gate's score is multiplied by w[consultant argmax],
+#                so confidently-wrong classes stop winning the top-half cut.
+#   gate+scale — the gate ranking above, and the advice handed to `bias_module` for
+#                each selected edge is scaled by the same w, so the injected
+#                magnitude is proportional to how often that verdict is right.
+ADVICE_RELIABILITY_MODES = ("off", "gate", "gate+scale")
+
+# E3 — which block combines the loop's two projected branches at the output.
+#   loop — a 5-parameter scalar gate over [h_gnn, conf_gnn, h_llm, conf_llm],
+#          concat to 2*fusion_dim, MLP. Canonical (condition A).
+#   agaf — AGAF's own feature-wise gate over [h, s, |h-s|, h*s] followed by its
+#          feature attention, then the same MLP on a fusion_dim-wide vector.
+#          Runs through the shared functions in `fusion_classifier`, not a copy.
+FUSION_BLOCKS = ("loop", "agaf")
+
+
+def consultant_reliability(
+    consultant_logits: torch.Tensor,
+    labels: torch.Tensor,
+    train_mask: torch.Tensor,
+    num_classes: int,
+) -> torch.Tensor:
+    """Per-class precision of the consultant's argmax, measured on TRAIN edges.
+
+    `w[c]` = of the train edges the consultant calls class `c`, the fraction that
+    really are `c`. A class the consultant never predicts on train gets `w = 0`:
+    there is no evidence it is ever right, so it earns no weight.
+
+    Train edges only. Measuring this on val or test would let the fold's own
+    held-out labels choose where advice lands, which is the leak the whole OOF
+    protocol exists to prevent.
+    """
+    pred = consultant_logits[train_mask].argmax(dim=-1)
+    truth = labels[train_mask]
+    w = torch.zeros(num_classes, dtype=torch.float, device=consultant_logits.device)
+    for c in range(num_classes):
+        called = pred == c
+        n = int(called.sum())
+        if n:
+            w[c] = float((truth[called] == c).sum()) / n
+    return w
 
 
 class FeedbackLoopClassifier(nn.Module):
@@ -678,6 +721,8 @@ class FeedbackLoopClassifier(nn.Module):
         injection_mode: str = "attention",
         injection_scale: float = 10.0,
         fusion_dim: int | None = None,
+        advice_reliability: str = "off",
+        fusion_block: str = "loop",
     ) -> None:
         super().__init__()
         from src.models.gnn_classifier import (
@@ -728,6 +773,22 @@ class FeedbackLoopClassifier(nn.Module):
             )
         self.injection_mode = injection_mode
         self.injection_scale = float(injection_scale)
+        if advice_reliability not in ADVICE_RELIABILITY_MODES:
+            raise ValueError(
+                f"advice_reliability must be one of {ADVICE_RELIABILITY_MODES}, "
+                f"got {advice_reliability!r}"
+            )
+        self.advice_reliability = advice_reliability
+        if fusion_block not in FUSION_BLOCKS:
+            raise ValueError(
+                f"fusion_block must be one of {FUSION_BLOCKS}, got {fusion_block!r}"
+            )
+        self.fusion_block = fusion_block
+        # Ones is the identity for both uses (gate score x1, advice x1), so an
+        # unset buffer can never silently change a run.
+        self.register_buffer(
+            "consultant_reliability_w", torch.ones(num_classes), persistent=True
+        )
         if injection_mode == "edge" and bias_dim in (None, 5) and edge_attr_dim != 5:
             # A v2-encoded graph widens edge_attr to the embedded width; the caller's
             # 5 is the pre-encoding default, so resolve it rather than rejecting it.
@@ -823,17 +884,54 @@ class FeedbackLoopClassifier(nn.Module):
         # CySecBERT embedding, so it leverages an already-strong LLM classifier
         # rather than re-learning one from frozen embeddings.
         self.fusion_head_proj = nn.Linear(num_classes, fusion_dim)
-        self.fusion_gate = nn.Linear(2, 1)  # from [gnn_entropy, gnn_confidence]
+        def _classifier(in_dim: int) -> nn.Sequential:
+            return nn.Sequential(
+                nn.Linear(in_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(hidden_dim, num_classes),
+            )
+
+        # Only the block in use is allocated, so a reported parameter count is
+        # the count that actually trains (same rule AGAF follows for its modes).
+        #
+        # The canonical `loop` block is ALWAYS drawn from the global RNG, even
+        # when it is discarded. Its layers have different shapes from `agaf`'s,
+        # so building `agaf` in the main stream would advance that stream by a
+        # different amount and shift every dropout mask drawn later in training
+        # — which moved `head_only`, a mode that never reaches this block at
+        # all, and so left the E3 comparison with no fixed baseline. Drawing the
+        # loop block first pins the stream; `agaf` then initialises under a fork
+        # (seed-dependent, but discarded on exit) so it cannot move it.
+        loop_gate = nn.Linear(2, 1)  # [gnn_entropy, gnn_confidence]
         # Confidence-aware router (GLANCE-style): sees BOTH modalities' entropy
-        # and confidence so it can route each edge to whichever is more reliable.
-        # Used when a trained LLM head is supplied.
-        self.fusion_gate_conf = nn.Linear(4, 1)
-        self.fusion_classifier = nn.Sequential(
-            nn.Linear(fusion_dim * 2, hidden_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, num_classes),
-        )
+        # and confidence so it can route each edge to whichever is more
+        # reliable. Used when a trained LLM head is supplied.
+        loop_gate_conf = nn.Linear(4, 1)
+        loop_classifier = _classifier(fusion_dim * 2)
+        if fusion_block == "loop":
+            self.fusion_gate = loop_gate
+            self.fusion_gate_conf = loop_gate_conf
+            self.fusion_classifier = loop_classifier
+        else:
+            with torch.random.fork_rng(devices=[]):
+                # AGAF's shapes exactly: gate 4*proj -> proj, attention proj -> proj.
+                self.fusion_feature_gate = nn.Linear(fusion_dim * 4, fusion_dim)
+                self.fusion_feature_attention = nn.Linear(fusion_dim, fusion_dim)
+                self.fusion_classifier = _classifier(fusion_dim)
+
+    def fusion_block_parameter_count(self) -> int:
+        """Trainable parameters in the output-fusion block, projections included.
+        Reported so `loop` and `agaf` are compared at a stated capacity."""
+        names = ["fusion_gnn_proj", "fusion_llm_proj", "fusion_head_proj",
+                 "fusion_gate", "fusion_gate_conf", "fusion_feature_gate",
+                 "fusion_feature_attention", "fusion_classifier"]
+        total = 0
+        for n in names:
+            mod = getattr(self, n, None)
+            if mod is not None:
+                total += sum(p.numel() for p in mod.parameters() if p.requires_grad)
+        return total
 
     def load_fold_state(
         self, mean, whitener, prototypes, train_embeddings=None
@@ -844,6 +942,21 @@ class FeedbackLoopClassifier(nn.Module):
         self.scorer.load_fold_state(mean, whitener, prototypes)
         if train_embeddings is not None:
             self.scorer.calibrate_temperature(train_embeddings)
+
+    def set_consultant_reliability(self, w: torch.Tensor) -> None:
+        """Install the fold's per-class consultant reliability (see
+        `consultant_reliability`). Inert unless `advice_reliability != "off"`."""
+        if w.shape != self.consultant_reliability_w.shape:
+            raise ValueError(
+                f"reliability vector must be [{self.num_classes}], got {tuple(w.shape)}"
+            )
+        with torch.no_grad():
+            self.consultant_reliability_w.copy_(w.to(self.consultant_reliability_w))
+
+    def _advice_weights(self, semantic_logits: torch.Tensor) -> torch.Tensor:
+        """`w[argmax]` per row of `semantic_logits` — the reliability of the
+        verdict this consultant is actually giving on each edge."""
+        return self.consultant_reliability_w[semantic_logits.argmax(dim=-1)]
 
     def _backbone_modules(self) -> list[nn.Module]:
         """The GAT baseline: everything that produces the graph-only logits.
@@ -967,10 +1080,29 @@ class FeedbackLoopClassifier(nn.Module):
         lprobs = semantic.softmax(dim=-1)
         h_llm = self.selector.entropy(lprobs)
         conf_llm = lprobs.max(dim=-1).values
-        g = torch.sigmoid(self.fusion_gate_conf(
-            torch.stack([h_gnn, conf_gnn, h_llm, conf_llm], dim=-1)))
-        fused = torch.cat([(1.0 - g) * gnn_p, g * llm_p], dim=-1)
-        correction = self.fusion_classifier(fused)
+        if self.fusion_block == "agaf":
+            from src.models.fusion_classifier import (
+                agaf_feature_attention,
+                agaf_feature_gate_fuse,
+            )
+
+            fused, feature_gate = agaf_feature_gate_fuse(
+                self.fusion_feature_gate, gnn_p, llm_p
+            )
+            attended, _ = agaf_feature_attention(
+                self.fusion_feature_attention, fused
+            )
+            correction = self.fusion_classifier(attended)
+            # AGAF's gate is per-feature. Where the paths below need one scalar
+            # share per edge, use its mean — the same quantity AGAF reports as
+            # `gate_gnn_mean`. `g` reads as "share given to the LLM branch", to
+            # match the loop block's `g`, so AGAF's GNN share is inverted here.
+            g = 1.0 - feature_gate.mean(dim=1, keepdim=True)
+        else:
+            g = torch.sigmoid(self.fusion_gate_conf(
+                torch.stack([h_gnn, conf_gnn, h_llm, conf_llm], dim=-1)))
+            fused = torch.cat([(1.0 - g) * gnn_p, g * llm_p], dim=-1)
+            correction = self.fusion_classifier(fused)
 
         if self.use_no_regret_floor and head_logits is not None:
             # No-regret floor (report P3 #2): fused_logits = floor + bounded
@@ -1021,6 +1153,10 @@ class FeedbackLoopClassifier(nn.Module):
             score = disagreement if self.gate_mode == "disagreement" else (
                 confidence * disagreement
             )
+        if self.advice_reliability != "off":
+            # E1: a confident verdict from a class the consultant is usually wrong
+            # about should not outrank a less confident one it usually gets right.
+            score = score * self._advice_weights(semantic_logits[flagged])
         k = max(1, int(round(self.bias_confidence_frac * flagged.numel())))
         top = torch.topk(score, k).indices
         return flagged[top]
@@ -1203,7 +1339,11 @@ class FeedbackLoopClassifier(nn.Module):
             if semantic_logits is None or it == self.max_iterations - 1:
                 continue
 
-            bias = self.bias_module(semantic_logits[selected], selected, num_edges)
+            advice = semantic_logits[selected]
+            if self.advice_reliability == "gate+scale":
+                # Advice magnitude proportional to how often this verdict is right.
+                advice = advice * self._advice_weights(advice).unsqueeze(-1)
+            bias = self.bias_module(advice, selected, num_edges)
 
         fusion_head: torch.Tensor | None = None
         if semantic_logits is None:
