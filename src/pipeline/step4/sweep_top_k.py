@@ -24,7 +24,11 @@ from torch_geometric.data import Data
 import src.pipeline.step4.train_feedback as feedback_training
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
 from src.pipeline.common.splits import NUM_CLASSES, eval_macro_f1, mask_dropped_logits
-from src.pipeline.step4.feedback_config import write_selected_feedback_config
+from src.pipeline.step4.feedback_config import (
+    load_feedback_config,
+    resolve_injection_scale,
+    write_selected_feedback_config,
+)
 
 
 DEFAULT_CANDIDATES = tuple(range(15, 36))
@@ -85,8 +89,10 @@ def run_top_k_sweep(
     use_llm_head: bool = False,
     head_logits_path: str | Path | None = None,
     injection_mode: str = "edge",
-    injection_scale: float = 10.0,
+    injection_scale: float | None = None,
     gate_mode: str = feedback_training.DEFAULT_GATE_MODE,
+    seed: int | None = None,
+    write_config: bool = True,
 ) -> Path:
     """Train, persist, and validation-rank all requested entropy percentages.
 
@@ -96,6 +102,14 @@ def run_top_k_sweep(
     """
     _validate_candidates(candidates)
     config = get_dataset_config(dataset)
+    # Same rule as train_feedback: the scale is per-dataset and never defaulted, so a
+    # sweep cannot silently rank candidates under a mechanism strength the feedback
+    # stage will not use.
+    injection_scale = resolve_injection_scale(
+        injection_scale, load_feedback_config(dataset), dataset
+    )
+    if seed is not None:
+        feedback_training.SEED = int(seed)
     root = Path(output_dir or f"data/{dataset}/processed/step4_feedback/top_k_sweep")
     root.mkdir(parents=True, exist_ok=True)
     feedback_root = root.parent
@@ -238,6 +252,7 @@ def run_top_k_sweep(
         "injection_mode": injection_mode,
         "injection_scale": injection_scale,
         "gate_mode": gate_mode,
+        "seed": feedback_training.SEED,
         "selected": selected,
         "candidates": rows,
         "caveat": (
@@ -249,7 +264,7 @@ def run_top_k_sweep(
     with summary_path.open("w") as handle:
         json.dump(summary, handle, indent=2)
     _write_csv(rows, root / "summary.csv")
-    selected_config_path = write_selected_feedback_config(
+    selected_config_path = None if not write_config else write_selected_feedback_config(
         dataset,
         selected,
         root=feedback_root,
@@ -280,7 +295,8 @@ def run_top_k_sweep(
         f"\nSelected n={selected['top_k_percent']} by validation macro-F1; "
         f"pooled OOF test macro-F1={selected['pooled_oof_test_macro_f1']:.4f}"
     )
-    print(f"Selected feedback config -> {selected_config_path}")
+    if selected_config_path is not None:
+        print(f"Selected feedback config -> {selected_config_path}")
     return summary_path
 
 
@@ -296,7 +312,9 @@ def main() -> None:
         "--injection-mode", choices=("attention", "edge"), default="edge",
         help="Must match the mechanism the feedback stage trains with.",
     )
-    parser.add_argument("--injection-scale", type=float, default=10.0)
+    parser.add_argument("--injection-scale", type=float, default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--no-write-config", action="store_true")
     parser.add_argument(
         "--gate-mode",
         choices=feedback_training.GATE_MODES,
@@ -319,6 +337,8 @@ def main() -> None:
         injection_mode=args.injection_mode,
         injection_scale=args.injection_scale,
         gate_mode=args.gate_mode,
+        seed=args.seed,
+        write_config=not args.no_write_config,
     )
 
 

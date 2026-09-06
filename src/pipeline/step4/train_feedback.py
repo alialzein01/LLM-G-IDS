@@ -57,6 +57,7 @@ from src.pipeline.common.splits import (
 )
 from src.pipeline.step4.feedback_config import (
     DEFAULT_BIAS_CONFIDENCE_FRAC,
+    resolve_injection_scale,
     DEFAULT_CHURN_TOLERANCE,
     DEFAULT_GATE_MODE,
     DEFAULT_MAX_ITERATIONS,
@@ -193,7 +194,7 @@ def _build_model(
     max_iterations: int = MAX_ITERATIONS,
     bias_init: str | None = None,
     injection_mode: str = "edge",
-    injection_scale: float = 10.0,
+    injection_scale: float | None = None,
     data=None,
 ) -> FeedbackLoopClassifier:
     # Single source of truth for the mode-dependent bias shape. Edge injection needs a
@@ -201,6 +202,11 @@ def _build_model(
     # the 1-wide zero-init bias that reproduces stock GATv2. Callers that do not resolve
     # these themselves (sweep_top_k) would otherwise silently sweep under a different
     # mechanism than the one the feedback stage then trains with.
+    if injection_scale is None:
+        # No numeric default anywhere on this path: the caller resolves it from the
+        # per-dataset selected config or passes it explicitly. See
+        # feedback_config.resolve_injection_scale.
+        raise ValueError("injection_scale is required; there is no default.")
     if bias_dim is None:
         bias_dim = EDGE_ATTR_DIM if injection_mode == "edge" else 1
     if bias_init is None:
@@ -255,7 +261,9 @@ def _train_one_fold(
     bias_init: str | None = None,
     oversample_ratio: float = 0.0,
     injection_mode: str = "edge",
-    injection_scale: float = 10.0,
+    injection_scale: float | None = None,
+    selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
+    legacy_temperature: bool = False,
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -276,8 +284,13 @@ def _train_one_fold(
     )
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"],
-        train_embeddings=emb[fold["train_mask"]],
+        # `legacy_temperature` reproduces the pre-fix consultant on purpose: skip
+        # calibration and pin T back to the 10.0 init that made the softmax uniform.
+        train_embeddings=None if legacy_temperature else emb[fold["train_mask"]],
     )
+    if legacy_temperature:
+        with torch.no_grad():
+            model.scorer.log_temperature.fill_(math.log(10.0))
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
@@ -326,11 +339,15 @@ def _train_one_fold(
                 total_loss = (
                     balanced(all_logits, all_labels) + AUX_LOSS_WEIGHT * aux_loss
                 )
-        if mode != "head_only" and model._last_edge_emb is not None:
+        if (
+            mode != "head_only"
+            and selector_head_loss_weight != 0.0
+            and model._last_edge_emb is not None
+        ):
             # `classify_repr` is `fusion_out` applied to the same post-dropout
             # embedding `_one_pass` used, so this is exactly the head's own logits.
             selector_logits = model.classify_repr(model._last_edge_emb)
-            total_loss = total_loss + SELECTOR_HEAD_LOSS_WEIGHT * criterion(
+            total_loss = total_loss + selector_head_loss_weight * criterion(
                 selector_logits[train_mask], labels[train_mask]
             )
         total_loss.backward()
@@ -539,6 +556,7 @@ def _train_loop(
 def _train_one_fold_frozen(
     data, emb, fold, fold_state, fold_idx, eval_classes=None, dropped_classes=(),
     gate_mode: str = DEFAULT_GATE_MODE,
+    injection_scale: float | None = None,
 ):
     """Two-phase frozen training:
       Phase 1 — train the GAT backbone alone (feedback off) → the canonical
@@ -547,7 +565,9 @@ def _train_one_fold_frozen(
                 top (attention bias + LLM fusion), a pure residual correction.
     Returns (gnn_alone_logits, frozen_feedback_logits), both full-graph."""
     _set_seed(SEED + fold_idx)
-    model = _build_model(data=data, gate_mode=gate_mode)
+    model = _build_model(
+        data=data, gate_mode=gate_mode, injection_scale=injection_scale
+    )
     model.load_fold_state(
         fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"],
         train_embeddings=emb[fold["train_mask"]],
@@ -611,6 +631,9 @@ def train_feedback_frozen(
     eval_classes = config.eval_classes
     dropped_classes = config.dropped_classes
     root = Path(f"data/{dataset}/processed/step4_feedback")
+    injection_scale = resolve_injection_scale(
+        None, load_feedback_config(dataset), dataset
+    )
     data = torch.load(config.graph_path, weights_only=False)
     global IN_DIM
     IN_DIM = data.x.shape[1]  # derive from graph (supports pruned node features)
@@ -627,7 +650,7 @@ def train_feedback_frozen(
         g, f = _train_one_fold_frozen(
             data, emb, fold, protos["folds"][fi], fi,
             eval_classes=eval_classes, dropped_classes=dropped_classes,
-            gate_mode=gate_mode,
+            gate_mode=gate_mode, injection_scale=injection_scale,
         )
         gnn_oof[fold["test_mask"]] = g[fold["test_mask"]]
         fb_oof[fold["test_mask"]] = f[fold["test_mask"]]
@@ -692,7 +715,9 @@ def _build_benchmark_summary(
     gate_mode: str = DEFAULT_GATE_MODE,
     use_output_fusion: bool = True,
     injection_mode: str = "edge",
-    injection_scale: float = 10.0,
+    injection_scale: float | None = None,
+    selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
+    legacy_temperature: bool = False,
     trace_summary_by_mode: dict[str, dict[str, float]] | None = None,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
@@ -746,6 +771,8 @@ def _build_benchmark_summary(
         "use_output_fusion": use_output_fusion,
         "injection_mode": injection_mode,
         "injection_scale": injection_scale,
+        "selector_head_loss_weight": selector_head_loss_weight,
+        "legacy_temperature": legacy_temperature,
         "llm_access": (
             f"{injection_mode}_injection_on_flagged_edges"
             + (" + output_fusion_on_all_edges" if use_output_fusion else "_only")
@@ -775,7 +802,9 @@ def train_feedback(
     oversample_ratio: float = 0.0,
     seed: int = SEED,
     injection_mode: str = "edge",
-    injection_scale: float = 10.0,
+    injection_scale: float | None = None,
+    selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
+    legacy_temperature: bool = False,
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     # Edge injection needs a bias exactly as wide as edge_attr and a live
@@ -804,6 +833,15 @@ def train_feedback(
         float(bias_confidence_fraction)
         if bias_confidence_fraction is not None
         else float(selected_config["bias_confidence_fraction"])
+    )
+    # Per-dataset, and never defaulted. This is the knob whose argparse default
+    # silently overrode the selected config in the 3-seed sweep.
+    resolved_injection_scale = resolve_injection_scale(
+        injection_scale, selected_config, dataset
+    )
+    print(
+        f"top_k_percent={resolved_top_k} injection_scale={resolved_injection_scale} "
+        f"(source: {'flag' if injection_scale is not None else selected_config.get('source')})"
     )
 
     data: Data = torch.load(config.graph_path, weights_only=False)
@@ -858,7 +896,9 @@ def train_feedback(
                 bias_init=bias_init,
                 oversample_ratio=oversample_ratio,
                 injection_mode=injection_mode,
-                injection_scale=injection_scale,
+                injection_scale=resolved_injection_scale,
+                selector_head_loss_weight=selector_head_loss_weight,
+                legacy_temperature=legacy_temperature,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -934,7 +974,9 @@ def train_feedback(
         gate_mode=gate_mode,
         use_output_fusion=use_output_fusion,
         injection_mode=injection_mode,
-        injection_scale=injection_scale,
+        injection_scale=resolved_injection_scale,
+        selector_head_loss_weight=selector_head_loss_weight,
+        legacy_temperature=legacy_temperature,
         trace_summary_by_mode=trace_summary_by_mode,
     )
     with open(root / "benchmark_summary.json", "w") as f:
@@ -1004,7 +1046,7 @@ def main() -> None:
              "edge features, the only term that separates co-located edges.",
     )
     parser.add_argument(
-        "--injection-scale", type=float, default=10.0,
+        "--injection-scale", type=float, default=None,
         help="Multiplier on the advice when --injection-mode edge. Selected on "
              "validation folds (5/10/20 grid).",
     )
@@ -1048,6 +1090,17 @@ def main() -> None:
         help="Init for the bias projection. 'zeros' makes the biased GAT reproduce "
              "stock GATv2 exactly but starts the mechanism inert; 'xavier' starts it "
              "live. Default: 'zeros' for --injection-mode attention, 'xavier' for edge.",
+    )
+    parser.add_argument(
+        "--selector-head-loss-weight", type=float, default=SELECTOR_HEAD_LOSS_WEIGHT,
+        help="Weight on the direct supervision of the head the uncertainty selector "
+             "ranks. 0.0 reproduces the pre-fix behaviour, where that head was trained "
+             "only as a gate feature and collapsed onto one class.",
+    )
+    parser.add_argument(
+        "--legacy-temperature", action="store_true",
+        help="Skip the consultant's per-fold temperature calibration and pin T=10, "
+             "reproducing the pre-fix uniform softmax (mean_disagreement 0.900).",
     )
     parser.add_argument(
         "--seed", type=int, default=SEED,
@@ -1112,6 +1165,8 @@ def main() -> None:
             seed=args.seed,
             injection_mode=args.injection_mode,
             injection_scale=args.injection_scale,
+            selector_head_loss_weight=args.selector_head_loss_weight,
+            legacy_temperature=args.legacy_temperature,
         )
 
 

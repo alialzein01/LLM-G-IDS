@@ -77,6 +77,30 @@ def write_selected_feedback_config(
     return path
 
 
+def resolve_injection_scale(
+    explicit: float | None,
+    selected_config: dict[str, Any],
+    dataset: str,
+) -> float:
+    """The injection scale, from the flag if given, else from the selected config.
+
+    There is deliberately NO numeric fallback. `injection_scale` used to be a plain
+    argparse default of 10.0 that the config could not override, so a run that simply
+    omitted the flag silently used one value for both datasets while its own artifacts
+    reported the selected 2.0 / 20.0 beside it. Raising is what makes that impossible.
+    """
+    if explicit is not None:
+        return float(explicit)
+    value = selected_config.get("injection_scale")
+    if value is None:
+        raise ValueError(
+            f"No injection_scale for {dataset!r}: pass --injection-scale explicitly, or "
+            f"put one in {SELECTED_CONFIG_FILE}. There is no default — it is per-dataset "
+            "and must be re-selected whenever the encoding or injection path changes."
+        )
+    return float(value)
+
+
 def load_feedback_config(
     dataset: str,
     root: str | Path | None = None,

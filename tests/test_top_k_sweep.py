@@ -15,14 +15,20 @@ from src.pipeline.step4.sweep_top_k import (
     select_best_candidate,
 )
 from src.pipeline.step4.sweep_semantic_confidence import (
+
     DEFAULT_CANDIDATES as DEFAULT_CONFIDENCE_CANDIDATES,
     select_best_candidate as select_best_confidence_candidate,
 )
 
 
+# These tests predate injection_scale being a required, config-resolved knob and
+# assert nothing about it. Pin the value _build_model used to default to, so they
+# keep testing exactly what they tested before.
+LEGACY_SCALE = 10.0
+
 class FeedbackTopKSweepTest(unittest.TestCase):
     def test_build_model_propagates_top_k_percent(self) -> None:
-        model = _build_model(top_k_percent=27.0)
+        model = _build_model(top_k_percent=27.0, injection_scale=LEGACY_SCALE)
         self.assertEqual(model.selector.top_k_percent, 27.0)
 
     def test_fold_training_result_fields(self) -> None:
