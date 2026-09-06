@@ -308,11 +308,28 @@ giving approximately $60/20/20$. Test masks are used once, for prediction.
 
 The primary metric is pooled out-of-fold macro-F1: each edge is predicted only while held out,
 and the five sets of out-of-fold predictions are pooled before a single macro-F1 is computed.
-Model selection uses validation folds exclusively. The uncertainty threshold $k$ was selected
-by a validation sweep over $[15, 35]$ averaged across three seeds (42, 1, 2); the remaining
+Model selection uses validation folds exclusively. The uncertainty threshold $k$ and the
+injection scale were selected per dataset by a validation sweep ($k \in [15, 35]$; scale
+$\in \{0.5, 1, 2, 5, 10, 20\}$) averaged across three seeds (42, 1, 2); the remaining
 architectural hyperparameters were fixed a priori and not swept. We note this as a limitation:
 $k$ was selected on rotating validation folds rather than by nested cross-validation, so the
 final estimate is not fully unbiased with respect to that one choice.
+
+Every rung is trained at three training seeds (42, 1, 2) with the fold partition held fixed at
+the seed-42 split, so all seeds score the same held-out edges and differ only in
+initialisation, dropout and data order. We report the mean and standard deviation of pooled
+out-of-fold macro-F1 over the three seeds; the standard deviation therefore measures
+training-seed variance at a fixed partition, not total uncertainty, since fold-partition
+variance is not measured. Pairwise differences between rungs use a two-level bootstrap with
+2{,}000 iterations: each iteration draws a training seed independently for each side and
+resamples edges with replacement, so the interval reflects both sources of variation. A
+seed-matched bootstrap (seed 42 against 42, 1 against 1, 2 against 2) is reported as a
+secondary check. The decision rule was fixed before the runs: a difference is called
+\emph{separated} only if its two-level 95\% interval excludes zero, and \emph{not separated}
+otherwise; we do not describe point-estimate orderings as significant. The semantic rung is
+deterministic given the folds and has zero seed variance, so it enters comparisons as a fixed
+side. Comparisons against re-trained published baselines use the same procedure with three
+baseline seeds on the other side.
 
 Training uses AdamW with learning rate $10^{-3}$ and weight decay $5\times10^{-4}$, at most 300
 epochs, early stopping with patience 40 on validation macro-F1 with the best state restored,
