@@ -1,9 +1,9 @@
 {
-  "schema_version": 4,
-  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "schema_version": 5,
+  "metric_protocol": "pooled five-fold out-of-fold evaluation, 3 training seeds (42, 1, 2), fold partition fixed at the seed-42 split",
   "primary_metric": "macro_f1",
   "feature_profile": "structural10",
-  "generated": "2026-08-27",
+  "generated": "2026-09-06",
   "edge_attr_encoding": "v2_log_cont_cat_idx",
   "architecture": {
     "shared": true,
@@ -13,58 +13,133 @@
     "injection_mode": "edge",
     "note": "Both datasets run the identical architecture, including the injection mechanism. injection_scale and top_k_percent are the two per-dataset quantities, each selected on validation folds under that same mechanism and never carried across datasets."
   },
-  "notes": [
-    "Absolute macro-F1 levels are not interchangeable across datasets because eval-class counts differ (UNSW 10 vs ToN 8).",
-    "The ladder holds on UNSW-NB15 (GNN<LLM<AGAF<Loop by point estimate; loop-vs-AGAF gap CI still touches zero, P=0.778).",
-    "The ladder does NOT hold on ToN-IoT, but not for the reason it used to: AGAF now sits BELOW the GNN rung (P=0.0005), and the loop is the TOP rung on ToN, significantly above AGAF (P=1.000). The regression is AGAF's, not the loop's.",
-    "Trained-head LLM-only baselines are reported separately in results/{unsw_nb15,ton_iot}_head_baseline.json. Those baseline files were generated 2026-08-20, on the v1 encoding and pre-fusion-fix architecture, and have not been re-run on v2 \u2014 treat their exact values as approximate until re-verified, though on both datasets the qualitative finding (trained head beats the full loop) is expected to still hold given the loop's v2 gains are modest relative to the baseline's margin.",
-    "Schema 4 re-runs both datasets on the v2 edge-attribute encoding (log1p+Z-score continuous columns, learned embeddings for protocol/port) with the loop-fusion fairness fix (fusion_dim matches AGAF's projection dim; prototype path uses the same confidence gate as the trained-head path). Schema 3 was produced on the v1 encoding."
-  ],
+  "headline": "No rung comparison is separated on either dataset once training-seed variance is included. Orderings by 3-seed mean: UNSW LLM < GNN < Loop < AGAF; ToN LLM < AGAF < GNN < Loop. Absolute levels are not comparable across datasets (10 vs 8 scored classes); only the shape is.",
   "datasets": {
     "unsw_nb15": {
       "contract": "results/unsw_nb15_current.json",
       "n_eval_classes": 10,
       "top_k_percent": 31.0,
       "injection_scale": 2.0,
-      "ladder_order_holds": true,
+      "highest_mean_rung": "agaf",
+      "mean_order": "llm 0.7353 < gnn 0.7437 < feedback 0.7644 < agaf 0.7793",
+      "nothing_separated": true,
+      "head_baseline_contract": "results/unsw_nb15_head_baseline.json",
+      "llm_only_trained_head_macro_f1": 0.8321241658653257,
       "macro_f1": {
         "gnn": 0.7219365593805762,
         "llm": 0.7353188026257084,
-        "agaf": 0.7595293220194291,
-        "feedback": 0.772755270351248
+        "agaf": 0.7679707333515186,
+        "feedback": 0.7641720503342035
       },
-      "head_baseline_contract": "results/unsw_nb15_head_baseline.json",
-      "llm_only_trained_head_macro_f1": 0.8321241658653257
+      "macro_f1_3seed_mean": {
+        "gnn": 0.7437359385851027,
+        "llm": 0.7353188026257084,
+        "agaf": 0.7793329545641249,
+        "feedback": 0.7644274950452105
+      },
+      "macro_f1_3seed_std": {
+        "gnn": 0.022806542603331665,
+        "llm": 0.0,
+        "agaf": 0.01162354373285102,
+        "feedback": 0.004478598401111229
+      }
     },
     "ton_iot_aggregated": {
       "contract": "results/ton_iot_current.json",
       "n_eval_classes": 8,
-      "dropped_classes": [
-        "dos",
-        "ransomware"
-      ],
       "top_k_percent": 25.0,
       "injection_scale": 20.0,
-      "ladder_order_holds": false,
+      "highest_mean_rung": "feedback",
+      "mean_order": "llm 0.2785 < agaf 0.4102 < gnn 0.4336 < feedback 0.4521",
+      "nothing_separated": true,
+      "head_baseline_contract": "results/ton_iot_head_baseline.json",
+      "llm_only_trained_head_macro_f1": 0.5165429122825544,
       "macro_f1": {
         "gnn": 0.4289705488338377,
         "llm": 0.27852446280044896,
-        "agaf": 0.3333694556345273,
-        "feedback": 0.4478180285563262
+        "agaf": 0.3974711630900891,
+        "feedback": 0.44137003531708785
       },
-      "llm_below_gnn": true,
-      "agaf_below_gnn": true,
-      "loop_is_top_rung": true,
-      "head_baseline_contract": "results/ton_iot_head_baseline.json",
-      "llm_only_trained_head_macro_f1": 0.5165429122825544
+      "macro_f1_3seed_mean": {
+        "gnn": 0.4336209881524611,
+        "llm": 0.27852446280044896,
+        "agaf": 0.4102328190091071,
+        "feedback": 0.45211970221804215
+      },
+      "macro_f1_3seed_std": {
+        "gnn": 0.005252902884421316,
+        "llm": 0.0,
+        "agaf": 0.027913347670967977,
+        "feedback": 0.011414089078143137
+      }
     }
   },
-  "observed_deltas_feedback_minus_gnn": {
-    "unsw_nb15": 0.05081871097067181,
-    "ton_iot_aggregated": 0.018847479722488514
+  "observed_deltas_feedback_minus_agaf_3seed_mean": {
+    "unsw_nb15": -0.015605593468753568,
+    "ton_iot_aggregated": 0.04284066291982606
   },
-  "observed_deltas_feedback_minus_agaf": {
-    "unsw_nb15": 0.013225948331818893,
-    "ton_iot_aggregated": 0.11444857292179889
-  }
+  "observed_deltas_feedback_minus_gnn_3seed_mean": {
+    "unsw_nb15": 0.020565813914473586,
+    "ton_iot_aggregated": 0.019058546179820775
+  },
+  "notes": [
+    "Absolute macro-F1 levels are not interchangeable across datasets because eval-class counts differ (UNSW 10 vs ToN 8).",
+    "The ladder holds on UNSW-NB15 (GNN<LLM<AGAF<Loop by point estimate; loop-vs-AGAF gap CI still touches zero, P=0.778).",
+    "The ladder does NOT hold on ToN-IoT, but not for the reason it used to: AGAF now sits BELOW the GNN rung (P=0.0005), and the loop is the TOP rung on ToN, significantly above AGAF (P=1.000). The regression is AGAF's, not the loop's.",
+    "Trained-head LLM-only baselines are reported separately in results/{unsw_nb15,ton_iot}_head_baseline.json. Those baseline files were generated 2026-08-20, on the v1 encoding and pre-fusion-fix architecture, and have not been re-run on v2 \u2014 treat their exact values as approximate until re-verified, though on both datasets the qualitative finding (trained head beats the full loop) is expected to still hold given the loop's v2 gains are modest relative to the baseline's margin.",
+    "Schema 4 re-runs both datasets on the v2 edge-attribute encoding (log1p+Z-score continuous columns, learned embeddings for protocol/port) with the loop-fusion fairness fix (fusion_dim matches AGAF's projection dim; prototype path uses the same confidence gate as the trained-head path). Schema 3 was produced on the v1 encoding.",
+    "2026-09-06: superseded single-seed schema 3/5 contracts with 3-seed condition-A measurements; see each contract's supersedes block."
+  ],
+  "supersedes": {
+    "schema_version": 4,
+    "generated": "2026-08-27",
+    "datasets": {
+      "unsw_nb15": {
+        "contract": "results/unsw_nb15_current.json",
+        "n_eval_classes": 10,
+        "top_k_percent": 31.0,
+        "injection_scale": 2.0,
+        "ladder_order_holds": true,
+        "macro_f1": {
+          "gnn": 0.7219365593805762,
+          "llm": 0.7353188026257084,
+          "agaf": 0.7595293220194291,
+          "feedback": 0.772755270351248
+        },
+        "head_baseline_contract": "results/unsw_nb15_head_baseline.json",
+        "llm_only_trained_head_macro_f1": 0.8321241658653257
+      },
+      "ton_iot_aggregated": {
+        "contract": "results/ton_iot_current.json",
+        "n_eval_classes": 8,
+        "dropped_classes": [
+          "dos",
+          "ransomware"
+        ],
+        "top_k_percent": 25.0,
+        "injection_scale": 20.0,
+        "ladder_order_holds": false,
+        "macro_f1": {
+          "gnn": 0.4289705488338377,
+          "llm": 0.27852446280044896,
+          "agaf": 0.3333694556345273,
+          "feedback": 0.4478180285563262
+        },
+        "llm_below_gnn": true,
+        "agaf_below_gnn": true,
+        "loop_is_top_rung": true,
+        "head_baseline_contract": "results/ton_iot_head_baseline.json",
+        "llm_only_trained_head_macro_f1": 0.5165429122825544
+      }
+    },
+    "observed_deltas_feedback_minus_gnn": {
+      "unsw_nb15": 0.05081871097067181,
+      "ton_iot_aggregated": 0.018847479722488514
+    },
+    "observed_deltas_feedback_minus_agaf": {
+      "unsw_nb15": 0.013225948331818893,
+      "ton_iot_aggregated": 0.11444857292179889
+    }
+  },
+  "datasets_note": "macro_f1 = single seed-42 run (matches each contract's results block, for reproduce_ladder); macro_f1_3seed_mean/std = the reported headline (matches multi_seed)."
 }

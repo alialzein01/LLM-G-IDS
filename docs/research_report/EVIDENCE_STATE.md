@@ -26,8 +26,15 @@ Canonical ladder (pooled OOF macro-F1):
 
 | Dataset | GNN | semantic | AGAF | feedback |
 |---|---:|---:|---:|---:|
-| NF-UNSW-NB15 (10 cls) | 0.7219 | 0.7353 | 0.7595 | 0.7728 |
-| NF-ToN-IoT (8 cls) | 0.4290 | 0.2785 | 0.3334 | 0.4478 |
+| NF-UNSW-NB15 (10 cls) | 0.7437 ± 0.023 | 0.7353 ± 0 | **0.7793 ± 0.012** | 0.7644 ± 0.004 |
+| NF-ToN-IoT (8 cls) | 0.4336 ± 0.005 | 0.2785 ± 0 | 0.4102 ± 0.028 | **0.4521 ± 0.011** |
+
+**UPDATED 2026-09-06.** Values are means ± std over 3 training seeds (42/1/2), fold
+partition fixed at the seed-42 split; contracts are schema 4 (UNSW) / 6 (ToN), aggregate
+`results/multiseed_ladder_v2_legacy.json`. Bold = highest mean. **No rung comparison is
+separated on either dataset** (every two-level CI includes zero). The single-seed
+schema-3/5 values that used to sit here (UNSW loop 0.7728; ToN AGAF 0.3334) are withdrawn
+and preserved under each contract's `supersedes`.
 
 **Out-of-fold discipline is enforced in code, not merely asserted.** `reproduce_ladder.py`
 documents two rules it exists to enforce, both "violated by earlier runs": every rung uses
@@ -75,34 +82,39 @@ fix, both of which understated AGAF and the loop.
 phrase "top rung" in narrative fields; do not quote those fields verbatim.
 
 **ToN reversal:** under v1, AGAF was ToN's strongest rung. Under v2 + the fairness fix,
-AGAF regressed to 0.3334, **significantly below the bare GNN** (−0.0962, P=0.0005). The
-cause is **undiagnosed**. Do not guess it.
+AGAF appeared to regress to 0.3334, "significantly below the bare GNN" (−0.0962, P=0.0005).
+**Withdrawn 2026-09-06:** across 3 seeds AGAF spans 0.3975–0.4422 and AGAF−GNN is
+−0.024 with CI [−0.092, +0.061], not even sign-stable. The single-seed "regression" was
+within seed noise. The v1→v2 AGAF change on ToN is therefore not established either way.
 
 ---
 
-## 4. THE MOST SERIOUS UNRESOLVED ISSUE — multi-seed inversion
+## 4. Multi-seed inversion — RESOLVED 2026-09-06
 
-`results/unsw_nb15_current.json` → `multi_seed_caveat`:
+The conversation-recorded caveat (AGAF 0.7757 / loop 0.7545) is replaced by an artifact.
+Condition A of `results/multiseed_ladder_v2_legacy.json` (canonical architecture, selected
+knobs verified in every run, 3 training seeds, fold partition fixed):
 
-```
-agaf_mean 0.7757  (std 0.0152)
-loop_mean 0.7545  (std 0.0223)
-source: "conversation-recorded, not re-verified against a saved artifact in this pass"
-```
+| dataset | loop − AGAF, two-level CI | per-seed sign | verdict |
+|---|---|---|---|
+| UNSW | −0.0156 [−0.0552, +0.0268] P=0.229 | negative at 42, 1, 2 | **not separated; AGAF is the higher mean** |
+| ToN  | +0.0428 [−0.0316, +0.1105] P=0.874 | positive at 42, 1, 2 | **not separated; loop is the higher mean** |
 
-**Over three seeds, AGAF exceeds the feedback loop — the reverse of the single-seed
-headline** (AGAF 0.7595, Loop 0.7728). The `loop_vs_agaf` interval already crosses zero.
+Binding consequences for the report:
 
-Two consequences, both binding:
-
-1. Those two numbers are **not artifact-backed** and must never be cited as results.
-2. The claim "the feedback loop is the strongest rung on UNSW" is **not established**. Write
-   every separation as *"separated at seed 42; rung-side seed variance not yet estimated."*
-
-The 3-seed re-run is postponed by the user. Until it runs, no headline may depend on the
-loop outranking AGAF.
-
----
+1. **"The feedback loop is the strongest rung on UNSW" is false** and may not be written.
+   On ToN the loop has the highest mean; write "highest mean, not separated".
+2. **Write no ladder separation anywhere.** Orderings by mean may be stated as orderings.
+3. **The ± is training-seed variance only.** Fold-partition variance is unmeasured; say so
+   wherever a ± appears.
+4. **The canonical loop's feedback was effectively off** — injected bias ~0.02–0.08 on
+   unit-variance features (archive 2026-09-06 Finding 3). Fixing the two signals that made
+   it so (selector head collapsed to one class; consultant softmax uniform at T=10) and
+   re-selecting the knobs did **not** produce a separable gain at 3 seeds (Findings 1–2).
+   This is the verified, negative answer to RQ3. Per `todo.md`, the semantic judgment
+   depends on flow text only; GNN-state-conditioned advice was ruled out as out of spec.
+5. **Reproducibility finding:** the schema-3/5 AGAF and loop values do not reproduce at
+   seed 42 under current code; GNN and LLM reproduce bit-exactly. Cause not established.
 
 ## 5. Statistical reality (from the canonical artifact)
 
@@ -228,6 +240,7 @@ did. Search by DOI or exact title, not keywords.
 artifact, provenance is traceable, leakage guards are enforced in code, and the project has
 a documented history of retracting its own claims.
 
-**Not ready for a locked outline:** risk 3 (§4) can invert the headline. `/ars-plan` may
-proceed for framing and positioning. `/ars-outline` should not fix a headline claim that
-depends on the loop outranking AGAF until the 3-seed re-run completes.
+**Ready for a locked outline (2026-09-06).** §4 is resolved: the headline is "nothing
+separated; AGAF highest mean on UNSW, loop on ToN; the mechanism's feedback was effectively
+off and switching it on did not help". Results and Discussion can be drafted from the
+schema-4/6 contracts and `docs/RESULTS_ARCHIVE.md` 2026-09-06.

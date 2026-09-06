@@ -24,130 +24,148 @@ TON_ORACLE_V2_HEAD_PATH = Path(
 
 
 class CurrentResultsContractTest(unittest.TestCase):
-    def test_authoritative_unsw_ladder_and_configuration(self) -> None:
-        payload = json.loads(UNSW_RESULTS_PATH.read_text())
-        results = payload["results"]
+    """Contracts are 3-training-seed measurements (schema 4 UNSW / 6 ToN, 2026-09-06).
 
-        self.assertEqual(payload["configuration"]["top_k_percent"], 31.0)
-        self.assertEqual(payload["configuration"]["injection_scale"], 2.0)
-        self.assertEqual(payload["configuration"]["semantic_consultant"], "whitened_prototype")
-        self.assertEqual(payload["configuration"]["trained_llm_head"], False)
+    The headline lives in ``multi_seed``. ``results`` holds the single seed-42 run that
+    ``reproduce_ladder.py`` drift-checks against. Nothing is statistically separated on
+    either dataset once training-seed variance enters the bootstrap, and these tests pin
+    that so no later edit can quietly reintroduce a separation claim.
+    """
+
+    RUNGS = ("gnn", "llm", "agaf", "feedback")
+    COMPARISONS = ("loop_vs_agaf", "loop_vs_gnn", "agaf_vs_gnn")
+
+    def _assert_multi_seed_contract(self, payload: dict, schema: int) -> None:
+        self.assertEqual(payload["schema_version"], schema)
+        self.assertEqual(payload["headline"], "multi_seed")
+        ms = payload["multi_seed"]
+        self.assertEqual(ms["seeds"], [42, 1, 2])
+        self.assertEqual(payload["configuration"]["seeds"], [42, 1, 2])
+        self.assertTrue(payload["configuration"]["injection_scale_verified_in_run"])
+        for rung in self.RUNGS:
+            r = ms["rungs"][rung]
+            self.assertEqual(sorted(r["macro_f1_per_seed"]), ["1", "2", "42"])
+            vals = list(r["macro_f1_per_seed"].values())
+            self.assertAlmostEqual(r["macro_f1_mean"], sum(vals) / 3)
+            # results = the seed-42 run, for reproduce_ladder
+            self.assertAlmostEqual(
+                payload["results"][rung]["macro_f1"], r["macro_f1_per_seed"]["42"]
+            )
+        # The LLM rung is deterministic given folds + frozen embeddings.
+        self.assertEqual(ms["rungs"]["llm"]["macro_f1_std"], 0.0)
+        # NOTHING is separated: every two-level CI straddles zero.
+        for name in self.COMPARISONS:
+            c = ms["comparisons"][name]
+            self.assertEqual(c["two_level"]["resampled"], "edges_and_training_seed")
+            self.assertLess(c["two_level"]["ci_low"], 0.0, name)
+            self.assertGreater(c["two_level"]["ci_high"], 0.0, name)
+            self.assertFalse(c["separated"], name)
+            self.assertEqual(payload["statistical_comparisons"][name], c["two_level"])
+        self.assertTrue(ms["nothing_separated"])
+        self.assertFalse(payload["ladder_order_holds"])
+        self.assertNotIn("loop_is_top_rung", payload)  # banned wording; use *_highest_mean
+        # Shared architecture must still be declared.
+        cfg = payload["configuration"]
+        self.assertEqual(cfg["semantic_consultant"], "whitened_prototype")
+        self.assertFalse(cfg["trained_llm_head"])
+        self.assertFalse(cfg["agaf_head_fusion"])
+        self.assertEqual(cfg["injection_mode"], "edge")
         self.assertEqual(payload["edge_attr_encoding"], "v2_log_cont_cat_idx")
-        # The mechanism must be declared. A contract that omits it gets misread as
-        # whatever the CLI default happens to be on the day it is read.
-        self.assertEqual(payload["configuration"]["injection_mode"], "edge")
         self.assertEqual(
-            payload["selection"]["swept_under_injection_mode"],
-            payload["configuration"]["injection_mode"],
-            "top_k must be selected under the same mechanism the loop trains with",
+            payload["selection"]["swept_under_injection_mode"], cfg["injection_mode"]
         )
 
-        macro_f1 = [results[name]["macro_f1"] for name in ("gnn", "llm", "agaf", "feedback")]
-        self.assertEqual(macro_f1, sorted(macro_f1))
-        self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.7219365593805762)
-        self.assertAlmostEqual(results["llm"]["macro_f1"], 0.7353188026257084)
-        self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.7595293220194291)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.772755270351248)
-        self.assertAlmostEqual(results["feedback"]["accuracy"], 0.8307926829268293)
-
-        # The ladder holds by ORDER only. The loop-AGAF gap CI crosses zero (P=0.7785),
-        # so it must never be described as a significant separation.
-        loop_agaf = payload["statistical_comparisons"]["loop_vs_agaf"]
-        self.assertGreater(loop_agaf["mean_diff"], 0.0)
-        self.assertLess(loop_agaf["ci_low"], 0.0)
+    def test_authoritative_unsw_ladder_and_configuration(self) -> None:
+        payload = json.loads(UNSW_RESULTS_PATH.read_text())
+        self._assert_multi_seed_contract(payload, schema=4)
+        cfg = payload["configuration"]
+        self.assertEqual(cfg["top_k_percent"], 31.0)
+        self.assertEqual(cfg["injection_scale"], 2.0)
+        ms = payload["multi_seed"]
+        # GNN and LLM reproduce the schema-3 seed-42 values exactly; AGAF and loop do not.
+        self.assertAlmostEqual(payload["results"]["gnn"]["macro_f1"], 0.7219365593805762)
+        self.assertAlmostEqual(payload["results"]["llm"]["macro_f1"], 0.7353188026257084)
+        self.assertEqual(payload["supersedes"]["schema_version"], 3)
+        self.assertAlmostEqual(
+            payload["supersedes"]["results"]["feedback"]["macro_f1"], 0.772755270351248
+        )
+        # 3-seed ordering by mean: AGAF highest, loop below it at EVERY seed. Not separated.
+        self.assertEqual(ms["highest_mean_rung"], "agaf")
+        la = ms["comparisons"]["loop_vs_agaf"]
+        self.assertTrue(la["sign_stable_across_seeds"])
+        self.assertLess(la["two_level"]["mean_diff"], 0.0)
+        self.assertTrue(all(v < 0 for v in la["per_seed_diff"].values()))
+        # The old multi_seed_caveat was conversation-recorded; it is now resolved by artifact.
+        self.assertNotIn("multi_seed_caveat", payload)
+        self.assertIn("multi_seed_caveat", payload["supersedes"])
 
     def test_reproduction_uses_authoritative_manifest(self) -> None:
+        payload = json.loads(UNSW_RESULTS_PATH.read_text())
         expected = load_expected_ladder()
-        self.assertAlmostEqual(expected["gnn_alone"], 0.7219365593805762)
-        self.assertAlmostEqual(expected["llm_alone"], 0.7353188026257084)
-        self.assertAlmostEqual(expected["agaf"], 0.7595293220194291)
-        self.assertAlmostEqual(expected["feedback_loop"], 0.772755270351248)
-
+        per42 = {r: payload["multi_seed"]["rungs"][r]["macro_f1_per_seed"]["42"] for r in self.RUNGS}
+        self.assertAlmostEqual(expected["gnn_alone"], per42["gnn"])
+        self.assertAlmostEqual(expected["llm_alone"], per42["llm"])
+        self.assertAlmostEqual(expected["agaf"], per42["agaf"])
+        self.assertAlmostEqual(expected["feedback_loop"], per42["feedback"])
         accuracy = load_expected_accuracy()
-        self.assertAlmostEqual(accuracy["feedback_loop"], 0.8307926829268293)
+        self.assertAlmostEqual(
+            accuracy["feedback_loop"], payload["results"]["feedback"]["accuracy"]
+        )
 
     def test_authoritative_ton_iot_aggregated_ladder(self) -> None:
-        """ToN runs the SAME architecture as UNSW. The ladder still fails there, but now
-        because AGAF regressed below the GNN rung -- not because the loop underperforms."""
+        """ToN runs the SAME architecture as UNSW. By 3-seed mean the loop is highest and
+        AGAF sits below the GNN, but neither ordering is separated -- the schema-5
+        'AGAF significantly below GNN (P=0.0005)' was a seed-42 artifact."""
         payload = json.loads(TON_RESULTS_PATH.read_text())
-        results = payload["results"]
-
+        self._assert_multi_seed_contract(payload, schema=6)
         self.assertEqual(payload["dataset_key"], "ton_iot")
         self.assertEqual(payload["graph_scope"], "aggregated")
         self.assertEqual(payload["feature_profile"], "structural10")
         self.assertEqual(payload["n_eval_classes"], 8)
-        self.assertEqual(payload["configuration"]["semantic_consultant"], "whitened_prototype")
-        self.assertFalse(payload["configuration"]["trained_llm_head"])
-        self.assertFalse(payload["configuration"]["agaf_head_fusion"])
-        self.assertEqual(payload["edge_attr_encoding"], "v2_log_cont_cat_idx")
-
-        self.assertAlmostEqual(results["gnn"]["macro_f1"], 0.4289705488338377)
-        self.assertAlmostEqual(results["llm"]["macro_f1"], 0.27852446280044896)
-        self.assertAlmostEqual(results["agaf"]["macro_f1"], 0.3333694556345273)
-        self.assertAlmostEqual(results["feedback"]["macro_f1"], 0.4478180285563262)
-        self.assertEqual(payload["configuration"]["top_k_percent"], 25.0)
-        self.assertEqual(payload["configuration"]["injection_scale"], 20.0)
-        self.assertEqual(payload["configuration"]["injection_mode"], "edge")
-
-        # The ladder does NOT hold on ToN, but the failure moved: AGAF is now BELOW the
-        # GNN rung, and the loop is the TOP rung, significantly above AGAF. Both facts
-        # must stay declared -- this reverses the pre-v2 finding, do not revert it.
-        self.assertFalse(payload["ladder_order_holds"])
+        cfg = payload["configuration"]
+        self.assertEqual(cfg["top_k_percent"], 25.0)
+        self.assertEqual(cfg["injection_scale"], 20.0)
+        self.assertAlmostEqual(payload["results"]["gnn"]["macro_f1"], 0.4289705488338377)
+        self.assertAlmostEqual(payload["results"]["llm"]["macro_f1"], 0.27852446280044896)
+        self.assertEqual(payload["supersedes"]["schema_version"], 5)
+        ms = payload["multi_seed"]
+        self.assertEqual(ms["highest_mean_rung"], "feedback")
+        self.assertTrue(payload["loop_highest_mean"])
         self.assertTrue(payload["llm_below_gnn"])
-        self.assertTrue(payload["agaf_below_gnn"])
-        self.assertTrue(payload["loop_is_top_rung"])
-        self.assertLess(results["llm"]["macro_f1"], results["gnn"]["macro_f1"])
-        self.assertLess(results["agaf"]["macro_f1"], results["gnn"]["macro_f1"])
-        self.assertEqual(
-            results["feedback"]["macro_f1"],
-            max(results[name]["macro_f1"] for name in ("gnn", "llm", "agaf", "feedback")),
-        )
-
-        # AGAF is significantly BELOW the GNN rung now (P=0.0005) -- this is the one
-        # rung that regressed and the sole reason the canonical ladder shape fails here.
-        agaf_gnn = payload["statistical_comparisons"]["agaf_vs_gnn"]
-        self.assertLess(agaf_gnn["mean_diff"], 0.0)
-        self.assertLess(agaf_gnn["ci_high"], 0.0)
-        self.assertLess(agaf_gnn["prob_positive"], 0.05)
-
-        # The loop is significantly ABOVE AGAF now (flipped from the pre-v2 finding).
-        loop_agaf = payload["statistical_comparisons"]["loop_vs_agaf"]
-        self.assertGreater(loop_agaf["mean_diff"], 0.0)
-        self.assertGreater(loop_agaf["ci_low"], 0.0)
-        self.assertGreater(loop_agaf["prob_positive"], 0.95)
-
-        # AGAF is clearly above the LLM rung; that separation IS significant.
-        self.assertGreater(payload["statistical_comparisons"]["agaf_vs_llm"]["ci_low"], 0.0)
+        self.assertTrue(payload["agaf_below_gnn_by_mean"])
+        # ...but AGAF-vs-GNN is NOT separated and not even sign-stable across seeds.
+        ag = ms["comparisons"]["agaf_vs_gnn"]
+        self.assertFalse(ag["sign_stable_across_seeds"])
+        self.assertLess(ag["two_level"]["ci_low"], 0.0)
+        self.assertGreater(ag["two_level"]["ci_high"], 0.0)
 
     def test_both_datasets_declare_the_same_architecture(self) -> None:
-        """Parity guard: the two datasets must never drift onto different consultants again.
-
-        UNSW and ToN were previously scored under different semantic consultants, which made
-        the cross-dataset comparison unreadable. This test fails the moment they diverge.
-        """
-        unsw = json.loads(UNSW_RESULTS_PATH.read_text())["configuration"]
-        ton = json.loads(TON_RESULTS_PATH.read_text())["configuration"]
-
+        """Parity guard: the two datasets must never drift onto different consultants again."""
+        unsw_p = json.loads(UNSW_RESULTS_PATH.read_text())
+        ton_p = json.loads(TON_RESULTS_PATH.read_text())
+        unsw, ton = unsw_p["configuration"], ton_p["configuration"]
         self.assertEqual(unsw["semantic_consultant"], ton["semantic_consultant"])
         self.assertEqual(unsw["trained_llm_head"], ton["trained_llm_head"])
         self.assertEqual(
             unsw["semantic_confidence_fraction"], ton["semantic_confidence_fraction"]
         )
-        # The mechanism is part of the shared architecture, not a per-dataset knob.
         self.assertEqual(unsw["injection_mode"], ton["injection_mode"])
-        # injection_scale and top_k_percent are the two quantities allowed to differ:
-        # both are selected per dataset on validation folds and must never be carried
-        # across datasets (see PROJECT_NOTES.md -- injection_scale must be re-selected whenever
-        # the edge encoding changes, and it was: 2.0 on UNSW vs 20.0 on ToN).
-        self.assertIn("top_k_percent", unsw)
-        self.assertIn("top_k_percent", ton)
-        self.assertIn("injection_scale", unsw)
-        self.assertIn("injection_scale", ton)
-
+        self.assertEqual(unsw["seeds"], ton["seeds"])
+        # injection_scale and top_k_percent are the two quantities allowed to differ.
+        for key in ("top_k_percent", "injection_scale"):
+            self.assertIn(key, unsw)
+            self.assertIn(key, ton)
         comparison = json.loads(COMPARISON_PATH.read_text())
+        self.assertEqual(comparison["schema_version"], 5)
         self.assertTrue(comparison["architecture"]["shared"])
         self.assertEqual(
             comparison["architecture"]["semantic_consultant"], unsw["semantic_consultant"]
+        )
+        for key in ("unsw_nb15", "ton_iot_aggregated"):
+            self.assertTrue(comparison["datasets"][key]["nothing_separated"])
+        self.assertEqual(comparison["datasets"]["unsw_nb15"]["highest_mean_rung"], "agaf")
+        self.assertEqual(
+            comparison["datasets"]["ton_iot_aggregated"]["highest_mean_rung"], "feedback"
         )
 
     def test_v2_oracle_contracts_declare_shared_architecture_and_evidence(self) -> None:
@@ -326,7 +344,10 @@ class CurrentResultsContractTest(unittest.TestCase):
         unsw = json.loads(UNSW_RESULTS_PATH.read_text())["results"]
         ton = json.loads(TON_RESULTS_PATH.read_text())["results"]
 
+        unsw_ms = json.loads(UNSW_RESULTS_PATH.read_text())["multi_seed"]["rungs"]
+        ton_ms = json.loads(TON_RESULTS_PATH.read_text())["multi_seed"]["rungs"]
         for name in ("gnn", "llm", "agaf", "feedback"):
+            # seed-42 single run == each contract's results block
             self.assertAlmostEqual(
                 comparison["datasets"]["unsw_nb15"]["macro_f1"][name],
                 unsw[name]["macro_f1"],
@@ -334,6 +355,15 @@ class CurrentResultsContractTest(unittest.TestCase):
             self.assertAlmostEqual(
                 comparison["datasets"]["ton_iot_aggregated"]["macro_f1"][name],
                 ton[name]["macro_f1"],
+            )
+            # 3-seed headline == each contract's multi_seed block
+            self.assertAlmostEqual(
+                comparison["datasets"]["unsw_nb15"]["macro_f1_3seed_mean"][name],
+                unsw_ms[name]["macro_f1_mean"],
+            )
+            self.assertAlmostEqual(
+                comparison["datasets"]["ton_iot_aggregated"]["macro_f1_3seed_mean"][name],
+                ton_ms[name]["macro_f1_mean"],
             )
 
 
