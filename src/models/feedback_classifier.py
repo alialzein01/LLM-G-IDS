@@ -212,6 +212,21 @@ class LiveCySecBERTScorer(nn.Module):
         self._misses = 0
 
 
+# Fallback initial temperature for `WhitenedPrototypeScorer`. The previous value,
+# 10.0, divided whitened cosines that span ~[-0.25, 0.76] down to a ~0.1-wide logit
+# range, leaving a softmax uniform to three decimals: mean max-probability 0.102
+# (UNSW) / 0.101 (ToN) against a uniform 0.100, and `mean_disagreement` pinned at
+# exactly 1 - 1/C = 0.900 in every fold of both datasets. Everything that ranks on
+# that softmax — the second-stage confidence gate and the injected advice vector —
+# was ranking noise.
+#
+# This is a FALLBACK, not a selected hyperparameter: every canonical training path
+# calls `calibrate_temperature` on its own fold's TRAIN-split cosines and overrides
+# it (0.110 UNSW / 0.030 ToN at fold 0). 0.08 is simply the coarse value that keeps
+# an uncalibrated scorer informative on both datasets rather than uniform.
+DEFAULT_PROTOTYPE_TEMPERATURE = 0.08
+
+
 class WhitenedPrototypeScorer(nn.Module):
     """Phase 4.3 — whitened cosine prototype scorer.
 
@@ -231,7 +246,7 @@ class WhitenedPrototypeScorer(nn.Module):
         self,
         num_classes: int,
         embed_dim: int = CYSECBERT_EMBED_DIM,
-        initial_log_temperature: float = math.log(10.0),
+        initial_log_temperature: float = math.log(DEFAULT_PROTOTYPE_TEMPERATURE),
     ) -> None:
         super().__init__()
         self.num_classes = num_classes
@@ -257,6 +272,44 @@ class WhitenedPrototypeScorer(nn.Module):
             self.mean.copy_(mean.to(self.mean.dtype))
             self.whitener.copy_(whitener.to(self.whitener.dtype))
             self.prototypes.copy_(prototypes.to(self.prototypes.dtype))
+
+    @torch.no_grad()
+    def calibrate_temperature(
+        self,
+        embeddings: torch.Tensor,
+        target_max_prob: float = 0.5,
+    ) -> float:
+        """Set the temperature so this fold's softmax carries usable confidence.
+
+        Bisects on T for the value at which the mean max-probability over
+        `embeddings` equals `target_max_prob`, and writes log(T) into every
+        class's `log_temperature`. The parameter stays learnable — this only
+        moves where learning starts, from a uniform softmax to one a gate can
+        rank.
+
+        `embeddings` must come from the fold's TRAIN split; the cosine spread is
+        a property of the data, so calibrating on test edges would leak.
+        Returns the calibrated T.
+        """
+        if not 0.0 < target_max_prob < 1.0:
+            raise ValueError(
+                f"target_max_prob must be in (0, 1), got {target_max_prob}"
+            )
+        cos = self.cosine(self.whiten(embeddings))
+
+        def mean_max_prob(t: float) -> float:
+            return float((cos / t).softmax(dim=-1).max(dim=-1).values.mean())
+
+        lo, hi = 1e-4, 1e2  # mean max-prob is monotonically decreasing in T
+        for _ in range(80):
+            mid = math.sqrt(lo * hi)
+            if mean_max_prob(mid) > target_max_prob:
+                lo = mid
+            else:
+                hi = mid
+        temperature = math.sqrt(lo * hi)
+        self.log_temperature.fill_(math.log(temperature))
+        return temperature
 
     def whiten(self, emb: torch.Tensor) -> torch.Tensor:
         return (emb - self.mean) @ self.whitener
@@ -782,8 +835,15 @@ class FeedbackLoopClassifier(nn.Module):
             nn.Linear(hidden_dim, num_classes),
         )
 
-    def load_fold_state(self, mean, whitener, prototypes) -> None:
+    def load_fold_state(
+        self, mean, whitener, prototypes, train_embeddings=None
+    ) -> None:
+        """Load the fold's whitener/prototypes, and — when the fold's TRAIN-split
+        embeddings are supplied — calibrate the consultant's temperature on them
+        so its softmax starts informative rather than uniform."""
         self.scorer.load_fold_state(mean, whitener, prototypes)
+        if train_embeddings is not None:
+            self.scorer.calibrate_temperature(train_embeddings)
 
     def _backbone_modules(self) -> list[nn.Module]:
         """The GAT baseline: everything that produces the graph-only logits.
