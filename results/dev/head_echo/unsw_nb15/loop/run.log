@@ -1,0 +1,80 @@
+top_k_percent=31.0 injection_scale=2.0 (source: multiseed_validation_sweep)
+Using trained LLM head logits from llm_head_logits.pt
+
+===== MODE: real =====
+    [real] fold 0 epoch   1 loss=0.2417 val_f1=0.8503
+    [real] fold 0 epoch  60 loss=0.0367 val_f1=0.8377
+    [real] fold 0 DONE best_val=0.8591 test=0.7945 iters=3 bias|.|=1.19e+00
+    [real] fold 1 epoch   1 loss=0.0723 val_f1=0.8215
+    [real] fold 1 epoch  60 loss=0.0072 val_f1=0.8214
+    [real] fold 1 DONE best_val=0.8230 test=0.7867 iters=3 bias|.|=1.61e+00
+    [real] fold 2 epoch   1 loss=0.0654 val_f1=0.7975
+    [real] fold 2 DONE best_val=0.8328 test=0.8184 iters=3 bias|.|=1.29e+00
+    [real] fold 3 epoch   1 loss=0.1201 val_f1=0.7954
+    [real] fold 3 DONE best_val=0.7954 test=0.8720 iters=3 bias|.|=1.15e+00
+    [real] fold 4 epoch   1 loss=0.1380 val_f1=0.7963
+    [real] fold 4 epoch  60 loss=0.0171 val_f1=0.8063
+    [real] fold 4 DONE best_val=0.8121 test=0.8892 iters=3 bias|.|=1.47e+00
+[real] pooled CV macro-F1 = 0.8351
+
+===== MODE: head_only =====
+    [head_only] fold 0 epoch   1 loss=1.1667 val_f1=0.0642
+    [head_only] fold 0 epoch  60 loss=0.3958 val_f1=0.6258
+    [head_only] fold 0 epoch 120 loss=0.2150 val_f1=0.7137
+    [head_only] fold 0 DONE best_val=0.7387 test=0.6658 iters=2
+    [head_only] fold 1 epoch   1 loss=1.1685 val_f1=0.0642
+    [head_only] fold 1 epoch  60 loss=0.3673 val_f1=0.5834
+    [head_only] fold 1 epoch 120 loss=0.1985 val_f1=0.6497
+    [head_only] fold 1 DONE best_val=0.7910 test=0.7578 iters=2
+    [head_only] fold 2 epoch   1 loss=1.1780 val_f1=0.0655
+    [head_only] fold 2 epoch  60 loss=0.3790 val_f1=0.7779
+    [head_only] fold 2 epoch 120 loss=0.1931 val_f1=0.7590
+    [head_only] fold 2 DONE best_val=0.8310 test=0.7199 iters=2
+    [head_only] fold 3 epoch   1 loss=1.1812 val_f1=0.0618
+    [head_only] fold 3 epoch  60 loss=0.3899 val_f1=0.6228
+    [head_only] fold 3 epoch 120 loss=0.2086 val_f1=0.6685
+    [head_only] fold 3 epoch 180 loss=0.1267 val_f1=0.7244
+    [head_only] fold 3 DONE best_val=0.7618 test=0.8196 iters=2
+    [head_only] fold 4 epoch   1 loss=1.2046 val_f1=0.0802
+    [head_only] fold 4 epoch  60 loss=0.3760 val_f1=0.6590
+    [head_only] fold 4 epoch 120 loss=0.1916 val_f1=0.6875
+    [head_only] fold 4 epoch 180 loss=0.1376 val_f1=0.7052
+    [head_only] fold 4 epoch 240 loss=0.1022 val_f1=0.7277
+    [head_only] fold 4 DONE best_val=0.7746 test=0.7892 iters=2
+[head_only] pooled CV macro-F1 = 0.7543
+
+===== MODE: random =====
+    [random] fold 0 epoch   1 loss=1.4109 val_f1=0.1278
+    [random] fold 0 epoch  60 loss=0.4200 val_f1=0.5244
+    [random] fold 0 epoch 120 loss=0.2222 val_f1=0.6572
+    [random] fold 0 DONE best_val=0.6928 test=0.5717 iters=3 bias|.|=1.59e+00
+    [random] fold 1 epoch   1 loss=1.6811 val_f1=0.0641
+    [random] fold 1 epoch  60 loss=0.3699 val_f1=0.4701
+    [random] fold 1 epoch 120 loss=0.1455 val_f1=0.5573
+    [random] fold 1 epoch 180 loss=0.0806 val_f1=0.6382
+    [random] fold 1 DONE best_val=0.7359 test=0.6674 iters=3 bias|.|=1.83e+00
+    [random] fold 2 epoch   1 loss=1.9260 val_f1=0.0790
+    [random] fold 2 epoch  60 loss=0.4536 val_f1=0.5627
+    [random] fold 2 epoch 120 loss=0.1577 val_f1=0.6544
+    [random] fold 2 epoch 180 loss=0.1199 val_f1=0.7127
+    [random] fold 2 DONE best_val=0.7315 test=0.6115 iters=3 bias|.|=1.65e+00
+    [random] fold 3 epoch   1 loss=1.6487 val_f1=0.1470
+    [random] fold 3 epoch  60 loss=0.3775 val_f1=0.4482
+    [random] fold 3 epoch 120 loss=0.1812 val_f1=0.5128
+    [random] fold 3 epoch 180 loss=0.0877 val_f1=0.6137
+    [random] fold 3 epoch 240 loss=0.0683 val_f1=0.6630
+    [random] fold 3 DONE best_val=0.7043 test=0.7094 iters=3 bias|.|=1.56e+00
+    [random] fold 4 epoch   1 loss=1.5980 val_f1=0.1453
+    [random] fold 4 epoch  60 loss=0.4007 val_f1=0.3823
+    [random] fold 4 epoch 120 loss=0.1877 val_f1=0.5319
+    [random] fold 4 epoch 180 loss=0.0849 val_f1=0.5758
+    [random] fold 4 epoch 240 loss=0.0544 val_f1=0.6918
+    [random] fold 4 epoch 300 loss=0.0338 val_f1=0.6885
+    [random] fold 4 DONE best_val=0.6953 test=0.7067 iters=3 bias|.|=1.86e+00
+[random] pooled CV macro-F1 = 0.6565
+
+=== SUMMARY ===
+  real       pooled CV macro-F1 = 0.8351
+  head_only  pooled CV macro-F1 = 0.7543
+  random     pooled CV macro-F1 = 0.6565
+  real - random: Δ=+0.1798 CI[+0.1380, +0.2240] P(>0)=1.000

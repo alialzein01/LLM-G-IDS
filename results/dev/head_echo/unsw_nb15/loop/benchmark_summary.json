@@ -1,0 +1,210 @@
+{
+  "dataset": "unsw_nb15",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "pooled_cv_macro_f1": 0.8350672771364336,
+  "pooled_cv_accuracy": 0.8871951219512195,
+  "pooled_cv_weighted_f1": 0.890589899005572,
+  "per_mode_pooled_macro_f1": {
+    "real": 0.8350672771364336,
+    "head_only": 0.7542650444992878,
+    "random": 0.6564624457551859
+  },
+  "per_mode_pooled_accuracy": {
+    "real": 0.8871951219512195,
+    "head_only": 0.8170731707317073,
+    "random": 0.760670731707317
+  },
+  "per_mode_pooled_weighted_f1": {
+    "real": 0.890589899005572,
+    "head_only": 0.8260103012372367,
+    "random": 0.7690871126647154
+  },
+  "mean_churn": 0.16478658393025397,
+  "mean_disagreement": 0.7994050145149231,
+  "per_mode_trace_summary": {
+    "real": {
+      "mean_churn": 0.16478658393025397,
+      "mean_disagreement": 0.7994050145149231,
+      "mean_flagged_overlap": 0.6457516392072041
+    },
+    "head_only": {
+      "mean_churn": 0.0,
+      "mean_disagreement": NaN,
+      "mean_flagged_overlap": NaN
+    },
+    "random": {
+      "mean_churn": 0.03993902448564768,
+      "mean_disagreement": 0.901804800828298,
+      "mean_flagged_overlap": 0.5405228912830353
+    }
+  },
+  "top_k_percent": 31.0,
+  "bias_confidence_fraction": 0.5,
+  "gate_mode": "confidence",
+  "effective_feedback_percent": 15.5,
+  "semantic_consultant": "trained_llm_head",
+  "trained_llm_head": true,
+  "use_output_fusion": true,
+  "injection_mode": "edge",
+  "injection_scale": 2.0,
+  "selector_head_loss_weight": 0.0,
+  "legacy_temperature": true,
+  "llm_access": "edge_injection_on_flagged_edges + output_fusion_on_all_edges",
+  "target_agaf": 0.7679707333515186,
+  "selected_config": {
+    "schema_version": 1,
+    "dataset": "unsw_nb15",
+    "source": "multiseed_validation_sweep",
+    "selection_uses_test_labels": false,
+    "selection_metric": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
+    "top_k_percent": 31.0,
+    "bias_confidence_fraction": 0.5,
+    "gate_mode": "confidence",
+    "effective_feedback_percent": 15.5,
+    "max_feedback_iterations": 3,
+    "churn_tolerance": 0.01,
+    "semantic_consultant": "whitened_prototype_scorer",
+    "trained_llm_head": false,
+    "selection_parameter": "top_k_percent+injection_scale",
+    "mean_validation_macro_f1": 0.8009,
+    "validation_macro_f1_std": 0.0071,
+    "pooled_oof_test_macro_f1": 0.7393181852683935,
+    "sweep_summary_path": "data/unsw_nb15/processed/step4_feedback/top_k_sweep/summary.json",
+    "injection_mode": "edge",
+    "injection_scale": 2.0,
+    "selection_seeds": [
+      42,
+      1,
+      2
+    ],
+    "active_condition": "A",
+    "active_condition_note": "Condition A \u2014 the knobs the contracts in results/*_current.json were measured under, and what a plain `train_feedback --dataset X` reproduces (SELECTOR_HEAD_LOSS_WEIGHT=0.0, legacy consultant temperature T=10).",
+    "condition_c": {
+      "note": "Condition C: knobs re-selected after the selector-head and consultant-temperature fixes. Reachable with --selector-head-loss-weight 1.0 --calibrate-temperature plus these knobs. Measured worse than A at 3 seeds (RESULTS_ARCHIVE 2026-09-06, Findings 1-3).",
+      "source": "multiseed_validation_sweep_v2_fixed_signals",
+      "top_k_percent": 35.0,
+      "injection_scale": 5.0,
+      "effective_feedback_percent": 17.5,
+      "mean_validation_macro_f1": 0.8009,
+      "validation_macro_f1_std": 0.0071,
+      "pooled_oof_test_macro_f1": 0.7393181852683935,
+      "reason_knobs_were_reselected": "top_k was selected against the entropy of an unsupervised selector head (1-2 of 10 classes with nonzero F1) and injection_scale against a uniform consultant softmax (mean_disagreement 0.900). Both signals changed.",
+      "selection_seeds": [
+        42,
+        1,
+        2
+      ],
+      "selection_curves": {
+        "top_k": {
+          "1": {
+            "15.0": 0.8163977330021362,
+            "16.0": 0.8128823766842401,
+            "17.0": 0.8107455673834683,
+            "18.0": 0.8137420971695108,
+            "19.0": 0.8076939869521021,
+            "20.0": 0.8034610431412483,
+            "21.0": 0.8080625783533198,
+            "22.0": 0.8012283764430995,
+            "23.0": 0.7954940536641232,
+            "24.0": 0.7978707230381394,
+            "25.0": 0.7884792918221987,
+            "26.0": 0.7850908656127896,
+            "27.0": 0.7966665018472252,
+            "28.0": 0.7989051124439248,
+            "29.0": 0.7934794092182328,
+            "30.0": 0.7931610051553052,
+            "31.0": 0.7999913918872101,
+            "32.0": 0.8064180851797019,
+            "33.0": 0.8015103779977875,
+            "34.0": 0.7973393414993415,
+            "35.0": 0.8153764858596538
+          },
+          "2": {
+            "15.0": 0.8021126000119431,
+            "16.0": 0.7927169427047904,
+            "17.0": 0.8055513785778284,
+            "18.0": 0.8073585009943864,
+            "19.0": 0.8118409852357147,
+            "20.0": 0.8026625758191216,
+            "21.0": 0.8094677604781977,
+            "22.0": 0.8065764320806995,
+            "23.0": 0.8060706695589845,
+            "24.0": 0.8075674863064044,
+            "25.0": 0.8123518552001465,
+            "26.0": 0.8058365873993776,
+            "27.0": 0.8030708405596221,
+            "28.0": 0.8107948167279128,
+            "29.0": 0.8031152543712718,
+            "30.0": 0.8115113633886398,
+            "31.0": 0.807577951202666,
+            "32.0": 0.8043838785020269,
+            "33.0": 0.8084682186108075,
+            "34.0": 0.8049887082092256,
+            "35.0": 0.7962443505814938
+          },
+          "42": {
+            "15.0": 0.8128925431519006,
+            "16.0": 0.816246195980052,
+            "17.0": 0.8035241964659068,
+            "18.0": 0.8014882177716907,
+            "19.0": 0.8036869274511268,
+            "20.0": 0.8141605200307301,
+            "21.0": 0.8149946363060465,
+            "22.0": 0.804557748924055,
+            "23.0": 0.8031725733064456,
+            "24.0": 0.8100625421858417,
+            "25.0": 0.8009516027713316,
+            "26.0": 0.8073720452575754,
+            "27.0": 0.8144390805864685,
+            "28.0": 0.8094339074271406,
+            "29.0": 0.8095083123939201,
+            "30.0": 0.8077428140608187,
+            "31.0": 0.8078268542851813,
+            "32.0": 0.8088870213917995,
+            "33.0": 0.8161668229060917,
+            "34.0": 0.8152706691644818,
+            "35.0": 0.8215107463913374
+          }
+        },
+        "injection_scale": {
+          "1": {
+            "0.5": 0.8073915337299675,
+            "1.0": 0.8091366103548223,
+            "2.0": 0.8153764858596538,
+            "5.0": 0.8188767132671672,
+            "10.0": 0.8178649498275249,
+            "20.0": 0.8154748133679446
+          },
+          "2": {
+            "0.5": 0.8131169855500973,
+            "1.0": 0.8061692167898338,
+            "2.0": 0.7962443505814938,
+            "5.0": 0.8228620108840026,
+            "10.0": 0.7963458529916557,
+            "20.0": 0.8028039805267108
+          },
+          "42": {
+            "0.5": 0.8059060291276838,
+            "1.0": 0.8105327377223096,
+            "2.0": 0.8215107463913374,
+            "5.0": 0.8221206647797528,
+            "10.0": 0.8267638153178181,
+            "20.0": 0.8288665630177215
+          }
+        }
+      }
+    }
+  }
+}

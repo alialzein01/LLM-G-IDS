@@ -1,0 +1,20 @@
+{
+  "unsw_nb15": {
+    "macro_f1_eval_classes": 0.8330803709964035,
+    "n_eval_classes": 10,
+    "accuracy_all_edges": 0.8810975551605225,
+    "accuracy_eval_class_edges": 0.8810975551605225,
+    "macro_f1_reported_in_metrics_json": 0.8330803709964035,
+    "accuracy_reported": 0.8810975609756098,
+    "gnn_emb": "edge_embeddings_oof.pt"
+  },
+  "ton_iot": {
+    "macro_f1_eval_classes": 0.5140964250159155,
+    "n_eval_classes": 8,
+    "accuracy_all_edges": 0.9139633178710938,
+    "accuracy_eval_class_edges": 0.9160377383232117,
+    "macro_f1_reported_in_metrics_json": 0.4532371043908496,
+    "accuracy_reported": 0.9139633286318759,
+    "gnn_emb": "edge_embeddings_oof.pt"
+  }
+}

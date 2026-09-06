@@ -20,3 +20,15 @@ PROJECT_NOTES.md
 results/**/train.log
 results/multiseed*/**/metrics.json
 results/knob_selection_v2/**/metrics.json
+
+# Dev runs keep their small evidence (benchmark/ablation/diagnostics/predictions
+# and the feedback OOF tensors); the bulky per-epoch and per-edge dumps a fusion
+# run writes stay local. `metrics_slim.json` is the committed stand-in for
+# `metrics.json`.
+results/dev/**/training_history.json
+results/dev/**/metrics.json
+results/dev/**/model.pt
+results/dev/**/scalers.pt
+results/dev/**/edge_embeddings.pt
+results/dev/**/gate_weights.pt
+results/dev/**/feature_attention_weights.pt
