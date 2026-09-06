@@ -6,6 +6,7 @@ import torch
 
 from src.models.feedback_classifier import UncertaintySelector
 from src.pipeline.step4.train_feedback import (
+
     BIAS_CONFIDENCE_FRAC,
     DEFAULT_GATE_MODE,
     TOP_K_PERCENT,
@@ -14,21 +15,26 @@ from src.pipeline.step4.train_feedback import (
 )
 
 
+# These tests predate injection_scale being a required, config-resolved knob and
+# assert nothing about it. Pin the value _build_model used to default to, so they
+# keep testing exactly what they tested before.
+LEGACY_SCALE = 10.0
+
 class FeedbackDefaultsTest(unittest.TestCase):
     def test_validation_selected_entropy_percentage_is_default(self) -> None:
         self.assertEqual(TOP_K_PERCENT, 16.0)
-        self.assertEqual(_build_model().selector.top_k_percent, 16.0)
+        self.assertEqual(_build_model(injection_scale=LEGACY_SCALE).selector.top_k_percent, 16.0)
         self.assertEqual(UncertaintySelector().top_k_percent, 16.0)
-        self.assertEqual(_build_model().gate_mode, "confidence")
+        self.assertEqual(_build_model(injection_scale=LEGACY_SCALE).gate_mode, "confidence")
         self.assertEqual(DEFAULT_GATE_MODE, "confidence")
 
     def test_build_model_rejects_invalid_confidence_fraction(self) -> None:
         with self.assertRaises(ValueError):
-            _build_model(bias_confidence_fraction=0.0)
+            _build_model(bias_confidence_fraction=0.0, injection_scale=LEGACY_SCALE)
 
     def test_build_model_rejects_invalid_gate_mode(self) -> None:
         with self.assertRaises(ValueError):
-            _build_model(gate_mode="invalid")
+            _build_model(gate_mode="invalid", injection_scale=LEGACY_SCALE)
 
     def test_gate_modes_rank_flagged_edges(self) -> None:
         flagged = torch.arange(4)
@@ -44,6 +50,7 @@ class FeedbackDefaultsTest(unittest.TestCase):
         gnn_probs = torch.tensor([[0.8, 0.1, 0.1]]).repeat(4, 1)
 
         confidence_model = _build_model(
+            injection_scale=LEGACY_SCALE,
             bias_confidence_fraction=0.5, gate_mode="confidence"
         )
         old_confidence = semantic_logits[flagged].softmax(dim=-1).max(dim=-1).values
@@ -58,9 +65,10 @@ class FeedbackDefaultsTest(unittest.TestCase):
         )
 
         disagreement_model = _build_model(
+            injection_scale=LEGACY_SCALE,
             bias_confidence_fraction=0.5, gate_mode="disagreement"
         )
-        both_model = _build_model(bias_confidence_fraction=0.5, gate_mode="both")
+        both_model = _build_model(bias_confidence_fraction=0.5, gate_mode="both", injection_scale=LEGACY_SCALE)
         self.assertEqual(
             set(disagreement_model._gate_flagged(
                 flagged, semantic_logits, gnn_probs
@@ -117,6 +125,7 @@ class FeedbackDefaultsTest(unittest.TestCase):
             max_iterations=2,
             use_output_fusion=False,
             injection_mode="edge",
+            injection_scale=LEGACY_SCALE,
         ).eval()
         x = torch.randn(4, 10)
         edge_index = torch.tensor(

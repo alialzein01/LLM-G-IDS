@@ -50,10 +50,52 @@ RUNGS = ("gnn", "agaf", "loop")
 COMPARISONS = (("loop", "agaf"), ("loop", "gnn"), ("agaf", "gnn"))
 
 
-def _load_seed_preds(dataset: str, seed: int) -> dict[str, np.ndarray]:
+# Knobs that must agree across the seeds being pooled. They are read from each
+# capture's own benchmark_summary.json — the value the run recorded, not the value a
+# config file claims — because that is exactly where the two diverged in the sweep
+# behind results/multiseed_ladder.json.
+PINNED_KNOBS = ("injection_scale", "top_k_percent")
+
+
+def _capture_dir(dataset: str, seed: int, capture_root: Path | None = None) -> Path:
+    return (capture_root or CAPTURE_ROOT) / f"{dataset}_seed{seed}"
+
+
+def _load_seed_knobs(dataset: str, seed: int, capture_root: Path | None = None) -> dict:
+    """The knobs one capture actually ran at, or None where it did not record them."""
+    path = _capture_dir(dataset, seed, capture_root) / "benchmark_summary.json"
+    if not path.exists():
+        return {k: None for k in PINNED_KNOBS}
+    payload = json.loads(path.read_text())
+    return {k: payload.get(k) for k in PINNED_KNOBS}
+
+
+def _verify_knobs(dataset: str, seeds, capture_root: Path | None = None) -> dict:
+    per_seed = {s: _load_seed_knobs(dataset, s, capture_root) for s in seeds}
+    resolved: dict = {}
+    for knob in PINNED_KNOBS:
+        values = {s: v[knob] for s, v in per_seed.items()}
+        distinct = {v for v in values.values() if v is not None}
+        if len(distinct) > 1:
+            raise RuntimeError(
+                f"[{dataset}] cannot pool seeds that ran at different {knob}: "
+                + ", ".join(f"seed {s}={values[s]}" for s in sorted(values))
+                + ". Re-run the disagreeing seeds at one value."
+            )
+        resolved[knob] = next(iter(distinct)) if distinct else None
+    resolved["verified"] = all(
+        all(v[k] is not None for k in PINNED_KNOBS) for v in per_seed.values()
+    )
+    resolved["per_seed"] = {str(s): per_seed[s] for s in seeds}
+    return resolved
+
+
+def _load_seed_preds(
+    dataset: str, seed: int, capture_root: Path | None = None
+) -> dict[str, np.ndarray]:
     """Predictions for one dataset at one training seed, scored the ladder's way."""
     config = get_dataset_config(dataset)
-    d = CAPTURE_ROOT / f"{dataset}_seed{seed}"
+    d = _capture_dir(dataset, seed, capture_root)
     if not d.is_dir():
         raise FileNotFoundError(f"missing capture directory {d}")
 
@@ -139,19 +181,25 @@ def _seed_matched_bootstrap(
     }
 
 
-def aggregate(dataset: str, seeds=SEEDS) -> dict:
+def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> dict:
     config = get_dataset_config(dataset)
     data = torch.load(config.graph_path, weights_only=False)
     labels = data.edge_label.cpu().numpy()
 
-    per_seed = {s: _load_seed_preds(dataset, s) for s in seeds}
+    knobs = _verify_knobs(dataset, seeds, capture_root)
+    per_seed = {s: _load_seed_preds(dataset, s, capture_root) for s in seeds}
     scores = {
         rung: {s: eval_macro_f1(labels, per_seed[s][rung], config.eval_classes) for s in seeds}
         for rung in RUNGS
     }
 
+    # Only `llm_alone_prototype` is read from the ladder summary. That rung is an
+    # argmax over the frozen prototype scorer, so it is invariant to both the training
+    # seed and the consultant temperature — nothing else in that file is trusted here.
     llm = json.loads(
-        (CAPTURE_ROOT / f"{dataset}_seed{seeds[0]}" / "ladder_summary.json").read_text()
+        (
+            _capture_dir(dataset, seeds[0], capture_root) / "ladder_summary.json"
+        ).read_text()
     )["llm_alone_prototype"]
 
     per_rung = {
@@ -195,6 +243,8 @@ def aggregate(dataset: str, seeds=SEEDS) -> dict:
         "metric": "pooled_oof_macro_f1",
         "n_eval_classes": len(config.eval_classes),
         "seeds": list(seeds),
+        "capture_root": str(capture_root or CAPTURE_ROOT),
+        "feedback_configuration": knobs,
         "protocol": (
             "Fold partition held fixed at the seed-42 stratified split; only training "
             "seeds vary. The pooled OOF edge set is therefore identical across seeds, "
@@ -211,14 +261,28 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--datasets", nargs="+", default=sorted(DATASETS))
     parser.add_argument("--output", default="results/multiseed_ladder.json")
+    parser.add_argument(
+        "--capture-root", default=None,
+        help="Directory holding the per-seed captures (default: results/multiseed).",
+    )
+    parser.add_argument("--seeds", nargs="+", type=int, default=list(SEEDS))
     args = parser.parse_args()
 
-    out = {d: aggregate(d) for d in args.datasets}
+    capture_root = Path(args.capture_root) if args.capture_root else None
+    out = {
+        d: aggregate(d, seeds=tuple(args.seeds), capture_root=capture_root)
+        for d in args.datasets
+    }
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(out, indent=2) + "\n")
 
     for d, r in out.items():
         print(f"\n=== {r['dataset']} ({r['n_eval_classes']} classes) ===")
+        k = r["feedback_configuration"]
+        print(
+            f"  knobs: top_k={k['top_k_percent']} injection_scale={k['injection_scale']}"
+            f" verified={k['verified']}"
+        )
         for rung, v in r["rungs"].items():
             per = "  ".join(f"{s}:{x:.4f}" for s, x in v["per_seed"].items())
             print(f"  {rung:<5} mean {v['mean']:.4f} +/- {v['std']:.4f}   [{per}]")

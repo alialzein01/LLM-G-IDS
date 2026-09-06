@@ -1,4 +1,42 @@
 {
+  "validity": {
+    "status": "partially_invalid",
+    "recorded": "2026-09-06",
+    "summary": "The sweep that produced this file invoked train_feedback without --injection-scale. At that commit the flag was a plain argparse default of 10.0 that selected_feedback_config.json could not override, so the loop rung ran at injection_scale=10.0 on BOTH datasets instead of the selected 2.0 (UNSW) / 20.0 (ToN). The canonical Aug-27 run used the correct per-dataset scales.",
+    "evidence": [
+      "data/*/processed/step4_feedback/benchmark_summary.json records injection_scale 10.0 beside a selected_config block reading 2.0 / 20.0",
+      "backups/pre_multiseed/*.tar.gz holds the Aug-27 benchmark_summary.json at 2.0 / 20.0",
+      "src/pipeline/step4/train_feedback.py at 5bc37e4 resolved only top_k_percent and bias_confidence_fraction from the selected config"
+    ],
+    "injection_scale_that_ran": {
+      "unsw_nb15": 10.0,
+      "ton_iot": 10.0
+    },
+    "injection_scale_selected": {
+      "unsw_nb15": 2.0,
+      "ton_iot": 20.0
+    },
+    "invalid_rungs": [
+      "loop"
+    ],
+    "valid_rungs": [
+      "gnn",
+      "llm",
+      "agaf"
+    ],
+    "invalid_comparisons": [
+      "loop_vs_agaf",
+      "loop_vs_gnn"
+    ],
+    "valid_comparisons": [
+      "agaf_vs_gnn"
+    ],
+    "withdrawn_claims": [
+      "'AGAF is above the loop at all three seeds on UNSW' \u2014 the loop side ran at the wrong scale, so the comparison is not established either way."
+    ],
+    "superseded_by": "results/multiseed_ladder_v2_<condition>.json",
+    "do_not_delete": "Kept as the record of what was run. The trap it exposed is closed in feedback_config.resolve_injection_scale; aggregate_multiseed now pins the knobs per capture and refuses to pool runs that disagree."
+  },
   "ton_iot": {
     "schema_version": 1,
     "dataset": "NF-ToN-IoT",

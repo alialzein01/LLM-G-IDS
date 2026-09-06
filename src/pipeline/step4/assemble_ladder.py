@@ -108,6 +108,18 @@ def assemble_ladder(
     gate_mode = feedback_benchmark.get(
         "gate_mode", feedback_config.get("gate_mode", "confidence")
     )
+    # Report the knobs the run ACTUALLY used, read from the benchmark the feedback
+    # stage wrote, not the config it may have drifted from. The 3-seed sweep behind
+    # results/multiseed_ladder.json ran at injection_scale 10.0 while the config beside
+    # it said 2.0 / 20.0, and the ladder reported the config's value.
+    ran_injection_scale = feedback_benchmark.get("injection_scale")
+    ran_injection_mode = feedback_benchmark.get(
+        "injection_mode", feedback_config.get("injection_mode")
+    )
+    ran_top_k = feedback_benchmark.get("top_k_percent", top_k_percent)
+    configuration_source = (
+        "benchmark_summary.json" if feedback_benchmark else "selected_feedback_config.json"
+    )
 
     data = torch.load(config.graph_path, weights_only=False)
     labels = data.edge_label
@@ -211,13 +223,20 @@ def assemble_ladder(
         "bootstraps": bootstraps,
         "ladder_order_holds": bool(ladder_ok),
         "configuration": {
-            "top_k_percent": top_k_percent,
+            "configuration_source": configuration_source,
+            "top_k_percent": ran_top_k,
+            "top_k_percent_selected": top_k_percent,
+            "injection_scale": ran_injection_scale,
+            "selector_head_loss_weight": feedback_benchmark.get(
+                "selector_head_loss_weight"
+            ),
+            "legacy_temperature": feedback_benchmark.get("legacy_temperature"),
             "bias_confidence_fraction": confidence_fraction,
             "gate_mode": gate_mode,
             "effective_feedback_percent": top_k_percent * confidence_fraction,
             "semantic_consultant": llm_head_used,
             "trained_llm_head": use_llm_head,
-            "injection_mode": (feedback_config or {}).get("injection_mode"),
+            "injection_mode": ran_injection_mode,
             "selected_feedback_config": feedback_config,
         },
     }
