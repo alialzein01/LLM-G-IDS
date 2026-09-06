@@ -99,6 +99,49 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertNotIn("multi_seed_caveat", payload)
         self.assertIn("multi_seed_caveat", payload["supersedes"])
 
+    def test_on_disk_selected_config_matches_the_contract(self) -> None:
+        """The knobs a bare `train_feedback --dataset X` will pick up must be the
+        knobs the contract was measured under. This drifted once: the selected
+        configs were overwritten with the condition-C re-selection while the
+        contracts still described condition A, so the default run silently stopped
+        reproducing them."""
+        for path, contract in (
+            (UNSW_RESULTS_PATH, "unsw_nb15"),
+            (TON_RESULTS_PATH, "ton_iot"),
+        ):
+            cfg = json.loads(path.read_text())["configuration"]
+            # `data/` is gitignored, so on a fresh clone there is nothing to
+            # check against -- the drift this guards is local, not committed.
+            selected_path = Path(
+                f"data/{contract}/processed/step4_feedback/"
+                "selected_feedback_config.json"
+            )
+            if not selected_path.exists():
+                self.skipTest(f"{selected_path} not present (data/ is gitignored)")
+            selected = json.loads(selected_path.read_text())
+            for key in ("top_k_percent", "injection_scale",
+                        "bias_confidence_fraction", "max_feedback_iterations",
+                        "churn_tolerance"):
+                contract_key = {
+                    "bias_confidence_fraction": "semantic_confidence_fraction"
+                }.get(key, key)
+                self.assertEqual(
+                    selected[key], cfg[contract_key],
+                    f"{contract}: selected_feedback_config {key}={selected[key]} "
+                    f"but the contract says {cfg[contract_key]}",
+                )
+            self.assertEqual(selected["semantic_consultant"],
+                             "whitened_prototype_scorer")
+            self.assertFalse(selected["trained_llm_head"])
+
+    def test_condition_a_is_the_code_default(self) -> None:
+        """Restoring the config alone is not enough -- the two signal knobs live in
+        code, and their defaults are what a bare run actually uses."""
+        from src.pipeline.step4 import train_feedback as tf
+
+        self.assertEqual(tf.SELECTOR_HEAD_LOSS_WEIGHT, 0.0)
+        self.assertTrue(tf.DEFAULT_LEGACY_TEMPERATURE)
+
     def test_reproduction_uses_authoritative_manifest(self) -> None:
         payload = json.loads(UNSW_RESULTS_PATH.read_text())
         expected = load_expected_ladder()
