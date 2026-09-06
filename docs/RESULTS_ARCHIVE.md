@@ -520,6 +520,38 @@ Selected: UNSW k 31→35, scale 2.0→5.0; ToN k 25→21, scale 20.0→10.0. Ful
 each dataset's `selected_feedback_config.json` under `selection_curves`, and in
 `results/knob_selection_v2/`.
 
+### Finding 3 — the canonical mechanism was effectively switched off; the fixes switched it on
+
+`bias_diagnostics.flagged_bias_absmean` — the mean magnitude actually added to the
+39-wide focused edge vector (Z-scored features, std ≈ 1) on flagged edges, mean over
+folds, per seed:
+
+| | UNSW | ToN |
+|---|---|---|
+| A legacy (canonical) | 0.077 / 0.060 / 0.061 | 0.023 / 0.021 / 0.023 |
+| B fixed, same knobs | 1.228 / 1.171 / 1.218 (**~17×**) | 2.796 / 2.854 / 2.762 (**~125×**) |
+| C fixed, re-selected | 1.103 / 1.100 / 1.158 | 2.845 / 2.893 / 2.992 |
+
+Two consequences:
+
+1. **In the canonical run the advice was ~0.02–0.08 on unit-variance features.** The
+   mechanism was inert in effect, not just in the attention variant. This is the concrete
+   form of Gate 0's "the prototype consultant captures ≈0% of the oracle's headroom": the
+   loop's edge over `head_only` was late fusion, and the canonical ladder never actually
+   tested feedback. Calibrating the temperature is what turned it on.
+2. **`injection_scale` is nearly redundant with the learned `log_bias_strength` and
+   projection.** C moved the scale 2.0→5.0 (UNSW) and 20.0→10.0 (ToN), yet the end-to-end
+   magnitude stayed ~1.1 / ~2.9. The model sets its own effective magnitude. That is why
+   the scale curves were flat and why re-selecting the scale is not a lever. Any future
+   sweep should treat the scale as a fixed constant and, if magnitude matters, constrain
+   `log_bias_strength` instead.
+
+Read together with Findings 1–2: switching a weak consultant ON at the edges the GNN is
+genuinely unsure about does not produce a separable gain. The remaining untried lever is
+content-dependence — making the advice depend on the GNN's current top-2 (plan Task 5) so
+the 10-way weak consultant is asked a 2-way question.
+
+
 ### Per-class F1, condition C vs AGAF (mean over 3 seeds)
 
 The classes the loop was previously losing did NOT recover relative to AGAF:
