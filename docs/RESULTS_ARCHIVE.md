@@ -450,3 +450,115 @@ alignment, no-regret floor, gate-entropy, head output-gate).
 
 Fusion-mechanism comparisons on the ToN graph are **not resolvable** anyway — rare classes have
 12–35 edges and seed variance (~0.11) exceeds every between-mechanism gap.
+
+---
+
+## 2026-09-06 — Fixing the loop's two signals: a negative result, and a knob artefact
+
+Three conditions, feedback stage only, seeds 42/1/2, both datasets, fold partition fixed.
+The GNN/AGAF/LLM rungs are reused from the seed-matched captures in `results/multiseed/`
+(neither fix touches them; the LLM rung is an argmax, invariant to the temperature).
+Aggregates: `results/multiseed_ladder_v2_{legacy,fixed,fixed_reselected}.json`.
+Runner: `scripts/run_multiseed_feedback.sh`. Selection: `scripts/reselect_knobs.sh`.
+
+- **A `legacy`** — `--selector-head-loss-weight 0.0 --legacy-temperature`, i.e. both
+  pre-fix defects, at the correct per-dataset scales (2.0 / 20.0).
+- **B `fixed`** — Tasks 1+2, same scales. A vs B isolates the two signal fixes.
+- **C `fixed_reselected`** — Tasks 1+2 at re-selected knobs. B vs C isolates the
+  re-selection.
+
+### Pooled OOF macro-F1, mean over 3 seeds
+
+| dataset | rung | A legacy | B fixed | C reselected |
+|---|---|---:|---:|---:|
+| UNSW | loop | 0.7644 | 0.7610 | 0.7809 |
+| UNSW | agaf | 0.7793 | 0.7793 | 0.7793 |
+| UNSW | gnn  | 0.7437 | 0.7437 | 0.7437 |
+| ToN  | loop | 0.4521 | 0.4147 | 0.4630 |
+| ToN  | agaf | 0.4102 | 0.4102 | 0.4102 |
+| ToN  | gnn  | 0.4336 | 0.4336 | 0.4336 |
+
+`loop_vs_agaf`, two-level CI (edges + training seed):
+
+| dataset | A legacy | B fixed | C reselected |
+|---|---|---|---|
+| UNSW | +0.0156 below, [−0.0552, +0.0268] | −0.0192, [−0.0594, +0.0197] | +0.0008, [−0.0464, +0.0447] |
+| ToN  | +0.0428, [−0.0316, +0.1105] | +0.0060, [−0.0667, +0.0739] | +0.0527, [−0.0118, +0.1194] |
+
+**Decision rule (fixed in advance): the loop is NOT SEPARATED from AGAF on either
+dataset in any of the three conditions.** Every CI includes zero. C has the highest
+point estimate on both datasets; that is not a separation.
+
+### Finding 1 — fixing the two signals made the loop WORSE
+
+Both defects were removed and verified in `bias_diagnostics`:
+
+| dataset | selector-head macro-F1 A→B | mean_disagreement A→B | consultant max-prob A→B | T A→B |
+|---|---|---|---|---|
+| UNSW | 0.019–0.036 → 0.646–0.684 | 0.8975 → 0.524–0.548 | 0.102 → 0.487 | ~9.4 → 0.105 |
+| ToN  | 0.029–0.065 → 0.293–0.333 | 0.8988 → 0.580–0.638 | 0.101 → 0.500 | ~9.5 → 0.030 |
+
+And the loop went DOWN: UNSW 0.7644 → 0.7610 (−0.0034), ToN 0.4521 → 0.4147 (−0.0374).
+A better-calibrated consultant and a genuinely uncertainty-ranked selector do not help
+this mechanism. This is consistent with Gate 0 (§2.4): the binding constraint is
+consultant quality, and sharpening a consultant that is wrong concentrates its error.
+
+**Do not re-derive "fix the selector head / the temperature and the loop improves". It
+was measured at 3 seeds and it is false.**
+
+### Finding 2 — the recovery in C is a knob artefact, not a tuned improvement
+
+C beats B on both datasets, but the validation curves it selected from are flat:
+
+- UNSW `top_k` over 15..35 spans 0.7994–0.8110 (range 0.0116); selected 35 — **on the
+  boundary of the swept range**, so the sweep cannot say whether the optimum lies outside.
+- ToN `top_k` spans 0.4710–0.5072 (range 0.0362); selected 21.
+- Both ranges are smaller than the rungs' own seed-to-seed spread, so the argmax is not
+  distinguishable from its neighbours.
+
+Selected: UNSW k 31→35, scale 2.0→5.0; ToN k 25→21, scale 20.0→10.0. Full curves are in
+each dataset's `selected_feedback_config.json` under `selection_curves`, and in
+`results/knob_selection_v2/`.
+
+### Per-class F1, condition C vs AGAF (mean over 3 seeds)
+
+The classes the loop was previously losing did NOT recover relative to AGAF:
+
+| UNSW class | AGAF | loop B | loop C | C−AGAF |
+|---|---:|---:|---:|---:|
+| Analysis | 0.589 | 0.504 | 0.519 | −0.070 |
+| Fuzzers | 0.733 | 0.652 | 0.676 | −0.057 |
+| Shellcode | 0.943 | 0.883 | 0.898 | −0.045 |
+| Generic | 0.541 | 0.630 | 0.682 | **+0.141** |
+
+| ToN class | AGAF | loop B | loop C | C−AGAF |
+|---|---:|---:|---:|---:|
+| password | 0.295 | 0.192 | 0.209 | −0.086 |
+| scanning | 0.278 | 0.171 | 0.229 | −0.049 |
+| mitm | 0.708 | 0.833 | 0.893 | **+0.185** |
+| xss | 0.084 | 0.232 | 0.254 | **+0.170** |
+
+UNSW Fuzzers/Analysis and ToN password/scanning — the four classes the diagnosis
+predicted the semantic branch should rescue — remain the loop's worst deficits against
+AGAF in every condition. The loop's macro-F1 gains come from elsewhere (Generic, mitm,
+xss). **The mechanism is not helping where the story says it should.**
+
+### `head_only` is untouched by both fixes
+
+Bit-identical OOF logits (`torch.equal`) and identical pooled macro-F1 between A and B
+across all six (dataset, seed) pairs — the selector loss is skipped in `head_only`, and
+the scorer is never consulted there, so neither the RNG stream nor the output moves.
+
+### The injection_scale trap (see also the `validity` block in `results/multiseed_ladder.json`)
+
+`train_feedback` resolved `top_k_percent` and `bias_confidence_fraction` from
+`selected_feedback_config.json` but not `injection_scale`, which was an argparse default
+of 10.0 the config could not override. The 3-seed sweep of 2026-09-06 omitted the flag,
+so **every loop number in `results/multiseed_ladder.json` ran at 10.0 on both datasets**
+instead of 2.0 / 20.0. GNN/LLM/AGAF are unaffected. At the correct scale the legacy loop
+is ToN 0.4521 (not 0.4430) and its `loop_vs_agaf` sign is stable across seeds (v1 said
+otherwise), so the withdrawn v1 numbers were wrong in value and in sign stability.
+Closed at four points: `resolve_injection_scale` raises rather than defaulting;
+`_build_model`/`_train_one_fold` require the value; `assemble_ladder` reports the knobs
+that RAN from `benchmark_summary.json`; `aggregate_multiseed` pins per-capture knobs and
+refuses to pool seeds that disagree.

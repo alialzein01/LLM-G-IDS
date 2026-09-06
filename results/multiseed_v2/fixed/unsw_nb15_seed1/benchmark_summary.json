@@ -1,0 +1,88 @@
+{
+  "dataset": "unsw_nb15",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "pooled_cv_macro_f1": 0.7666528528239095,
+  "pooled_cv_accuracy": 0.8307926829268293,
+  "pooled_cv_weighted_f1": 0.838373732653922,
+  "per_mode_pooled_macro_f1": {
+    "real": 0.7666528528239095,
+    "random": 0.6893852876042643,
+    "head_only": 0.7336333495375191
+  },
+  "per_mode_pooled_accuracy": {
+    "real": 0.8307926829268293,
+    "random": 0.7789634146341463,
+    "head_only": 0.8064024390243902
+  },
+  "per_mode_pooled_weighted_f1": {
+    "real": 0.838373732653922,
+    "random": 0.7889319459922205,
+    "head_only": 0.8159738105871945
+  },
+  "mean_churn": 0.07469512170387639,
+  "mean_disagreement": 0.6038504519632885,
+  "per_mode_trace_summary": {
+    "real": {
+      "mean_churn": 0.07469512170387639,
+      "mean_disagreement": 0.6038504519632885,
+      "mean_flagged_overlap": 0.3130252156406641
+    },
+    "random": {
+      "mean_churn": 0.04070121981203556,
+      "mean_disagreement": 0.9025013645490011,
+      "mean_flagged_overlap": 0.5398692826430003
+    },
+    "head_only": {
+      "mean_churn": 0.0,
+      "mean_disagreement": NaN,
+      "mean_flagged_overlap": NaN
+    }
+  },
+  "top_k_percent": 31.0,
+  "bias_confidence_fraction": 0.5,
+  "gate_mode": "confidence",
+  "effective_feedback_percent": 15.5,
+  "semantic_consultant": "whitened_prototype_scorer",
+  "trained_llm_head": false,
+  "use_output_fusion": true,
+  "injection_mode": "edge",
+  "injection_scale": 2.0,
+  "selector_head_loss_weight": 1.0,
+  "legacy_temperature": false,
+  "llm_access": "edge_injection_on_flagged_edges + output_fusion_on_all_edges",
+  "target_agaf": 0.7679707333515186,
+  "selected_config": {
+    "schema_version": 1,
+    "dataset": "unsw_nb15",
+    "source": "multiseed_validation_sweep",
+    "selection_uses_test_labels": false,
+    "selection_metric": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
+    "top_k_percent": 31.0,
+    "bias_confidence_fraction": 0.5,
+    "gate_mode": "confidence",
+    "effective_feedback_percent": 15.5,
+    "max_feedback_iterations": 3,
+    "churn_tolerance": 0.01,
+    "semantic_consultant": "whitened_prototype_scorer",
+    "trained_llm_head": false,
+    "selection_parameter": "top_k_percent",
+    "mean_validation_macro_f1": 0.8009,
+    "validation_macro_f1_std": 0.0071,
+    "pooled_oof_test_macro_f1": 0.7393181852683935,
+    "sweep_summary_path": "data/unsw_nb15/processed/step4_feedback/top_k_sweep/summary.json",
+    "injection_mode": "edge",
+    "injection_scale": 2.0
+  }
+}
