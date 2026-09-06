@@ -16,3 +16,7 @@ todo.md
 .ruff_cache/
 .mypy_cache/
 PROJECT_NOTES.md
+# per-run training logs from the multi-seed sweeps; the JSON/pt captures are the evidence
+results/**/train.log
+results/multiseed*/**/metrics.json
+results/knob_selection_v2/**/metrics.json
