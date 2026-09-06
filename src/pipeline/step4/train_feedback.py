@@ -275,7 +275,8 @@ def _train_one_fold(
         data=data,
     )
     model.load_fold_state(
-        fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"]
+        fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"],
+        train_embeddings=emb[fold["train_mask"]],
     )
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
@@ -411,6 +412,17 @@ def _train_one_fold(
             flagged = model._gate_flagged(flagged, semantic, probs)
             full_bias = bm(semantic[flagged], flagged, data.edge_index.shape[1])
             fb = full_bias[flagged]
+            # Consultant confidence. `consultant_mean_max_prob` is over all edges;
+            # `mean_disagreement` is 1 - p_consultant[GNN's class] over the
+            # entropy-flagged candidates, the same population the trace reports,
+            # so the two are directly comparable.
+            consultant_max_prob = float(
+                semantic.softmax(dim=-1).max(dim=-1).values.mean()
+            )
+            mean_disagreement, _ = model._gate_diagnostics(
+                model.selector(probs).nonzero(as_tuple=False).squeeze(-1),
+                semantic, probs,
+            )
             bias_diag = {
                 "learned_bias_strength": float(bm.log_bias_strength.exp()),
                 "projection_weight_absmean": float(bm.projection.weight.abs().mean()),
@@ -421,6 +433,11 @@ def _train_one_fold(
                 "iterations_run": len(trace),
                 "final_churn": trace[-1]["churn"] if trace else float("nan"),
                 "selector_head_macro_f1": selector_head_f1,
+                "consultant_mean_max_prob": consultant_max_prob,
+                "mean_disagreement": mean_disagreement,
+                "consultant_temperature": float(
+                    model.scorer.log_temperature.exp().mean()
+                ),
             }
     print(
         f"    [{mode}] fold {fold_idx} DONE best_val={best_val_f1:.4f} "
@@ -531,7 +548,10 @@ def _train_one_fold_frozen(
     Returns (gnn_alone_logits, frozen_feedback_logits), both full-graph."""
     _set_seed(SEED + fold_idx)
     model = _build_model(data=data, gate_mode=gate_mode)
-    model.load_fold_state(fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"])
+    model.load_fold_state(
+        fold_state["mean"], fold_state["whitener"], fold_state["prototypes_whitened"],
+        train_embeddings=emb[fold["train_mask"]],
+    )
     labels = data.edge_label
     criterion = FocalLoss(alpha=get_class_weights(labels, fold["train_mask"]), gamma=2.0)
 
