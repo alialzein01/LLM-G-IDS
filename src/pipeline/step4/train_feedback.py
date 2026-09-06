@@ -39,10 +39,13 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.feedback_classifier import (
+    ADVICE_RELIABILITY_MODES,
     FEEDBACK_MODES,
+    FUSION_BLOCKS,
     GATE_MODES,
     FeedbackLoopClassifier,
     WhitenedPrototypeScorer,
+    consultant_reliability,
 )
 from src.models.gnn_classifier import VARIANT_NAMES
 from src.pipeline.common.datasets import DATASETS, get_dataset_config
@@ -206,6 +209,8 @@ def _build_model(
     bias_init: str | None = None,
     injection_mode: str = "edge",
     injection_scale: float | None = None,
+    advice_reliability: str = "off",
+    fusion_block: str = "loop",
     data=None,
 ) -> FeedbackLoopClassifier:
     # Single source of truth for the mode-dependent bias shape. Edge injection needs a
@@ -246,6 +251,8 @@ def _build_model(
         use_output_fusion=use_output_fusion,
         injection_mode=injection_mode,
         injection_scale=injection_scale,
+        advice_reliability=advice_reliability,
+        fusion_block=fusion_block,
         **({} if data is None or getattr(data, "num_protocols", None) is None
            else {"num_protocols": data.num_protocols, "num_ports": data.num_ports}),
     )
@@ -275,11 +282,15 @@ def _train_one_fold(
     injection_scale: float | None = None,
     selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
     legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
+    advice_reliability: str = "off",
+    fusion_block: str = "loop",
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
     _set_seed(SEED + fold_idx)
     model = _build_model(
+        advice_reliability=advice_reliability,
+        fusion_block=fusion_block,
         top_k_percent=top_k_percent,
         bias_confidence_fraction=bias_confidence_fraction,
         gate_mode=gate_mode,
@@ -302,6 +313,23 @@ def _train_one_fold(
     if legacy_temperature:
         with torch.no_grad():
             model.scorer.log_temperature.fill_(math.log(10.0))
+
+    # E1 — the consultant's measured per-class reliability, from TRAIN edges only.
+    # Computed from the consultant this run actually consults (the trained head
+    # when `--use-llm-head`, the prototype scorer otherwise) and installed in
+    # every mode: `random` and `shuffled` vary the advice CONTENT, so holding the
+    # mechanism fixed across modes is what keeps them controls.
+    reliability_w = None
+    if advice_reliability != "off":
+        with torch.no_grad():
+            consultant_all = (
+                head_logits if head_logits is not None else model.scorer(emb)
+            )
+            reliability_w = consultant_reliability(
+                consultant_all, data.edge_label, fold["train_mask"], NUM_CLASSES
+            )
+        model.set_consultant_reliability(reliability_w)
+
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
@@ -465,6 +493,11 @@ def _train_one_fold(
                 "mean_disagreement": mean_disagreement,
                 "consultant_temperature": float(
                     model.scorer.log_temperature.exp().mean()
+                ),
+                "advice_reliability": model.advice_reliability,
+                "consultant_reliability_per_class": (
+                    [float(v) for v in reliability_w]
+                    if reliability_w is not None else None
                 ),
             }
     print(
@@ -729,6 +762,9 @@ def _build_benchmark_summary(
     injection_scale: float | None = None,
     selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
     legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
+    advice_reliability: str = "off",
+    fusion_block: str = "loop",
+    fusion_block_parameters: int | None = None,
     trace_summary_by_mode: dict[str, dict[str, float]] | None = None,
 ) -> dict:
     """Build the canonical feedback result payload from OOF predictions."""
@@ -784,6 +820,9 @@ def _build_benchmark_summary(
         "injection_scale": injection_scale,
         "selector_head_loss_weight": selector_head_loss_weight,
         "legacy_temperature": legacy_temperature,
+        "advice_reliability": advice_reliability,
+        "fusion_block": fusion_block,
+        "fusion_block_parameters": fusion_block_parameters,
         "llm_access": (
             f"{injection_mode}_injection_on_flagged_edges"
             + (" + output_fusion_on_all_edges" if use_output_fusion else "_only")
@@ -816,6 +855,8 @@ def train_feedback(
     injection_scale: float | None = None,
     selector_head_loss_weight: float = SELECTOR_HEAD_LOSS_WEIGHT,
     legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
+    advice_reliability: str = "off",
+    fusion_block: str = "loop",
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     # Edge injection needs a bias exactly as wide as edge_attr and a live
@@ -883,6 +924,27 @@ def train_feedback(
     eval_classes = config.eval_classes
     dropped_classes = config.dropped_classes
 
+    # Capacity of the output-fusion block actually being trained. Built once
+    # from the resolved settings so the number reported beside a result is the
+    # number that ran, not one recomputed later from different arguments.
+    fusion_block_parameters = _build_model(
+        top_k_percent=resolved_top_k,
+        bias_confidence_fraction=resolved_confidence_fraction,
+        gate_mode=gate_mode,
+        use_no_regret_floor=use_no_regret_floor,
+        use_output_fusion=use_output_fusion,
+        bias_strength=bias_strength,
+        bias_dim=bias_dim,
+        max_iterations=max_iterations,
+        bias_init=bias_init,
+        injection_mode=injection_mode,
+        injection_scale=resolved_injection_scale,
+        advice_reliability=advice_reliability,
+        fusion_block=fusion_block,
+        data=data,
+    ).fusion_block_parameter_count()
+    print(f"fusion_block={fusion_block} ({fusion_block_parameters} parameters)")
+
     oof_by_mode: dict[str, torch.Tensor] = {}
     pooled_f1: dict[str, float] = {}
     trace_summary_by_mode: dict[str, dict[str, float]] = {}
@@ -910,6 +972,8 @@ def train_feedback(
                 injection_scale=resolved_injection_scale,
                 selector_head_loss_weight=selector_head_loss_weight,
                 legacy_temperature=legacy_temperature,
+                advice_reliability=advice_reliability,
+                fusion_block=fusion_block,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -988,6 +1052,9 @@ def train_feedback(
         injection_scale=resolved_injection_scale,
         selector_head_loss_weight=selector_head_loss_weight,
         legacy_temperature=legacy_temperature,
+        advice_reliability=advice_reliability,
+        fusion_block=fusion_block,
+        fusion_block_parameters=fusion_block_parameters,
         trace_summary_by_mode=trace_summary_by_mode,
     )
     with open(root / "benchmark_summary.json", "w") as f:
@@ -1109,6 +1176,20 @@ def main() -> None:
              "as a gate feature. 1.0 supervises it directly — measured worse at 3 seeds.",
     )
     parser.add_argument(
+        "--fusion-block", choices=list(FUSION_BLOCKS), default="loop",
+        help="E3: which block combines the loop's two projected branches at the "
+             "output. 'agaf' swaps the 5-parameter scalar gate for AGAF's own "
+             "feature-wise gate + feature attention. Default 'loop' is "
+             "canonical (condition A).",
+    )
+    parser.add_argument(
+        "--advice-reliability", choices=list(ADVICE_RELIABILITY_MODES), default="off",
+        help="E1: weight the consultant's advice by its measured per-class "
+             "precision on the fold's TRAIN edges. 'gate' reweights the "
+             "confidence gate's ranking; 'gate+scale' also scales the injected "
+             "advice magnitude. Default 'off' is canonical (condition A).",
+    )
+    parser.add_argument(
         "--calibrate-temperature", action="store_true",
         help="Calibrate the consultant's temperature per fold on the train-fold "
              "embeddings. Off by default: the canonical runs behind "
@@ -1180,6 +1261,8 @@ def main() -> None:
             injection_scale=args.injection_scale,
             selector_head_loss_weight=args.selector_head_loss_weight,
             legacy_temperature=not args.calibrate_temperature,
+            advice_reliability=args.advice_reliability,
+            fusion_block=args.fusion_block,
         )
 
 

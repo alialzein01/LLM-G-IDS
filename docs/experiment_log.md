@@ -163,3 +163,79 @@ Artifacts: `results/dev/head_echo/{unsw_nb15,ton_iot}/{loop,agaf_head}/`,
 `results/dev/head_echo/head_alone.json`,
 `results/dev/head_echo/agaf_head_pooled.json`,
 `results/dev/head_echo/summary.json`.
+
+---
+
+## Task E1 — reliability-weighted advice
+
+Hypothesis: the confidence gate injects confidently-wrong advice. Weighting by
+the consultant's measured per-class reliability should capture more of the
+signal that exists on UNSW and inject less on ToN.
+
+`w[c]` = precision of the prototype consultant's argmax for class `c` on the
+fold's TRAIN edges; `w = 0` for a class it never predicts there. `gate`
+multiplies the confidence gate's score by `w[consultant argmax]`; `gate+scale`
+adds the same factor to the injected advice magnitude. Flag
+`--advice-reliability {off,gate,gate+scale}`, default `off`.
+
+Condition A re-checked bit-for-bit after the code change, before the arms ran:
+UNSW real 0.7641720503342035, ToN 0.4413700353170879 — both identical
+(`results/dev/e1/<dataset>/A_recheck/`). `head_only` is bit-identical across
+every arm on both datasets (0.7542650444992878 / 0.38090190800088425): the gate
+never runs in that mode.
+
+| Date | Commit | Task | Dataset | Seed | top_k | scale | Consultant | sel-head | temp | Fusion | real | head_only | random | Flagged acc (GNN / consultant / loop) | Churn all / flagged | Verdict |
+|---|---|---|---|---|---:|---:|---|---:|---|---|---:|---:|---:|---|---|---|
+| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `off` (A) | 0.7642 | 0.7543 | 0.6529 | 0.603 / 0.672 / 0.652 | 0.087 / 0.221 | baseline |
+| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `gate` | 0.7679 | 0.7543 | 0.6845 | 0.603 / 0.672 / 0.642 | 0.110 / 0.294 | info |
+| 2026-09-06 | `7ba0a65` | E1 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | loop, `gate+scale` | 0.7699 | 0.7543 | 0.6635 | 0.603 / 0.672 / 0.647 | 0.102 / 0.265 | info |
+| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `off` (A) | 0.4414 | 0.3809 | 0.3966 | 0.359 / 0.348 / 0.573 | 0.126 / 0.423 | baseline |
+| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `gate` | 0.4307 | 0.3809 | 0.3796 | 0.359 / 0.348 / 0.551 | 0.133 / 0.429 | info |
+| 2026-09-06 | `7ba0a65` | E1 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | loop, `gate+scale` | 0.4507 | 0.3809 | 0.3853 | 0.359 / 0.348 / 0.592 | 0.134 / 0.442 | info |
+
+Mean `w` over the five folds (the two E1 arms compute it identically):
+
+| Dataset | w by class |
+|---|---|
+| UNSW-NB15 | [1.000, 0.852, 0.976, 0.893, 0.961, 0.662, 0.895, 0.984, 1.000, 0.960] |
+| NF-ToN-IoT | [1.000, 0.071, 0.179, 0.021, 0.570, 0.740, 0.226, 0.020, 0.095, 0.089] |
+
+Artifacts: `results/dev/e1/{unsw_nb15,ton_iot}/{A_recheck,gate,gate_scale}/`,
+aggregate `results/dev/e1e3_summary.json`.
+
+---
+
+## Task E3 — give the loop's output fusion AGAF's gate
+
+Hypothesis: AGAF's UNSW lead is its fusion block, not its inputs. Flag
+`--fusion-block {loop,agaf}`, default `loop`. The `agaf` block runs AGAF's own
+`feature_gate` fuse and `feature_attention` through the shared functions
+`agaf_feature_gate_fuse` / `agaf_feature_attention` extracted from
+`fusion_classifier.py` — AGAF itself now calls them, so there is one
+implementation, not two. The loop's own projections and the feedback path,
+selector and consultant are unchanged.
+
+Output-fusion block capacity (projections included, only the block in use is
+allocated): **loop 125,266 / agaf 199,242** parameters.
+
+Condition A re-checked bit-for-bit after the code change: UNSW
+0.7641720503342035, ToN 0.4413700353170879 (`results/dev/e3/<dataset>/A_recheck/`).
+
+| Date | Commit | Task | Dataset | Seed | top_k | scale | Consultant | sel-head | temp | Fusion | real | head_only | random | Flagged acc (GNN / consultant / loop) | Churn all / flagged | Verdict |
+|---|---|---|---|---|---:|---:|---|---:|---|---|---:|---:|---:|---|---|---|
+| 2026-09-06 | `7ba0a65` | E3 | UNSW-NB15 | 42 | 31.0 | 2.0 | proto | 0.0 | T=10 | agaf (199,242) | 0.6114 | 0.7543 | 0.3970 | 0.603 / 0.672 / 0.534 | 0.235 / 0.417 | info |
+| 2026-09-06 | `7ba0a65` | E3 | NF-ToN-IoT | 42 | 25.0 | 20.0 | proto | 0.0 | T=10 | agaf (199,242) | 0.3312 | 0.3809 | 0.2613 | 0.359 / 0.348 / 0.449 | 0.196 / 0.560 | info |
+
+`head_only` is bit-identical to the A baseline in both E3 runs, which is the
+condition that makes the comparison readable — but it was NOT so at first. The
+first implementation moved `head_only`, a mode that never reaches
+`_output_fusion`. Cause: the `agaf` block's layers have different shapes, so
+building them consumed a different amount of the global RNG stream at
+construction and shifted every dropout mask drawn afterwards in training. The
+canonical `loop` block is now always drawn from the main stream (and discarded
+when unused) while `agaf` initialises under `torch.random.fork_rng`, so the
+stream ends in the same place either way. Pinned by
+`tests/test_fusion_block.py::test_the_fusion_block_does_not_shift_the_global_rng_stream`.
+
+Artifacts: `results/dev/e3/{unsw_nb15,ton_iot}/{A_recheck,agaf}/`.
+

@@ -150,6 +150,10 @@ def _trace_summary(trace: dict) -> dict:
                 "n_flagged_edges": diag.get("n_flagged_edges"),
                 "consultant_temperature": diag.get("consultant_temperature"),
                 "final_churn": diag.get("final_churn"),
+                # E1: None unless the run used --advice-reliability.
+                "consultant_reliability_per_class": diag.get(
+                    "consultant_reliability_per_class"
+                ),
             }
         )
     runs = [f["iterations_run"] for f in folds if f["iterations_run"] is not None]
@@ -345,6 +349,9 @@ def diagnose(dataset: str, run_dir: str | Path) -> dict:
             "selector_head_loss_weight": bench.get("selector_head_loss_weight"),
             "legacy_temperature": legacy_temperature,
             "semantic_consultant": bench.get("semantic_consultant"),
+            "advice_reliability": bench.get("advice_reliability"),
+            "fusion_block": bench.get("fusion_block"),
+            "fusion_block_parameters": bench.get("fusion_block_parameters"),
             "trained_llm_head": bench.get("trained_llm_head"),
         },
         "pooled_macro_f1": bench.get("per_mode_pooled_macro_f1"),
