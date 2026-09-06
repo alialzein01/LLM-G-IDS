@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "dataset": "unsw_nb15",
+  "source": "multiseed_validation_sweep",
+  "selection_uses_test_labels": false,
+  "selection_metric": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
+  "top_k_percent": 31.0,
+  "bias_confidence_fraction": 0.5,
+  "gate_mode": "confidence",
+  "effective_feedback_percent": 15.5,
+  "max_feedback_iterations": 3,
+  "churn_tolerance": 0.01,
+  "semantic_consultant": "whitened_prototype_scorer",
+  "trained_llm_head": false,
+  "selection_parameter": "top_k_percent",
+  "mean_validation_macro_f1": 0.8009,
+  "validation_macro_f1_std": 0.0071,
+  "pooled_oof_test_macro_f1": 0.7393181852683935,
+  "sweep_summary_path": "data/unsw_nb15/processed/step4_feedback/top_k_sweep/summary.json",
+  "injection_mode": "edge",
+  "injection_scale": 2.0
+}

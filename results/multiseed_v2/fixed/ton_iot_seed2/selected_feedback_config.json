@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "dataset": "ton_iot",
+  "source": "multiseed_validation_sweep",
+  "selection_uses_test_labels": false,
+  "selection_metric": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
+  "top_k_percent": 25.0,
+  "bias_confidence_fraction": 0.5,
+  "effective_feedback_percent": 12.5,
+  "max_feedback_iterations": 3,
+  "churn_tolerance": 0.01,
+  "semantic_consultant": "whitened_prototype_scorer",
+  "trained_llm_head": false,
+  "selection_parameter": "top_k_percent",
+  "mean_validation_macro_f1": 0.5136,
+  "validation_macro_f1_std": 0.0043,
+  "pooled_oof_test_macro_f1": 0.3767039979181709,
+  "sweep_summary_path": "data/ton_iot/processed/step4_feedback/top_k_sweep/summary.json",
+  "injection_mode": "edge",
+  "injection_scale": 20.0
+}
