@@ -8,33 +8,176 @@ from pathlib import Path
 from src.pipeline.common.datasets import get_dataset_config
 
 
-class StatisticalComparisonTest(unittest.TestCase):
-    def test_every_baseline_has_a_ci_against_each_rung(self) -> None:
-        import json
-        from pathlib import Path
+RUNGS = ("gnn", "llm", "agaf", "feedback")
+MODELS = ("e_graphsage", "te_g_sage")
+MODES = ("as_published", "refit", "plus_node_features")
+BLOCKS = ("statistical_comparisons_3seed", "seed_matched_comparisons_3seed")
 
+# The cells where a rung is NOT separated ABOVE a FAITHFUL baseline, recorded
+# from the 2026-09-07 3-seed run. These are facts about the data, pinned so a
+# later edit cannot quietly turn a null into a win — or the reverse. UNSW has
+# none; ToN's list is the interesting half of the result.
+NOT_SEPARATED_ABOVE_FAITHFUL = {
+    ("unsw_nb15", "statistical_comparisons_3seed"): set(),
+    ("unsw_nb15", "seed_matched_comparisons_3seed"): set(),
+    ("ton_iot", "statistical_comparisons_3seed"): {
+        "gnn_vs_e_graphsage_as_published",
+        "llm_vs_e_graphsage_as_published",
+        "agaf_vs_e_graphsage_as_published",
+        "feedback_vs_e_graphsage_as_published",
+        "gnn_vs_e_graphsage_refit",
+        "llm_vs_e_graphsage_refit",
+        "agaf_vs_e_graphsage_refit",
+        "feedback_vs_e_graphsage_refit",
+    },
+    ("ton_iot", "seed_matched_comparisons_3seed"): {
+        "gnn_vs_e_graphsage_as_published",
+        "llm_vs_e_graphsage_as_published",
+        "agaf_vs_e_graphsage_as_published",
+        "gnn_vs_e_graphsage_refit",
+        "llm_vs_e_graphsage_refit",
+        "agaf_vs_e_graphsage_refit",
+    },
+}
+
+# The LLM rung is separated BELOW E-GraphSAGE on ToN, which is why it appears
+# above: "not separated above" covers both a null and a separated loss.
+LLM_SEPARATED_BELOW_ON_TON = {
+    "llm_vs_e_graphsage_as_published",
+    "llm_vs_e_graphsage_refit",
+    "llm_vs_e_graphsage_plus_node_features",
+    "llm_vs_te_g_sage_plus_node_features",
+}
+
+
+def _payload(dataset: str) -> dict:
+    return json.loads(Path(f"results/{dataset}_sota_baselines.json").read_text())
+
+
+class StatisticalComparison3SeedTest(unittest.TestCase):
+    """Both sides are three seeds now. The schema-1 blocks held the rung at seed
+    42 only, which made every interval too narrow; they are kept under
+    `superseded` and must not be read as current."""
+
+    def test_every_baseline_has_both_intervals_against_each_rung(self) -> None:
         for dataset in ("unsw_nb15", "ton_iot"):
-            payload = json.loads(
-                Path(f"results/{dataset}_sota_baselines.json").read_text()
+            payload = _payload(dataset)
+            self.assertEqual(payload["schema_version"], 2)
+            for block in BLOCKS:
+                comparisons = payload[block]
+                # Assert the expected keys EXIST. Iterating whatever happens to
+                # be present would pass vacuously on an empty dict.
+                for rung in RUNGS:
+                    for model in MODELS:
+                        for mode in MODES:
+                            key = f"{rung}_vs_{model}_{mode}"
+                            with self.subTest(dataset=dataset, block=block, key=key):
+                                entry = comparisons[key]
+                                for field in ("mean_diff", "ci_low", "ci_high",
+                                              "prob_positive", "separated",
+                                              "sign_stable_across_seed_pairs"):
+                                    self.assertIn(field, entry, key)
+                                self.assertLessEqual(entry["ci_low"], entry["mean_diff"])
+                                self.assertGreaterEqual(entry["ci_high"], entry["mean_diff"])
+                                # Both sides at three seeds is the whole point.
+                                self.assertEqual(entry["rung_seeds"], 3)
+                                self.assertEqual(entry["baseline_seeds"], 3)
+                                self.assertEqual(
+                                    entry["separated"],
+                                    entry["ci_low"] > 0 or entry["ci_high"] < 0,
+                                )
+                                self.assertEqual(
+                                    sorted(entry["per_seed_pair_diff"]),
+                                    sorted(["42", "1", "2"]),
+                                )
+            self.assertEqual(
+                payload["statistical_comparisons_3seed"]["gnn_vs_e_graphsage_refit"][
+                    "resampled"
+                ],
+                "edges_and_both_seeds_independently",
             )
-            comparisons = payload["statistical_comparisons"]
-            # Assert the expected keys EXIST. Iterating whatever happens to be
-            # present would pass vacuously on an empty dict.
-            for rung in ("gnn", "llm", "agaf", "feedback"):
-                for model in ("e_graphsage", "te_g_sage"):
-                    for mode in ("as_published", "refit", "plus_node_features"):
-                        key = f"{rung}_vs_{model}_{mode}"
-                        with self.subTest(dataset=dataset, key=key):
-                            entry = comparisons[key]
-                            for field in ("mean_diff", "ci_low", "ci_high", "prob_positive"):
-                                self.assertIn(field, entry, key)
-                            self.assertLessEqual(entry["ci_low"], entry["mean_diff"])
-                            self.assertGreaterEqual(entry["ci_high"], entry["mean_diff"])
-                            # The primary interval MUST propagate baseline seed variance.
-                            self.assertEqual(entry["resampled"], "edges_and_baseline_seed")
-                            self.assertEqual(entry["baseline_seeds"], 3)
-                            self.assertIn(key, payload["seed_matched_comparisons"])
+            self.assertEqual(
+                payload["seed_matched_comparisons_3seed"]["gnn_vs_e_graphsage_refit"][
+                    "resampled"
+                ],
+                "edges_only_seed_matched",
+            )
             self.assertTrue(payload["comparison_caveat"].strip())
+
+    def test_only_the_llm_rung_is_marked_seed_invariant(self) -> None:
+        """The LLM rung is an argmax over the frozen prototype scorer, so its
+        three rows are identical; the other three rungs genuinely vary."""
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = _payload(dataset)
+            for block in BLOCKS:
+                for key, entry in payload[block].items():
+                    with self.subTest(dataset=dataset, block=block, key=key):
+                        self.assertEqual(
+                            entry["rung_is_seed_invariant"],
+                            key.startswith("llm_vs_"),
+                        )
+
+    def test_the_recorded_separations_against_faithful_baselines(self) -> None:
+        """Assert what the data says, not what we would like it to say. Every
+        rung/faithful-baseline pair NOT in the recorded set must be separated and
+        positive; every pair in it must not be."""
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = _payload(dataset)
+            faithful = {
+                f"{model}_{mode}"
+                for model, entries in payload["baselines"].items()
+                for mode, entry in entries.items()
+                if entry["is_faithful_to_paper"]
+            }
+            self.assertEqual(len(faithful), 4, "expected 4 faithful configs")
+            for block in BLOCKS:
+                observed = set()
+                for key, entry in payload[block].items():
+                    if key.split("_vs_", 1)[1] not in faithful:
+                        continue
+                    if not (entry["separated"] and entry["mean_diff"] > 0):
+                        observed.add(key)
+                with self.subTest(dataset=dataset, block=block):
+                    self.assertEqual(
+                        observed, NOT_SEPARATED_ABOVE_FAITHFUL[(dataset, block)]
+                    )
+
+    def test_the_llm_rung_is_separated_below_e_graphsage_on_ton(self) -> None:
+        payload = _payload("ton_iot")
+        for block in BLOCKS:
+            for key in LLM_SEPARATED_BELOW_ON_TON:
+                with self.subTest(block=block, key=key):
+                    entry = payload[block][key]
+                    self.assertTrue(entry["separated"], key)
+                    self.assertLess(entry["mean_diff"], 0.0, key)
+
+    def test_two_level_and_seed_matched_never_disagree_on_sign(self) -> None:
+        """They may disagree on separation — the seed-matched interval is paired
+        and therefore tighter — but a sign flip would mean the two are describing
+        different comparisons."""
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = _payload(dataset)
+            for key, two_level in payload["statistical_comparisons_3seed"].items():
+                matched = payload["seed_matched_comparisons_3seed"][key]
+                with self.subTest(dataset=dataset, key=key):
+                    self.assertEqual(
+                        two_level["mean_diff"] > 0, matched["mean_diff"] > 0, key
+                    )
+
+    def test_the_single_seed_blocks_are_superseded_not_deleted(self) -> None:
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = _payload(dataset)
+            self.assertNotIn("statistical_comparisons", payload)
+            self.assertNotIn("seed_matched_comparisons", payload)
+            superseded = payload["superseded"]
+            self.assertEqual(superseded["schema_version"], 1)
+            self.assertIn("rung_seeds was 1", superseded["note"])
+            for rung in RUNGS:
+                key = f"{rung}_vs_e_graphsage_refit"
+                self.assertEqual(
+                    superseded["statistical_comparisons"][key]["rung_seeds"], 1
+                )
+                self.assertIn(key, superseded["seed_matched_comparisons"])
 
 
 class SotaBaselineContractTest(unittest.TestCase):

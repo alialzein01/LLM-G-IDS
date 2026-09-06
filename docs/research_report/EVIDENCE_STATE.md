@@ -155,9 +155,14 @@ Binding consequences for the report:
    canonical prototype captures −4.5% / 11.9% of that headroom, neither separated; a
    stronger trained head captured 12.5% (unseparated) / −38.0% (a separated regression).
    The channel has capacity; no realistic consultant exploits it.
-7. **Against published baselines**, only the loop separates on UNSW (+0.0535 vs TE-G-SAGE +
-   our features); on ToN nothing separates from E-GraphSAGE and two rungs are significantly
-   behind it.
+7. **Against published baselines** (updated 2026-09-07 to 3-seed rungs vs 3-seed baselines;
+   the +0.0535 figure previously quoted here came from the seed-42-only rung and is
+   superseded). On UNSW every rung is separated above all six baseline configurations; the
+   only *ns* cells are GNN and LLM against **TE-G-SAGE + our node features**, which is a
+   non-faithful variant, not a published architecture. On ToN nothing separates from
+   E-GraphSAGE except the LLM rung, which is separated **below** it; the loop separates
+   above E-GraphSAGE `as_published`/`refit` under the paired seed-matched interval only.
+   Full table: archive §5.3.
 8. **Scale** — 656 (UNSW) and 2,127 (ToN) aggregated edges, versus ~10⁶-edge per-flow
    graphs in the source papers.
 9. **Selection bias** — declared limitation 3: `top_k_percent` was selected on rotating
@@ -239,6 +244,13 @@ did. Search by DOI or exact title, not keywords.
 **Ready:** the evidence base is well governed. Limitations are self-declared in the
 artifact, provenance is traceable, leakage guards are enforced in code, and the project has
 a documented history of retracting its own claims.
+
+**RQ5 intervals: done (2026-09-07).** Both sides of every rung-vs-baseline comparison are
+now three training seeds. `results/{unsw_nb15,ton_iot}_sota_baselines.json` are at schema 2
+with `statistical_comparisons_3seed` and `seed_matched_comparisons_3seed`; the seed-42-only
+blocks are preserved under `superseded` and must not be quoted. The asymmetry caveat that
+stood on the old blocks ("our four rungs were run at seed 42 only ... re-running the ladder
+at seeds 1 and 2 is the highest-value follow-up") is discharged.
 
 **Ready for a locked outline (2026-09-06).** §4 is resolved: the headline is "nothing
 separated; AGAF highest mean on UNSW, loop on ToN; the mechanism's feedback was effectively

@@ -381,7 +381,88 @@ explicit non-faithful ablation, not the published architecture.
 | ToN | E-GraphSAGE | 0.4141 | 0.4141 | 0.4358 |
 | ToN | TE-G-SAGE | 0.1931 | 0.2345 | 0.3523 |
 
-### 5.3 Full two-level bootstrap comparison
+### 5.3 Full rung-vs-baseline comparison — 3-seed rungs, 3-seed baselines, 2026-09-07
+
+Sign convention: `delta = project rung - re-trained baseline`. Positive favours the project
+rung. Each cell is `delta [95% CI]` followed by **sep** if the interval excludes zero and
+*ns* if it does not. `*` marks a non-faithful variant (our node features added), which is
+not a published-architecture comparison.
+
+**This supersedes the seed-42-only table below.** Both sides are now three training seeds
+(42, 1, 2) with the fold partition fixed at the seed-42 split; the previous intervals held
+the rung at seed 42 only and were therefore too narrow, as that table's own caveat said.
+Source: `statistical_comparisons_3seed` / `seed_matched_comparisons_3seed` in
+`results/{unsw_nb15,ton_iot}_sota_baselines.json` (schema 2), computed by
+`src/pipeline/baselines/compare_to_ladder_multiseed.py` through
+`aggregate_multiseed._two_level_bootstrap` / `._seed_matched_bootstrap`, 2000 iterations,
+RNG seed 42. Every per-seed prediction row was re-scored and matched to its contract value
+before the intervals were computed.
+
+**UNSW-NB15 (10 classes) — two-level (rung seed and baseline seed drawn independently, edges resampled)**
+
+| Re-trained baseline | GNN | LLM | AGAF | Feedback |
+|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.6224 [+0.5684,+0.6764] **sep** | +0.6137 [+0.5711,+0.6558] **sep** | +0.6575 [+0.6103,+0.7027] **sep** | +0.6428 [+0.5993,+0.6868] **sep** |
+| E-GraphSAGE, refit | +0.6054 [+0.5508,+0.6598] **sep** | +0.5967 [+0.5520,+0.6392] **sep** | +0.6404 [+0.5914,+0.6867] **sep** | +0.6257 [+0.5807,+0.6701] **sep** |
+| E-GraphSAGE + our node features * | +0.6251 [+0.5699,+0.6796] **sep** | +0.6164 [+0.5735,+0.6592] **sep** | +0.6601 [+0.6120,+0.7086] **sep** | +0.6454 [+0.6005,+0.6901] **sep** |
+| TE-G-SAGE, as published | +0.3594 [+0.3003,+0.4221] **sep** | +0.3508 [+0.2981,+0.4019] **sep** | +0.3945 [+0.3348,+0.4520] **sep** | +0.3798 [+0.3257,+0.4336] **sep** |
+| TE-G-SAGE, refit | +0.1613 [+0.0919,+0.2337] **sep** | +0.1527 [+0.0933,+0.2156] **sep** | +0.1964 [+0.1319,+0.2629] **sep** | +0.1817 [+0.1216,+0.2454] **sep** |
+| TE-G-SAGE + our node features * | +0.0249 [-0.0270,+0.0755] *ns* | +0.0163 [-0.0291,+0.0607] *ns* | +0.0600 [+0.0096,+0.1093] **sep** | +0.0453 [+0.0033,+0.0847] **sep** |
+
+**UNSW-NB15 (10 classes) — seed-matched (42↔42, 1↔1, 2↔2, edges resampled)**
+
+| Re-trained baseline | GNN | LLM | AGAF | Feedback |
+|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.6224 [+0.5873,+0.6544] **sep** | +0.6141 [+0.5755,+0.6508] **sep** | +0.6581 [+0.6214,+0.6919] **sep** | +0.6431 [+0.6080,+0.6768] **sep** |
+| E-GraphSAGE, refit | +0.6054 [+0.5709,+0.6378] **sep** | +0.5970 [+0.5579,+0.6351] **sep** | +0.6410 [+0.6041,+0.6757] **sep** | +0.6260 [+0.5893,+0.6601] **sep** |
+| E-GraphSAGE + our node features * | +0.6248 [+0.5902,+0.6582] **sep** | +0.6165 [+0.5778,+0.6540] **sep** | +0.6604 [+0.6242,+0.6951] **sep** | +0.6455 [+0.6109,+0.6804] **sep** |
+| TE-G-SAGE, as published | +0.3595 [+0.3247,+0.3921] **sep** | +0.3511 [+0.3109,+0.3901] **sep** | +0.3951 [+0.3535,+0.4327] **sep** | +0.3801 [+0.3442,+0.4160] **sep** |
+| TE-G-SAGE, refit | +0.1599 [+0.1292,+0.1933] **sep** | +0.1516 [+0.1157,+0.1895] **sep** | +0.1956 [+0.1593,+0.2323] **sep** | +0.1806 [+0.1481,+0.2148] **sep** |
+| TE-G-SAGE + our node features * | +0.0240 [-0.0013,+0.0504] *ns* | +0.0157 [-0.0227,+0.0545] *ns* | +0.0596 [+0.0244,+0.0952] **sep** | +0.0446 [+0.0162,+0.0740] **sep** |
+
+**NF-ToN-IoT (8 classes) — two-level (rung seed and baseline seed drawn independently, edges resampled)**
+
+| Re-trained baseline | GNN | LLM | AGAF | Feedback |
+|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.0203 [-0.0230,+0.0633] *ns* | -0.1336 [-0.1773,-0.0939] **sep** | -0.0061 [-0.0797,+0.0777] *ns* | +0.0378 [-0.0098,+0.0857] *ns* |
+| E-GraphSAGE, refit | +0.0203 [-0.0230,+0.0633] *ns* | -0.1336 [-0.1773,-0.0939] **sep** | -0.0061 [-0.0797,+0.0777] *ns* | +0.0378 [-0.0098,+0.0857] *ns* |
+| E-GraphSAGE + our node features * | -0.0020 [-0.0734,+0.0726] *ns* | -0.1559 [-0.2301,-0.0848] **sep** | -0.0284 [-0.1258,+0.0775] *ns* | +0.0156 [-0.0616,+0.0908] *ns* |
+| TE-G-SAGE, as published | +0.2396 [+0.1864,+0.2938] **sep** | +0.0858 [+0.0436,+0.1241] **sep** | +0.2132 [+0.1339,+0.3005] **sep** | +0.2572 [+0.2010,+0.3170] **sep** |
+| TE-G-SAGE, refit | +0.1985 [+0.1456,+0.2474] **sep** | +0.0447 [+0.0031,+0.0777] **sep** | +0.1721 [+0.1021,+0.2539] **sep** | +0.2161 [+0.1624,+0.2688] **sep** |
+| TE-G-SAGE + our node features * | +0.0814 [+0.0256,+0.1371] **sep** | -0.0724 [-0.1233,-0.0251] **sep** | +0.0550 [-0.0232,+0.1453] *ns* | +0.0990 [+0.0425,+0.1601] **sep** |
+
+**NF-ToN-IoT (8 classes) — seed-matched (42↔42, 1↔1, 2↔2, edges resampled)**
+
+| Re-trained baseline | GNN | LLM | AGAF | Feedback |
+|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.0199 [-0.0097,+0.0500] *ns* | -0.1339 [-0.1672,-0.0998] **sep** | -0.0051 [-0.0490,+0.0417] *ns* | +0.0380 [+0.0068,+0.0699] **sep** |
+| E-GraphSAGE, refit | +0.0199 [-0.0097,+0.0500] *ns* | -0.1339 [-0.1672,-0.0998] **sep** | -0.0051 [-0.0490,+0.0417] *ns* | +0.0380 [+0.0068,+0.0699] **sep** |
+| E-GraphSAGE + our node features * | -0.0012 [-0.0336,+0.0314] *ns* | -0.1549 [-0.1903,-0.1162] **sep** | -0.0261 [-0.0735,+0.0238] *ns* | +0.0170 [-0.0154,+0.0521] *ns* |
+| TE-G-SAGE, as published | +0.2393 [+0.2044,+0.2776] **sep** | +0.0855 [+0.0617,+0.1091] **sep** | +0.2144 [+0.1709,+0.2599] **sep** | +0.2575 [+0.2226,+0.2939] **sep** |
+| TE-G-SAGE, refit | +0.1986 [+0.1608,+0.2354] **sep** | +0.0448 [+0.0187,+0.0696] **sep** | +0.1736 [+0.1290,+0.2171] **sep** | +0.2167 [+0.1785,+0.2551] **sep** |
+| TE-G-SAGE + our node features * | +0.0809 [+0.0452,+0.1176] **sep** | -0.0729 [-0.1022,-0.0435] **sep** | +0.0559 [+0.0095,+0.1018] **sep** | +0.0991 [+0.0644,+0.1345] **sep** |
+
+On UNSW every rung is separated above every one of the six baseline configurations, in both
+interval types. On ToN nothing separates from E-GraphSAGE except the LLM rung, which is
+separated **below** it; the loop is separated above E-GraphSAGE `as_published`/`refit` under
+the paired seed-matched interval but not under the two-level one, and no rung separates from
+E-GraphSAGE + our node features either way.
+
+Three cells change verdict between the two interval types, all on ToN and all in the same
+direction (paired is tighter): `feedback_vs_e_graphsage_as_published`,
+`feedback_vs_e_graphsage_refit` and `agaf_vs_te_g_sage_plus_node_features` are separated
+seed-matched and not separated two-level. No cell disagrees on the SIGN of the difference,
+on either dataset.
+
+Five ToN cells have `sign_stable_across_seed_pairs: false` — the sign of the raw difference
+flips between seeds — all against E-GraphSAGE: `agaf` vs `as_published`/`refit`/`+features`,
+`gnn` vs `+features`, `feedback` vs `+features`. On UNSW only
+`gnn_vs_te_g_sage_plus_node_features` is sign-unstable.
+
+#### 5.3a Superseded: seed-42 rungs vs 3-seed baselines (2026-09-02)
+
+Kept for the record and preserved in each contract under `superseded`. Its own caveat is
+the reason it was replaced:
 
 Sign convention: `delta = project rung - re-trained baseline`. Positive values favour the
 project rung; negative values favour the baseline. Each cell is `delta [95% CI];
