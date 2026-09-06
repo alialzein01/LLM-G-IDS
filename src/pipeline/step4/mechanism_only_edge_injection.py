@@ -44,12 +44,16 @@ torch.set_num_threads(1)
 warnings.filterwarnings("ignore")
 
 import src.pipeline.step4.train_feedback as FB
+from src.models.feedback_classifier import ADVICE_SATURATION_MAGNITUDE
 from src.pipeline.step4.sweep_top_k import _pooled_macro_f1
 from src.pipeline.common.datasets import get_dataset_config
 
 SEEDS = (42, 1, 2)
 SCHEMA_VERSION = 2
-ORACLE_LOGIT_MAGNITUDE = 4.0
+# Shared with the loop's `--advice-format onehot`, so an experiment asking
+# "could a realistic consultant use the channel the way the oracle does?"
+# cannot silently inject at a different magnitude than the oracle did.
+ORACLE_LOGIT_MAGNITUDE = ADVICE_SATURATION_MAGNITUDE
 PAIRED_BOOTSTRAP_ITERS = 10_000
 RAW_OUTPUT_PATH = Path("results/raw/oracle_ceiling_v2_trained_head.json")
 CONTRACT_PATHS = MappingProxyType(

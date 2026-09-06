@@ -297,3 +297,97 @@ our-node-features variant. On ToN nothing separates from E-GraphSAGE except the
 LLM rung, separated *below* it. Three ToN cells are separated seed-matched but
 not two-level; no cell disagrees on sign.
 
+---
+
+## Task advice-format — does the bias projection need saturated advice?
+
+Hypothesis under test: the projection cannot use raw, unnormalised consultant
+logits but can use saturated one-hot advice, which is the only format the Gate 0
+oracle ever gave it. New flag `--advice-format {logits,onehot,softmax}`, default
+`logits` = canonical. `onehot` is the oracle's own construction
+(`-M` everywhere, `+M` on the chosen class, `M = ADVICE_SATURATION_MAGNITUDE = 4.0`,
+now a single shared constant that `mechanism_only_edge_injection` imports) applied
+to the consultant's argmax instead of the true label; `softmax` is the consultant's
+softmax rescaled so its row max equals `+M`.
+
+Selection and `_gate_flagged` keep ranking the ORIGINAL logits — pinned by a test
+that shows all three formats keep the same gated set. The format is applied at the
+single site where advice reaches `bias_module`, so it applies to `random` as well as
+`real` (the control gets the same treatment, keeping it fair); `head_only` has no
+semantic logits and never reaches it, verified bit-for-bit.
+
+Condition A re-checked bit-for-bit after the code change:
+UNSW 0.7641720503342035, ToN 0.4413700353170879
+(`results/dev/advice_format/<dataset>/A_recheck/`).
+
+### Task 2 — trained head, output fusion OFF (Gate 0.5's setting). DIAGNOSTIC ONLY
+
+These are not rungs. The trained head is not the canonical consultant; output
+fusion is disabled so advice can only reach the GNN through the bias path.
+`control_head_only` and `oracle_edge` are the seed-42 rows of the existing Gate 0.5
+payload `results/raw/oracle_ceiling_v2_trained_head.json`.
+
+**UNSW-NB15** — control 0.7543, oracle_edge 0.7522, headroom (seed 42) -0.0021, headroom (3-seed mean) +0.0345
+
+| arm | macro-F1 | vs control | edge-resample CI | P | captured headroom | churn all/flagged | flips +/− flagged | bias absmean |
+|---|---:|---:|---|---:|---:|---|---|---:|
+| control_head_only | 0.7543 | — | — | — | — | — | — | — |
+| trained_head_logits | 0.7312 | -0.0230 | [-0.0496, +0.0033] | 0.048 | n/a | 0.076 / 0.201 | +12 / −18 | 1.7210 |
+| trained_head_onehot | 0.7190 | -0.0353 | [-0.0672, -0.0039] | 0.011 | n/a | 0.096 / 0.211 | +13 / −19 | 1.6055 |
+| trained_head_softmax | 0.7355 | -0.0188 | [-0.0507, +0.0119] | 0.127 | n/a | 0.098 / 0.255 | +18 / −19 | 1.7139 |
+| oracle_edge (existing) | 0.7522 | -0.0021 | — | — | 100% by definition | — | — | — |
+
+> **UNSW-NB15 headroom is NEGATIVE at seed 42** (-0.002052):
+> the oracle arm scores below control on this single seed, so a captured-share
+> percentage has a negative denominator and is not reportable. The +0.0345
+> figure in the archive is a 3-seed mean. Read the raw difference instead.
+
+**NF-ToN-IoT** — control 0.3809, oracle_edge 0.5948, headroom (seed 42) +0.2139, headroom (3-seed mean) +0.1090
+
+| arm | macro-F1 | vs control | edge-resample CI | P | captured headroom | churn all/flagged | flips +/− flagged | bias absmean |
+|---|---:|---:|---|---:|---:|---|---|---:|
+| control_head_only | 0.3809 | — | — | — | — | — | — | — |
+| trained_head_logits | 0.3644 | -0.0165 | [-0.0492, +0.0165] | 0.170 | -7.7% | 0.142 / 0.402 | +91 / −43 | 1.6586 |
+| trained_head_onehot | 0.3639 | -0.0170 | [-0.0521, +0.0205] | 0.177 | -7.9% | 0.146 / 0.442 | +79 / −58 | 1.6485 |
+| trained_head_softmax | 0.3839 | +0.0030 | [-0.0279, +0.0348] | 0.582 | +1.4% | 0.166 / 0.491 | +118 / −51 | 1.7136 |
+| oracle_edge (existing) | 0.5948 | +0.2139 | — | — | 100% by definition | — | — | — |
+
+`trained_head_logits` reproduces the existing Gate 0.5 `head_trained_edge` seed-42
+value exactly on both datasets (0.7312292287943644 / 0.3643594362049475), and
+`control_head_only` matches its recorded value exactly, so the
+`train_feedback --use-llm-head --no-output-fusion` route and the
+`mechanism_only_edge_injection` route are the same protocol.
+
+### Task 3 — canonical prototype, fusion ON (the loop)
+
+Keep-threshold agreed in advance: `real − head_only` must exceed A's by ≥ 0.02.
+
+**UNSW-NB15**
+
+| format | real | head_only | random | real − head_only [CI] P | Δ(r−h) vs A | flagged acc GNN/proto/loop | churn all/flagged | flips +/− flagged | bias absmean | verdict |
+|---|---:|---:|---:|---|---:|---|---|---|---:|---|
+| A (logits) | 0.7642 | 0.7543 | 0.6529 | +0.0098 [-0.018, +0.038] P=0.766 | +0.0000 | 0.603 / 0.672 / 0.652 | 0.087 / 0.221 | +19 / −9 | 0.0767 | baseline |
+| onehot | 0.7452 | 0.7543 | 0.6827 | -0.0093 [-0.045, +0.027] P=0.301 | -0.0191 | 0.603 / 0.672 / 0.603 | 0.120 / 0.304 | +23 / −23 | 0.0183 | **not kept** |
+| softmax | 0.7512 | 0.7543 | 0.6710 | -0.0029 [-0.040, +0.034] P=0.435 | -0.0126 | 0.603 / 0.672 / 0.618 | 0.133 / 0.324 | +23 / −20 | 0.0205 | **not kept** |
+
+**NF-ToN-IoT**
+
+| format | real | head_only | random | real − head_only [CI] P | Δ(r−h) vs A | flagged acc GNN/proto/loop | churn all/flagged | flips +/− flagged | bias absmean | verdict |
+|---|---:|---:|---:|---|---:|---|---|---|---:|---|
+| A (logits) | 0.4414 | 0.3809 | 0.3966 | +0.0603 [+0.026, +0.096] P=1.000 | +0.0000 | 0.359 / 0.348 / 0.573 | 0.126 / 0.423 | +135 / −21 | 0.0234 | baseline |
+| onehot | 0.3810 | 0.3809 | 0.3978 | +0.0007 [-0.042, +0.041] P=0.521 | -0.0596 | 0.359 / 0.348 / 0.477 | 0.176 / 0.481 | +97 / −34 | 0.0202 | **not kept** |
+| softmax | 0.4194 | 0.3809 | 0.4282 | +0.0388 [-0.012, +0.087] P=0.939 | -0.0215 | 0.359 / 0.348 / 0.494 | 0.182 / 0.562 | +134 / −62 | 0.0194 | **not kept** |
+
+Neither format meets the threshold on either dataset; every arm is BELOW A, so the
+question of a ≥0.02 improvement does not arise. Both formats are reverted; the flag
+stays at its `logits` default with tests.
+
+Unexpected: the injected magnitude went DOWN under the saturated formats even though
+the input magnitude went up. `flagged_bias_absmean` on UNSW is 0.0767 (logits) vs
+0.0183 (onehot) / 0.0205 (softmax); on ToN 0.0234 vs 0.0202 / 0.0194. The projection
+is learned, so it shrinks its weights against a larger, lower-variance input. Handing
+the channel the oracle's format does not hand it the oracle's injected magnitude.
+
+Artifacts: `results/dev/advice_format/` — `task2_summary.json`,
+`task3_summary.json`, and per-run `benchmark_summary.json` /
+`mechanism_diagnostics.json`.
