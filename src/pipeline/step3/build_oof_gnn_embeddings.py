@@ -64,9 +64,11 @@ def _macro_f1(logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor) ->
     )
 
 
-def _train_fold_capture_embeddings(data: Data, fold: dict, fold_idx: int) -> torch.Tensor:
-    torch.manual_seed(SEED + fold_idx)
-    np.random.seed(SEED + fold_idx)
+def _train_fold_capture_embeddings(
+    data: Data, fold: dict, fold_idx: int, seed: int = SEED
+) -> torch.Tensor:
+    torch.manual_seed(seed + fold_idx)
+    np.random.seed(seed + fold_idx)
     model = GATEdgeClassifier(
         IN_DIM, HIDDEN_DIM, EDGE_ATTR_DIM, NUM_CLASSES, HEADS, DROPOUT,
         **({} if getattr(data, "num_protocols", None) is None
@@ -111,7 +113,16 @@ def _train_fold_capture_embeddings(data: Data, fold: dict, fold_idx: int) -> tor
     return emb.detach().cpu()
 
 
-def build_oof_gnn_embeddings(dataset: str) -> Path:
+def build_oof_gnn_embeddings(
+    dataset: str, seed: int = SEED, output_path: str | Path | None = None
+) -> Path:
+    """Train one GNN per fold and stitch the held-out edge embeddings together.
+
+    `seed` varies model initialisation and training only. The fold partition is
+    read from `config.splits_path` and is NOT reseeded here, so a multi-seed
+    sweep keeps every seed on identical folds and the pooled OOF edge set stays
+    comparable across seeds.
+    """
     config = get_dataset_config(dataset)
     data: Data = torch.load(config.graph_path, weights_only=False)
     global IN_DIM
@@ -120,15 +131,22 @@ def build_oof_gnn_embeddings(dataset: str) -> Path:
     num_edges = data.edge_label.shape[0]
 
     oof = torch.full((num_edges, HIDDEN_DIM), float("nan"))
-    print(f"Building OOF GNN embeddings for {dataset} ({num_edges} edges, {len(folds)} folds)")
+    print(
+        f"Building OOF GNN embeddings for {dataset} "
+        f"({num_edges} edges, {len(folds)} folds, seed {seed})"
+    )
     for fold_idx, fold in enumerate(folds):
-        emb = _train_fold_capture_embeddings(data, fold, fold_idx)
+        emb = _train_fold_capture_embeddings(data, fold, fold_idx, seed=seed)
         oof[fold["test_mask"]] = emb[fold["test_mask"]]
 
     if torch.isnan(oof).any():
         raise RuntimeError("Some edges were not covered by any fold's test set.")
 
-    out = Path(config.gnn_embedding_path).with_name("edge_embeddings_oof.pt")
+    out = (
+        Path(output_path)
+        if output_path is not None
+        else Path(config.gnn_embedding_path).with_name("edge_embeddings_oof.pt")
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(oof, out)
     print(f"\nSaved OOF GNN embeddings -> {out}")
@@ -139,8 +157,13 @@ def build_oof_gnn_embeddings(dataset: str) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="unsw_nb15", choices=sorted(DATASETS))
+    parser.add_argument(
+        "--seed", type=int, default=SEED,
+        help="Training seed. Does not change the fold partition.",
+    )
+    parser.add_argument("--output-path", default=None)
     args = parser.parse_args()
-    build_oof_gnn_embeddings(args.dataset)
+    build_oof_gnn_embeddings(args.dataset, seed=args.seed, output_path=args.output_path)
 
 
 if __name__ == "__main__":
