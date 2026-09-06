@@ -51,6 +51,14 @@ disagree, the contract wins and this file is stale.
 
 ## 1. Current ladder (both datasets, v2 encoding)
 
+> **SUPERSEDED 2026-09-06.** Everything in §1.1–§1.3 is the single-seed (seed 42) picture
+> from the schema-3/5 contracts. It is preserved for provenance. The current contracts are
+> schema 4 (UNSW) / 6 (ToN), measured at 3 training seeds with the fold partition fixed; see
+> the **2026-09-06** section below and `results/multiseed_ladder_v2_legacy.json`. At 3 seeds
+> **nothing is separated on either dataset**; the UNSW loop is below AGAF at every seed and
+> the ToN "AGAF significantly below GNN (P=0.0005)" does not survive. Do not quote §1.1's
+> intervals or §1.2's reversal as current.
+
 **Regenerated 2026-08-27** directly from live pipeline artifacts
 (`data/{dataset}/processed/step4_feedback/{ladder_summary,ablation_summary}.json`) — every
 number below, the three `results/*.json` contract files, and `tests/test_current_results.py`

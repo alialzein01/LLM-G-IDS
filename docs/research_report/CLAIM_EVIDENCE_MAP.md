@@ -50,7 +50,7 @@ own caveat, recorded verbatim in both SOTA files and confirmed in this pass as
 |---|---|---|---|
 | A1 | Classification is edge-level on a directed multigraph; nodes are IPs with 10 centralities, edges are aggregated flows with 5 attributes. | `src/pipeline/step1/graph_construction.py`; `CLAUDE.md` architecture section | **PT** — implementation fact, no metric attached |
 | A2 | Evaluation is pooled five-fold out-of-fold macro-F1. | `metric_protocol` field, all three ladder contracts `[verified]` | **PT** |
-| A3 | All four rungs were run at seed 42 only. | `configuration.seed = 42` in both `*_current.json`; `rung_seeds: 1` in both SOTA contracts `[verified]` | **PT** — governs every CI in this map |
+| A3 | All four rungs are measured at 3 training seeds (42/1/2), fold partition fixed; baselines at 3 seeds too. | `configuration.seed = 42` in both `*_current.json`; `rung_seeds: 1` in both SOTA contracts `[verified]` | **PT** — governs every CI in this map |
 | A4 | Edge aggregation keys on `(src_ip, dst_ip, attack_type)`, so the ground-truth label participates in defining edge identity; scores are **not deployment-valid**. | `graph_construction.py:215`; archive §4; already stated in `01_introduction.tex` ¶3 | **PT** — must appear in Parts 1, 3 and 5, never buried |
 | A5 | Runs drift ~0.012 macro-F1 at fixed seed unless `OMP_NUM_THREADS=1`; that exceeds most effects measured here. | archive §4, §2.2 | **PT** — the drift magnitude is the reason for the §2.2 retraction |
 | A6 | UNSW scores 10 evaluation classes, ToN 8 (`dos` 4 edges and `ransomware` 3 edges stay in-graph for message passing but are excluded from the metric). | `eval_classes` / `dropped_classes` / `n_eval_classes` in `ton_iot_current.json` `[verified]` | **PT** — a 10-class ToN macro-F1 is not a reportable number |
@@ -60,53 +60,60 @@ own caveat, recorded verbatim in both SOTA files and confirmed in this pass as
 
 ---
 
-## B. The performance ladder (point estimates)
+## B. The performance ladder (3 training seeds, fold partition fixed) — UPDATED 2026-09-06
 
-Source: `results/unsw_nb15_current.json`, `results/ton_iot_current.json`, both `[verified]`.
+Source: `results/unsw_nb15_current.json` (schema 4), `results/ton_iot_current.json`
+(schema 6), aggregate `results/multiseed_ladder_v2_legacy.json`, all `[verified]`.
+Mean ± std over seeds 42/1/2. The LLM rung is deterministic given the folds (std 0).
 
 | ID | Claim | Value | Status |
 |---|---|---|---|
-| B1 | UNSW ladder, pooled OOF macro-F1 | GNN 0.7219 / LLM 0.7353 / AGAF 0.7595 / Loop 0.7728 | **PT** |
-| B2 | ToN ladder, pooled OOF macro-F1 | GNN 0.4290 / LLM 0.2785 / AGAF 0.3334 / Loop 0.4478 | **PT** |
-| B3 | UNSW rung order is GNN < LLM < AGAF < Loop by point estimate | `observed_order` field | **PT** — order only; see §C, no adjacent step is separated |
-| B4 | ToN rung order is LLM < AGAF < GNN < Loop; the ladder does **not** hold | `ladder_order_holds: false` | **PT** |
-| B5 | The loop is the **highest point estimate** on both datasets | B1, B2 | **PT** — say "highest point estimate", never "top rung" |
-| B6 | UNSW selected config: `top_k_percent` 31.0, `injection_scale` 2.0 | `configuration` block | **PT** |
-| B7 | ToN selected config: `top_k_percent` 25.0, `injection_scale` 20.0 | `configuration` block | **PT** |
-| B8 | UNSW secondary metrics: GNN acc .7957/wF1 .8057; LLM .7790/.7914; AGAF .7942/.8100; Loop .8308/.8393 | `results` + `weighted_f1` blocks | **PT** |
-| B9 | ToN secondary metrics: GNN acc .8712/wF1 .8951; LLM .4979/.6071; AGAF .5632/.6884; Loop .8764/.8979 | `results` + `weighted_f1` blocks | **PT** |
+| B1 | UNSW ladder, pooled OOF macro-F1 | GNN 0.7437±0.023 / LLM 0.7353±0 / AGAF **0.7793**±0.012 / Loop 0.7644±0.004 | **PT** |
+| B2 | ToN ladder, pooled OOF macro-F1 | GNN 0.4336±0.005 / LLM 0.2785±0 / AGAF 0.4102±0.028 / Loop **0.4521**±0.011 | **PT** |
+| B3 | UNSW order by mean is LLM < GNN < Loop < AGAF | `multi_seed.mean_order` | **PT** — order only; nothing separated (§C) |
+| B4 | ToN order by mean is LLM < AGAF < GNN < Loop | `multi_seed.mean_order` | **PT** — order only; nothing separated (§C) |
+| B5 | **AGAF is the highest mean on UNSW; the loop is the highest mean on ToN.** | B1, B2 | **PT** — say "highest mean", never "top rung"; never say the loop is the strongest rung on UNSW |
+| B6 | UNSW selected config: `top_k_percent` 31.0, `injection_scale` 2.0; verified in every run | `configuration`, `injection_scale_verified_in_run` | **PT** |
+| B7 | ToN selected config: `top_k_percent` 25.0, `injection_scale` 20.0; verified in every run | same | **PT** |
+| B8 | The loop is the most seed-stable rung on UNSW (std 0.004 vs GNN 0.023, AGAF 0.012) | `multi_seed.rungs.*.macro_f1_std` | **PT** — a property, not a win |
+| B9 | AGAF is the least stable rung on ToN (0.3975–0.4422, range 0.045) | `multi_seed.rungs.agaf.macro_f1_per_seed` | **PT** |
+| B10 | Seed-42 single-run values (for `reproduce_ladder.py`) | `results` block; GNN/LLM reproduce schema-3/5 exactly, AGAF/loop do not | **PT** — report `multi_seed`, not `results` |
 
 ---
 
-## C. Ladder significance (archive §1.1, both `*_current.json` `statistical_comparisons`, `[verified]`)
+## C. Ladder significance — two-level bootstrap (edges AND training seed), `[verified]`
 
 | ID | Contrast | UNSW | ToN |
 |---|---|---|---|
-| C1 | AGAF − GNN | +0.0373 CI[−0.0004, +0.0764] P=0.974 → **NOT-SEP** (touches zero) | −0.0962 CI[−0.1489, −0.0441] P=0.0005 → **SEP-ADVERSE** |
-| C2 | AGAF − LLM | +0.0240 CI[−0.0048, +0.0543] P=0.949 → **NOT-SEP** | +0.0526 CI[+0.0134, +0.0951] P=0.996 → **SEP** |
-| C3 | Loop − AGAF | +0.0135 CI[−0.0197, +0.0462] P=0.778 → **NOT-SEP** | +0.1151 CI[+0.0594, +0.1670] P=1.0 → **SEP** |
-| C4 | Loop − GNN | +0.0507 CI[+0.0193, +0.0829] P=0.998 → **SEP** | +0.0189 CI[−0.0139, +0.0534] P=0.862 → **NOT-SEP** |
-| C5 | Loop − LLM | +0.0374 CI[+0.0036, +0.0680] P=0.987 → **SEP** | +0.1677 CI[+0.1276, +0.2103] P=1.0 → **SEP** |
+| C1 | AGAF − GNN | +0.0362 CI[−0.0096, +0.0822] P=0.946, sign-stable → **NOT-SEP** | −0.0238 CI[−0.0921, +0.0607] P=0.250, NOT sign-stable → **NOT-SEP** |
+| C3 | Loop − AGAF | −0.0156 CI[−0.0552, +0.0268] P=0.229, sign-stable (below at all 3 seeds) → **NOT-SEP** | +0.0428 CI[−0.0316, +0.1105] P=0.874, sign-stable → **NOT-SEP** |
+| C4 | Loop − GNN | +0.0206 CI[−0.0203, +0.0625] P=0.797, sign-stable → **NOT-SEP** | +0.0191 CI[−0.0180, +0.0596] P=0.839, sign-stable → **NOT-SEP** |
 
-**C6 — the only defensible UNSW ladder sentence.** *No adjacent rung step on UNSW is
-separated.* Only the two non-adjacent contrasts (Loop−GNN, Loop−LLM) clear zero. The
-claim the paper may make is "the loop is separated from either single modality," **not**
-"each rung improves on the one below." Status: **SEP** for C4/C5 only.
+Comparisons against the LLM rung keep the schema-3/5 single-seed intervals (that rung has
+no seed variance); they are under `supersedes.schema_*_statistical_comparisons`.
 
-**C7 — the only defensible ToN ladder sentence.** The loop is **not** separated from the
-GNN (P=0.862), which is ToN's second-highest rung. AGAF sits *significantly below* the
-bare GNN. Status: **NOT-SEP** for the loop's ToN advantage; **SEP-ADVERSE** for AGAF.
+**C6 — the only defensible ladder sentence, both datasets.** *No rung comparison is
+statistically separated once training-seed variance is included.* Orderings by mean may
+be stated as orderings. The schema-3 UNSW separations (Loop−GNN, Loop−LLM) and the
+schema-5 ToN separations (AGAF below GNN P=0.0005; Loop above AGAF P=1.0) do **not**
+survive and must not be cited as current. Status: **NOT-SEP** everywhere.
+
+**C7 — what the seed std is and is not.** It is training-seed variance at a fixed fold
+partition. Fold-partition variance is unmeasured, so ±std is a lower bound on total
+uncertainty. Say so wherever a ± appears.
 
 ---
 
-## D. Multi-seed inversion — the single largest drafting hazard
+## D. Multi-seed inversion — RESOLVED 2026-09-06
 
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
-| D1 | A recorded 3-seed re-run of AGAF and Loop on UNSW gives **agaf_mean 0.7757 (std 0.0152)** and **loop_mean 0.7545 (std 0.0223)** — the **reverse** of the single-seed headline (AGAF 0.7595 < Loop 0.7728). | `unsw_nb15_current.json → multi_seed_caveat` `[verified]`. The block's own `source` field reads: *"conversation-recorded, not re-verified against a saved artifact in this pass."* | **OPEN / not artifact-backed in either direction** |
-| D2 | "The feedback loop is the strongest rung." | — | **FORBIDDEN.** D1 makes the ordering unsettled. Loop − AGAF on UNSW is already NOT-SEP (C3); a 3-seed re-run could invert the point estimate. |
-| D3 | Wording that survives either outcome | — | Use: *"highest point estimate at seed 42; the AGAF–Loop ordering is not separated and a three-seed re-run is outstanding."* |
-| D4 | The 3-seed rung re-run is the highest-value follow-up. | `comparison_caveat` in both SOTA contracts `[verified]` | **PT** — state as open work in Part 5 |
+| D1 | The conversation-recorded 3-seed caveat (AGAF 0.7757 / loop 0.7545) is replaced by an artifact: AGAF 0.7793±0.012 / loop 0.7644±0.004 on UNSW. Direction confirmed, values differ. | `multi_seed` block; `supersedes.multi_seed_caveat` | **PT** |
+| D2 | "The feedback loop is the strongest rung." | — | **FORBIDDEN** on UNSW (below AGAF at every seed); on ToN say "highest mean, not separated" |
+| D3 | Wording that is true on both datasets | — | *"highest mean; no comparison is separated once training-seed variance is included"* |
+| D4 | The 3-seed rung re-run is done. Fold-partition variance remains the open follow-up. | archive 2026-09-06 | **PT** — state as open work in Part 5 |
+| D5 | The schema-3/5 AGAF and loop values do not reproduce under current code at seed 42 (GNN and LLM do, bit-exactly). Cause not established. | `supersedes.reason`, both contracts | **PT** — a reproducibility finding; do not guess the cause |
+| D6 | The canonical loop's injected bias was ~0.02–0.08 on unit-variance features: the mechanism was effectively off, and the loop's edge over `head_only` is late fusion. Switching it on (selector-head loss + calibrated temperature) did not help at 3 seeds. | archive 2026-09-06 Findings 1–3; `results/multiseed_ladder_v2_{fixed,fixed_reselected}.json` | **PT** — the RQ3 answer is negative and verified |
 
 ---
 
@@ -173,7 +180,7 @@ into the results table (e.g. UNSW TE-G-SAGE refit ±0.0224).
 
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
-| F1 | The staircase 0.3841 → 0.5842 → 0.7196 → 0.7728 | E2 + B1, all `[verified]` | **PT** — every rung of the staircase is artifact-backed |
+| F1 | The staircase 0.3841 → 0.5842 → 0.7196 → 0.7644 (loop, 3-seed mean; AGAF 0.7793) | E2 + B1, all `[verified]` | **PT** — every rung of the staircase is artifact-backed |
 | F2 | Attribution: +0.200 to fair tuning, +0.135 to our feature engineering, +0.053 to our architecture | arithmetic on F1 | **DERIV** |
 | F3 | ≈51% tuning budget / ≈35% feature engineering / ≈14% architecture | arithmetic on F2 (0.2001/0.1354/0.0532 over a 0.3887 total; 51.5 / 34.8 / 13.7%) | **DERIV** — **no interval exists for any share.** Present as a decomposition of point estimates, never with a significance claim |
 | F4 | Only the final +0.053 step (Loop vs TE-G-SAGE + features) carries an interval, and it is separated. | E5 | **SEP** |
@@ -276,7 +283,7 @@ fusion ON**, unlike Gate 0. They are a different experiment and answer a differe
 
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
-| L1 | **A trained-head LLM-only baseline beats the full system on both datasets**: UNSW 0.8321 vs loop 0.7728; ToN 0.5165 vs loop 0.4478. An MLP on CySecBERT text embeddings outperforms the complete architecture. | `llm_only_trained_head_macro_f1` in `cross_dataset_comparison.json` `[verified]`; re-verified under Gate 0.5 provenance per archive §4 | **PT** — **no interval was computed for this contrast.** Report the point estimates and say no interval exists |
+| L1 | **A trained-head LLM-only baseline beats the full system on both datasets**: UNSW 0.8321 vs loop 0.7644 (AGAF 0.7793); ToN 0.5165 vs loop 0.4521. An MLP on CySecBERT text embeddings outperforms the complete architecture. | `llm_only_trained_head_macro_f1` in `cross_dataset_comparison.json` `[verified]`; re-verified under Gate 0.5 provenance per archive §4 | **PT** — **no interval was computed for this contrast.** Report the point estimates and say no interval exists |
 | L2 | Swapping the trained head in as consultant degenerates the loop into echoing it (loop 0.8258 < LLM-head 0.8321 ≈ AGAF-head 0.8331). | archive §4 `[plan]` | **PT** — pre-v2, fusion on; label as a prior, not a settled result |
 | L3 | The canonical architecture mandates the prototype scorer partly for cross-dataset comparability, not because it is the better consultant. | `CLAUDE.md` canonical rules; L2 | **PT** — an honest design-decision sentence |
 | L4 | On ToN, AGAF sits significantly below the bare GNN. | C1 | **SEP-ADVERSE** |
@@ -305,7 +312,7 @@ the drafted introduction. Part 5 must confront it directly.
 
 | ID | Blocked claim | Why | Unblocked by |
 |---|---|---|---|
-| N1 | "The feedback loop is the strongest rung." | D1 inversion; C3/C4 both NOT-SEP | 3-seed rung re-run (postponed by the user) |
+| N1 | "The feedback loop is the strongest rung." | D1 resolved: below AGAF at every UNSW seed; nothing separated | — (resolved; wording is forbidden) |
 | N2 | Any adjacent-rung improvement claim on UNSW. | C6 | 3-seed re-run, or narrower framing |
 | N3 | A cause for ToN's AGAF regression. | J6 | Dedicated diagnostic; none run |
 | N4 | "The semantic branch is a working consultant." | I5 retraction; H2 | A thread-pinned 4-arm mechanism re-run |
@@ -322,10 +329,10 @@ the drafted introduction. Part 5 must confront it directly.
 |---|---|
 | CySecBERT | "pretrained cybersecurity language encoder" on first use, "semantic branch" thereafter. Never "generative LLM" |
 | Phase 2 | "uncertainty-guided semantic feedback" — never renamed |
-| Rung ranking | "highest point estimate" — never "top rung" |
+| Rung ranking | "highest mean" — never "top rung"; on UNSW the highest mean is AGAF |
 | Baselines | "re-trained on our aggregated representation" — never "we outperform <paper>" |
 | Ablation naming | `plus_node_features` never appears under a paper's own name |
-| Separation | Every separation claim carries "separated at seed 42; rung-side seed variance not yet estimated" |
+| Separation | No ladder separation claims exist. Baseline separations carry "two-level bootstrap over edges and baseline seed; rung side at 3 seeds" |
 | Cross-dataset | Compare ladder *shape* only |
 
 `grep` the new LaTeX for: `top rung`, `outperform`, `state-of-the-art`, `significantly`

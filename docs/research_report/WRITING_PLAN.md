@@ -19,9 +19,9 @@ The intended outcome is a five-part M2 report whose every quantitative claim tra
 committed artifact, which reports negative results as prominently as positive ones, and
 which reads like a person wrote it.
 
-**One deferred item:** the four ladder rungs were only ever run at seed 42, so no
-confidence interval includes rung-side seed variance. The user postponed the 3-seed
-re-run. Write every separation claim so it survives either outcome (wording below).
+**Resolved 2026-09-06:** the four rungs are measured at 3 training seeds (fold partition
+fixed) and the ladder CIs are two-level (edges AND training seed). **Nothing is separated
+on either dataset.** Write no ladder separation claim; state orderings by mean as orderings.
 
 ---
 
@@ -82,14 +82,17 @@ Evaluation is pooled 5-fold out-of-fold macro-F1, seed 42.
 
 ## Every number you need
 
-### Ladder (pooled OOF macro-F1, v2 encoding)
+### Ladder (pooled OOF macro-F1, v2 encoding, 3 training seeds, mean ± std)
 
 | Dataset | top-k | scale | GNN | LLM | AGAF | Loop |
 |---|---:|---:|---:|---:|---:|---:|
-| NF-UNSW-NB15 (10 cls) | 31.0 | 2.0 | 0.7219 | 0.7353 | 0.7595 | **0.7728** |
-| NF-ToN-IoT (8 cls) | 25.0 | 20.0 | 0.4290 | 0.2785 | 0.3334 | **0.4478** |
+| NF-UNSW-NB15 (10 cls) | 31.0 | 2.0 | 0.7437 ± 0.023 | 0.7353 ± 0 | **0.7793 ± 0.012** | 0.7644 ± 0.004 |
+| NF-ToN-IoT (8 cls) | 25.0 | 20.0 | 0.4336 ± 0.005 | 0.2785 ± 0 | 0.4102 ± 0.028 | **0.4521 ± 0.011** |
 
-Source: `results/{unsw_nb15,ton_iot}_current.json`.
+Source: `results/{unsw_nb15,ton_iot}_current.json` (schema 4 / 6),
+`results/multiseed_ladder_v2_legacy.json`. Bold = highest mean. **No comparison is
+separated** (two-level CI includes zero everywhere). The ± is training-seed variance only;
+fold-partition variance is unmeasured — say so wherever a ± appears.
 
 ### Ladder significance (archive §1.1)
 
@@ -126,9 +129,12 @@ Source: `results/{unsw_nb15,ton_iot}_current.json`.
 | best baseline as published | 0.3841 | — |
 | + fair tuning (`refit`) | 0.5842 | +0.200, our choice of graph scale |
 | + our 10 centralities | 0.7196 | +0.135, our feature engineering |
-| our Loop rung | 0.7728 | +0.053, our architecture |
+| our AGAF rung (highest mean, 3 seeds) | 0.7793 | +0.060, our architecture |
+| our Loop rung (3 seeds) | 0.7644 | +0.045 |
 
-≈51% tuning budget, ≈35% feature engineering, **≈14% architecture.**
+≈51% tuning budget, ≈34% feature engineering, **≈15% architecture** (using AGAF). Note the
+baseline rows are 3-seed means too; the decomposition is of point estimates and carries no
+interval — do not call any step significant.
 
 ### E-GraphSAGE endpoint-only ceiling (archive §5.5)
 
@@ -171,13 +177,13 @@ messages as `W_msg([h_u ‖ e_uv])` → the code's form is used.
 
 ## Traps — violating any of these is a factual error
 
-0. **MULTI-SEED INVERSION — read this before writing any headline.**
-   `unsw_nb15_current.json` → `multi_seed_caveat` records **agaf_mean 0.7757 vs loop_mean
-   0.7545** over three seeds — the *reverse* of the single-seed headline (AGAF 0.7595, Loop
-   0.7728). `loop_vs_agaf` already crosses zero. That field is explicitly
-   *"not re-verified against a saved artifact"*, so **those two numbers may never be cited
-   as results** — but they mean the claim *"the feedback loop is the strongest rung"* is
-   **not established**. The 3-seed re-run is postponed. See `EVIDENCE_STATE.md` §4.
+0. **MULTI-SEED — resolved 2026-09-06; read `EVIDENCE_STATE.md` §4 before any headline.**
+   At 3 training seeds AGAF (0.7793) is above the loop (0.7644) at every seed on UNSW, and
+   the loop (0.4521) is above AGAF (0.4102) at every seed on ToN. **Neither is separated**
+   (two-level CIs [−0.055, +0.027] and [−0.032, +0.111]). *"The feedback loop is the
+   strongest rung"* is **false on UNSW** and unsupported as a separation on ToN. The
+   canonical loop's feedback was effectively off (bias ~0.02–0.08); switching it on did not
+   help (archive 2026-09-06). RQ3's answer is negative and verified.
 
 0b. **NOVELTY — two claims at different levels. Hold BOTH; do not collapse them.**
 
@@ -250,12 +256,14 @@ messages as `W_msg([h_u ‖ e_uv])` → the code's form is used.
    non-faithful ablation. Never tabulate it under the paper's name.
 7. **E-GraphSAGE's large UNSW margins are ceiling-limited, not architectural evidence.**
    Do not lead with +0.60 numbers.
-8. **ToN's AGAF regression is undiagnosed.** Do not guess a cause.
-9. **AGAF is not ToN's strongest rung** and the loop does not underperform AGAF there —
-   both are reversed from the pre-v2 finding.
-10. **Every CI omits rung-side seed variance** (rungs ran at seed 42 only). Wherever a
-    separation is claimed, write *"separated at seed 42; rung-side seed variance not yet
-    estimated"* — this survives the pending re-run either way.
+8. **ToN's AGAF "regression" is withdrawn.** At 3 seeds AGAF spans 0.3975–0.4422 and
+   AGAF−GNN is not sign-stable; the P=0.0005 claim was a seed-42 artifact. Do not describe
+   a ToN AGAF regression as current, and do not guess a cause for one.
+9. **On ToN the loop has the highest mean; on UNSW AGAF does.** Neither is separated. Say
+   "highest mean", never "strongest rung".
+10. **Ladder CIs are two-level (edges AND training seed) and none excludes zero.** Baseline
+    CIs also resample the baseline seed. The ± is training-seed variance at a fixed fold
+    partition; fold-partition variance is unmeasured — say so wherever a ± appears.
 11. **Two numbers were once fabricated in this project and caught in review.** If you
     cannot point to the artifact a number came from, do not state it.
 
@@ -456,8 +464,9 @@ Gate 0 and Gate 0.5; the attention-injection null result; the `real > control` r
 1. **The ceiling diagram** — two parallel edges between one IP pair collapsing to an
    identical `concat(h_u, h_v)` representation. This is the report's best explanatory
    visual.
-2. **The decomposition chart** — the 0.3841 → 0.5842 → 0.7196 → 0.7728 staircase, coloured
-   by what each step is attributable to.
+2. **The decomposition chart** — the 0.3841 → 0.5842 → 0.7196 → 0.7793 staircase (AGAF,
+   3-seed mean; loop 0.7644 shown alongside), coloured by what each step is attributable to.
+   No step carries an interval; label it a point-estimate decomposition.
 
 Per `REPORT_WORKFLOW.md`, diagrams are supplied by the user through Claude: **pause and
 request each figure** with purpose, full labels, hierarchy, colours, aspect ratio, format
@@ -478,7 +487,9 @@ IDS, and isolates why. Say what that implies for future work —
 calibration and trust of consultant logits, not a bigger consultant.
 
 Open work: deployment-valid graph construction where edge identity does not depend on the
-label; the 3-seed rung re-run; ToN's undiagnosed AGAF regression.
+label; fold-partition variance (only training-seed variance is measured); a stronger
+semantic consultant within the `todo.md` design (text-only judgment) — the oracle shows the
+channel has headroom that no realistic consultant has used.
 
 ### Task 5 — Final QA
 
@@ -511,7 +522,7 @@ Before declaring any part done:
 
 ## Do not
 
-- Start the 3-seed rung re-run. The user postponed it.
+- Re-run the 3-seed sweep or any of conditions A/B/C. They are done and committed.
 - Re-run any experiment or "improve" any number. Writing only.
 - Generate figures without first requesting them per the diagram protocol.
 - Read the whole repository. This plan and `EVIDENCE_STATE.md` are the context pack.
