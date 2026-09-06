@@ -1,0 +1,75 @@
+top_k_percent=25.0 injection_scale=20.0 (source: multiseed_validation_sweep)
+Semantic consultant: whitened-prototype scorer (no trained head)
+fusion_block=agaf (199242 parameters)
+
+===== MODE: real =====
+    [real] fold 0 epoch   1 loss=0.1077 val_f1=0.0029
+    [real] fold 0 epoch  60 loss=0.0722 val_f1=0.1236
+    [real] fold 0 DONE best_val=0.1666 test=0.1554 iters=2 bias|.|=1.66e-02
+    [real] fold 1 epoch   1 loss=0.0972 val_f1=0.0012
+    [real] fold 1 epoch  60 loss=0.0553 val_f1=0.2745
+    [real] fold 1 DONE best_val=0.3068 test=0.2744 iters=3 bias|.|=1.65e-02
+    [real] fold 2 epoch   1 loss=0.0975 val_f1=0.0012
+    [real] fold 2 epoch  60 loss=0.0636 val_f1=0.1329
+    [real] fold 2 epoch 120 loss=0.0470 val_f1=0.2107
+    [real] fold 2 epoch 180 loss=0.0357 val_f1=0.2930
+    [real] fold 2 DONE best_val=0.3996 test=0.3727 iters=3 bias|.|=3.02e-02
+    [real] fold 3 epoch   1 loss=0.0971 val_f1=0.0018
+    [real] fold 3 epoch  60 loss=0.0625 val_f1=0.3221
+    [real] fold 3 DONE best_val=0.3976 test=0.3744 iters=3 bias|.|=2.44e-02
+    [real] fold 4 epoch   1 loss=0.0971 val_f1=0.0128
+    [real] fold 4 epoch  60 loss=0.0562 val_f1=0.2290
+    [real] fold 4 epoch 120 loss=0.0410 val_f1=0.2927
+    [real] fold 4 epoch 180 loss=0.0283 val_f1=0.3523
+    [real] fold 4 DONE best_val=0.4057 test=0.3557 iters=2 bias|.|=2.04e-02
+[real] pooled CV macro-F1 = 0.3312
+
+===== MODE: head_only =====
+    [head_only] fold 0 epoch   1 loss=0.1111 val_f1=0.0443
+    [head_only] fold 0 epoch  60 loss=0.0267 val_f1=0.4181
+    [head_only] fold 0 epoch 120 loss=0.0190 val_f1=0.4986
+    [head_only] fold 0 epoch 180 loss=0.0120 val_f1=0.4844
+    [head_only] fold 0 DONE best_val=0.5340 test=0.4318 iters=2
+    [head_only] fold 1 epoch   1 loss=0.1009 val_f1=0.0062
+    [head_only] fold 1 epoch  60 loss=0.0306 val_f1=0.3761
+    [head_only] fold 1 DONE best_val=0.4253 test=0.4057 iters=2
+    [head_only] fold 2 epoch   1 loss=0.1008 val_f1=0.0034
+    [head_only] fold 2 epoch  60 loss=0.0256 val_f1=0.4432
+    [head_only] fold 2 DONE best_val=0.4989 test=0.4229 iters=2
+    [head_only] fold 3 epoch   1 loss=0.0970 val_f1=0.0289
+    [head_only] fold 3 epoch  60 loss=0.0193 val_f1=0.3701
+    [head_only] fold 3 DONE best_val=0.3988 test=0.3604 iters=2
+    [head_only] fold 4 epoch   1 loss=0.1001 val_f1=0.1547
+    [head_only] fold 4 epoch  60 loss=0.0220 val_f1=0.4253
+    [head_only] fold 4 DONE best_val=0.4285 test=0.3235 iters=2
+[head_only] pooled CV macro-F1 = 0.3809
+
+===== MODE: random =====
+    [random] fold 0 epoch   1 loss=0.1077 val_f1=0.0029
+    [random] fold 0 epoch  60 loss=0.0756 val_f1=0.1122
+    [random] fold 0 epoch 120 loss=0.0589 val_f1=0.1514
+    [random] fold 0 DONE best_val=0.2103 test=0.2165 iters=3 bias|.|=1.88e+00
+    [random] fold 1 epoch   1 loss=0.0972 val_f1=0.0012
+    [random] fold 1 epoch  60 loss=0.0685 val_f1=0.1541
+    [random] fold 1 epoch 120 loss=0.0510 val_f1=0.2059
+    [random] fold 1 DONE best_val=0.3033 test=0.2410 iters=3 bias|.|=1.57e+00
+    [random] fold 2 epoch   1 loss=0.0975 val_f1=0.0012
+    [random] fold 2 epoch  60 loss=0.0716 val_f1=0.1640
+    [random] fold 2 DONE best_val=0.2025 test=0.1605 iters=3 bias|.|=1.91e+00
+    [random] fold 3 epoch   1 loss=0.0971 val_f1=0.0018
+    [random] fold 3 epoch  60 loss=0.0767 val_f1=0.2038
+    [random] fold 3 epoch 120 loss=0.0546 val_f1=0.1867
+    [random] fold 3 epoch 180 loss=0.0526 val_f1=0.2800
+    [random] fold 3 epoch 240 loss=0.0419 val_f1=0.3084
+    [random] fold 3 DONE best_val=0.4042 test=0.3272 iters=3 bias|.|=1.69e+00
+    [random] fold 4 epoch   1 loss=0.0971 val_f1=0.0128
+    [random] fold 4 epoch  60 loss=0.0773 val_f1=0.1381
+    [random] fold 4 epoch 120 loss=0.0616 val_f1=0.2642
+    [random] fold 4 DONE best_val=0.3151 test=0.2234 iters=3 bias|.|=1.89e+00
+[random] pooled CV macro-F1 = 0.2613
+
+=== SUMMARY ===
+  real       pooled CV macro-F1 = 0.3312
+  head_only  pooled CV macro-F1 = 0.3809
+  random     pooled CV macro-F1 = 0.2613
+  real - random: Δ=+0.0697 CI[+0.0377, +0.1035] P(>0)=1.000
