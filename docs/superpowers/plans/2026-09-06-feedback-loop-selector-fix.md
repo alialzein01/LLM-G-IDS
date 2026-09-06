@@ -11,8 +11,17 @@ now beats AGAF. A negative answer is acceptable; a fabricated positive one is no
 
 ## The diagnosis (read fully before touching code)
 
-At 3 seeds the loop is behind AGAF on UNSW at every seed (mean 0.7642 vs 0.7793) and
-statistically indistinguishable from it on ToN. Per-class F1 shows the loop losing on
+**Correction (2026-09-06, after Task 2):** the 3-seed sweep behind
+`results/multiseed_ladder.json` ran `train_feedback` WITHOUT `--injection-scale`, so the
+loop rung ran at the argparse default 10.0 on both datasets instead of the selected
+2.0 (UNSW) / 20.0 (ToN). The canonical Aug-27 run used the correct scales
+(`benchmark_summary.json` in `backups/pre_multiseed/`). Therefore in that file the
+**loop numbers and every loop comparison are invalid**; the GNN, LLM and AGAF numbers do
+not depend on the scale and stand. "AGAF above the loop at all three seeds" is NOT
+established and must be re-measured at the correct scales (Task 4 below, revised).
+
+What is established at 3 seeds: AGAF 0.7793 +/- 0.0116 on UNSW; AGAF spans 0.3975-0.4422
+on ToN; no comparison is separated once seed variance is included. Per-class F1 shows the loop losing on
 exactly the classes where the semantic branch should help (UNSW Fuzzers −0.10, Analysis
 −0.06; ToN password −0.21, scanning −0.16). The mechanism is not doing what its name says,
 for two concrete reasons, both visible in artifacts that already exist.
