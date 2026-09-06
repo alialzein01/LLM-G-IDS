@@ -87,6 +87,33 @@ class FusionEdgeClassifier(nn.Module):
         return logits, edge_emb, attn
 
 
+def agaf_feature_gate_fuse(
+    gate_layer: nn.Module, h_proj: torch.Tensor, s_proj: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """AGAF's feature-wise gate: a per-feature share of the GNN branch, decided
+    from the two views and their difference and product.
+
+    Extracted so the feedback loop can run the SAME fusion arithmetic through
+    its own parameters instead of a second implementation that might drift.
+    `gate_layer` must map `4 * proj_dim -> proj_dim`.
+    """
+    gate_input = torch.cat(
+        [h_proj, s_proj, torch.abs(h_proj - s_proj), h_proj * s_proj], dim=1
+    )
+    gate = torch.sigmoid(gate_layer(gate_input))
+    fused = gate * h_proj + (1.0 - gate) * s_proj
+    return fused, gate
+
+
+def agaf_feature_attention(
+    attention_layer: nn.Module, fused: torch.Tensor
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """AGAF's feature-wise attention step: a softmax over the fused vector's own
+    dimensions, applied to itself. `attention_layer` maps `proj_dim -> proj_dim`."""
+    attention = F.softmax(attention_layer(fused), dim=1)
+    return attention * fused, attention
+
+
 class AGAFFusionEdgeClassifier(nn.Module):
     """
     AGAF: Adaptive Gated Attention Fusion.
@@ -173,12 +200,7 @@ class AGAFFusionEdgeClassifier(nn.Module):
         mode = self.fusion_mode
 
         if mode == "feature_gate":
-            gate_input = torch.cat(
-                [h_proj, s_proj, torch.abs(h_proj - s_proj), h_proj * s_proj], dim=1
-            )
-            gate = torch.sigmoid(self.gate(gate_input))
-            fused = gate * h_proj + (1.0 - gate) * s_proj
-            return fused, gate
+            return agaf_feature_gate_fuse(self.gate, h_proj, s_proj)
 
         if mode == "concat":
             # GMLM: both modalities pass through whole; nothing decides a share.
@@ -221,8 +243,9 @@ class AGAFFusionEdgeClassifier(nn.Module):
         s = self.llm_proj(llm_emb)
         fused, gate = self.fuse(h, s)
 
-        feature_attention = F.softmax(self.feature_attention(fused), dim=1)
-        attended = feature_attention * fused
+        attended, feature_attention = agaf_feature_attention(
+            self.feature_attention, fused
+        )
 
         edge_emb = self.mlp_hidden(attended)
         edge_emb = F.relu(edge_emb)
