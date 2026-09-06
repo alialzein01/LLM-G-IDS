@@ -259,3 +259,41 @@ UNSW real 0.7641720503342035, ToN 0.4413700353170879 — both identical, with
 Written up in `docs/RESULTS_ARCHIVE.md`, section "2026-09-07 — Four mechanism
 fixes, seed 42".
 
+---
+
+## Task B — rung-vs-baseline intervals with both sides at three seeds
+
+Not a training run: an analysis over predictions already on disk. The
+`statistical_comparisons` / `seed_matched_comparisons` blocks in the two
+`*_sota_baselines.json` contracts held the rung at seed 42 against three
+baseline seeds — their own caveat said the intervals were therefore too narrow.
+Both sides now have three seeds, so they are recomputed and the old blocks moved
+under `superseded` ("rung_seeds was 1; superseded 2026-09-07").
+
+`src/pipeline/baselines/compare_to_ladder_multiseed.py` reuses
+`aggregate_multiseed._two_level_bootstrap` and `._seed_matched_bootstrap`
+verbatim (2000 iterations, RNG seed 42). Independence on the two-level side is
+encoded in the input rather than in a new bootstrap: the function is handed a
+`per_seed` dict keyed by the nine (rung seed, baseline seed) pairs, so its
+uniform draw over those keys *is* an independent uniform draw on each side.
+
+All 60 per-seed re-scores — 36 baseline rows against
+`baselines[model][mode].seeds[*].macro_f1`, 24 rung rows against
+`multi_seed.rungs.<rung>.macro_f1_per_seed` — matched their contract value to
+full float precision. The module raises rather than computing intervals if any
+does not.
+
+`results/cross_dataset_comparison.json` was inspected and left untouched: it
+references only `*_head_baseline.json`, never the SOTA baseline intervals.
+
+| Date | Commit | Task | Datasets | Rung seeds | Baseline seeds | Cells | Verdict |
+|---|---|---|---|---:|---:|---:|---|
+| 2026-09-07 | `c1ee560` | B | both | 3 | 3 | 2 × 24 × 2 blocks | keep — schema 2 |
+
+Result summary (full tables in `docs/RESULTS_ARCHIVE.md` §5.3): on UNSW every
+rung is separated above all six baseline configurations in both interval types,
+the only exceptions being GNN and LLM against the non-faithful TE-G-SAGE +
+our-node-features variant. On ToN nothing separates from E-GraphSAGE except the
+LLM rung, separated *below* it. Three ToN cells are separated seed-matched but
+not two-level; no cell disagrees on sign.
+

@@ -158,7 +158,7 @@ into the results table (e.g. UNSW TE-G-SAGE refit ±0.0224).
 | E16 | ToN: AGAF vs E-GraphSAGE + node features | −0.1019 CI[−0.1843, −0.0218] | **SEP-ADVERSE** |
 | E17 | ToN: LLM vs TE-G-SAGE + node features | −0.0729 CI[−0.1214, −0.0259] | **SEP-ADVERSE** |
 | E18 | **ToN headline**: nothing of ours is separated from E-GraphSAGE, and two of our rungs are significantly behind it. | E10–E16 | **SEP-ADVERSE** — lead with this, do not soften |
-| E19 | The intervals used are the **primary two-level bootstrap** (resamples edges *and* draws one of three baseline seeds). Seed-matched intervals are retained separately. | `resampled: edges_and_baseline_seed`; `seed_matched_comparisons` block `[verified]` | **PT** |
+| E19 | The intervals used are the **two-level bootstrap with BOTH sides at three seeds** (a rung seed and a baseline seed drawn independently, edges resampled). Paired seed-matched intervals are retained alongside. Updated 2026-09-07; the seed-42-rung blocks are superseded and must not be quoted. | `resampled: edges_and_both_seeds_independently`; `statistical_comparisons_3seed` / `seed_matched_comparisons_3seed`, schema 2 `[verified]` | **PT** |
 
 ### E.3 The ~+0.60 UNSW margins
 
@@ -183,7 +183,7 @@ into the results table (e.g. UNSW TE-G-SAGE refit ±0.0224).
 | F1 | The staircase 0.3841 → 0.5842 → 0.7196 → 0.7644 (loop, 3-seed mean; AGAF 0.7793) | E2 + B1, all `[verified]` | **PT** — every rung of the staircase is artifact-backed |
 | F2 | Attribution: +0.200 to fair tuning, +0.135 to our feature engineering, +0.053 to our architecture | arithmetic on F1 | **DERIV** |
 | F3 | ≈51% tuning budget / ≈35% feature engineering / ≈14% architecture | arithmetic on F2 (0.2001/0.1354/0.0532 over a 0.3887 total; 51.5 / 34.8 / 13.7%) | **DERIV** — **no interval exists for any share.** Present as a decomposition of point estimates, never with a significance claim |
-| F4 | Only the final +0.053 step (Loop vs TE-G-SAGE + features) carries an interval, and it is separated. | E5 | **SEP** |
+| F4 | Only the final step (Loop vs TE-G-SAGE + features) carries an interval, and it is separated: **+0.0453 [+0.0033,+0.0847]** two-level / +0.0446 [+0.0162,+0.0740] seed-matched at 3 seeds on both sides (was +0.0535 with the rung at seed 42 only). | E5, archive §5.3 | **SEP** |
 | F5 | The decomposition is a centrepiece result and an honesty device: most of the naive margin is not architectural. | F1–F4 | **DERIV** — frame as interpretation |
 
 **Drafting note.** `decomposition` appears as no field in either SOTA contract; it is our
