@@ -1,0 +1,102 @@
+{
+  "dataset": "ton_iot",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    8,
+    9
+  ],
+  "dropped_classes": [
+    3,
+    7
+  ],
+  "metric": "pooled_oof_macro_f1",
+  "llm_head": "prototype_scorer",
+  "llm_alone_prototype": 0.27852446280044896,
+  "llm_alone_trained_head": null,
+  "ladder": {
+    "gnn_alone": 0.4289705488338377,
+    "llm_alone": 0.27852446280044896,
+    "agaf": 0.3974711630900891,
+    "feedback_loop": 0.4462164896477592
+  },
+  "accuracy": {
+    "gnn_alone": 0.8711800658204043,
+    "llm_alone": 0.4978843441466855,
+    "agaf": 0.8890456041372825,
+    "feedback_loop": 0.8721203573107663
+  },
+  "weighted_f1": {
+    "gnn_alone": 0.8950616153817673,
+    "llm_alone": 0.6071204993819181,
+    "agaf": 0.8835200369888082,
+    "feedback_loop": 0.8954086991434704
+  },
+  "bootstraps": {
+    "agaf_vs_gnn": {
+      "mean_diff": -0.032697779410184015,
+      "ci_low": -0.09093017110092125,
+      "ci_high": 0.030671798982277634,
+      "prob_positive": 0.1445
+    },
+    "agaf_vs_llm": {
+      "mean_diff": 0.11612525528500478,
+      "ci_low": 0.06548145578153794,
+      "ci_high": 0.16832852292207284,
+      "prob_positive": 1.0
+    },
+    "loop_vs_agaf": {
+      "mean_diff": 0.049936244312989674,
+      "ci_low": -0.014643328778187727,
+      "ci_high": 0.10925098719073083,
+      "prob_positive": 0.935
+    },
+    "loop_vs_llm": {
+      "mean_diff": 0.16606149959799443,
+      "ci_low": 0.12629863481328224,
+      "ci_high": 0.20545162910603,
+      "prob_positive": 1.0
+    },
+    "loop_vs_gnn": {
+      "mean_diff": 0.017238464902805662,
+      "ci_low": -0.014263755813405738,
+      "ci_high": 0.048374645592153674,
+      "prob_positive": 0.8595
+    }
+  },
+  "ladder_order_holds": false,
+  "configuration": {
+    "top_k_percent": 25.0,
+    "bias_confidence_fraction": 0.5,
+    "gate_mode": "confidence",
+    "effective_feedback_percent": 12.5,
+    "semantic_consultant": "prototype_scorer",
+    "trained_llm_head": false,
+    "injection_mode": "edge",
+    "selected_feedback_config": {
+      "schema_version": 1,
+      "dataset": "ton_iot",
+      "source": "multiseed_validation_sweep",
+      "selection_uses_test_labels": false,
+      "selection_metric": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
+      "top_k_percent": 25.0,
+      "bias_confidence_fraction": 0.5,
+      "effective_feedback_percent": 12.5,
+      "max_feedback_iterations": 3,
+      "churn_tolerance": 0.01,
+      "semantic_consultant": "whitened_prototype_scorer",
+      "trained_llm_head": false,
+      "selection_parameter": "top_k_percent",
+      "mean_validation_macro_f1": 0.5136,
+      "validation_macro_f1_std": 0.0043,
+      "pooled_oof_test_macro_f1": 0.3767039979181709,
+      "sweep_summary_path": "data/ton_iot/processed/step4_feedback/top_k_sweep/summary.json",
+      "injection_mode": "edge",
+      "injection_scale": 20.0
+    }
+  }
+}

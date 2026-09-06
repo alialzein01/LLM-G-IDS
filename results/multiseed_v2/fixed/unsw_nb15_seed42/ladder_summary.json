@@ -1,0 +1,102 @@
+{
+  "dataset": "unsw_nb15",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "metric": "pooled_oof_macro_f1",
+  "llm_head": "prototype_scorer",
+  "llm_alone_prototype": 0.7353188026257084,
+  "llm_alone_trained_head": null,
+  "ladder": {
+    "gnn_alone": 0.7219365593805762,
+    "llm_alone": 0.7353188026257084,
+    "agaf": 0.7679707333515186,
+    "feedback_loop": 0.7646730153716522
+  },
+  "accuracy": {
+    "gnn_alone": 0.7957317073170732,
+    "llm_alone": 0.7789634146341463,
+    "agaf": 0.8125,
+    "feedback_loop": 0.8201219512195121
+  },
+  "weighted_f1": {
+    "gnn_alone": 0.8056520109797579,
+    "llm_alone": 0.791444466569956,
+    "agaf": 0.8219180277843194,
+    "feedback_loop": 0.8299878485850998
+  },
+  "bootstraps": {
+    "agaf_vs_gnn": {
+      "mean_diff": 0.046062571016362325,
+      "ci_low": 0.005493492458303554,
+      "ci_high": 0.08705187184174898,
+      "prob_positive": 0.99
+    },
+    "agaf_vs_llm": {
+      "mean_diff": 0.032754615180552615,
+      "ci_low": 0.0031761667743172048,
+      "ci_high": 0.0638495942401997,
+      "prob_positive": 0.985
+    },
+    "loop_vs_agaf": {
+      "mean_diff": -0.003827318052490835,
+      "ci_low": -0.0413898967077043,
+      "ci_high": 0.03391135170391993,
+      "prob_positive": 0.417
+    },
+    "loop_vs_llm": {
+      "mean_diff": 0.02892729712806178,
+      "ci_low": -0.006064098473701101,
+      "ci_high": 0.06256427515109907,
+      "prob_positive": 0.9505
+    },
+    "loop_vs_gnn": {
+      "mean_diff": 0.0422352529638715,
+      "ci_low": 0.010237433669910869,
+      "ci_high": 0.07558702235995332,
+      "prob_positive": 0.994
+    }
+  },
+  "ladder_order_holds": false,
+  "configuration": {
+    "top_k_percent": 31.0,
+    "bias_confidence_fraction": 0.5,
+    "gate_mode": "confidence",
+    "effective_feedback_percent": 15.5,
+    "semantic_consultant": "prototype_scorer",
+    "trained_llm_head": false,
+    "injection_mode": "edge",
+    "selected_feedback_config": {
+      "schema_version": 1,
+      "dataset": "unsw_nb15",
+      "source": "multiseed_validation_sweep",
+      "selection_uses_test_labels": false,
+      "selection_metric": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
+      "top_k_percent": 31.0,
+      "bias_confidence_fraction": 0.5,
+      "gate_mode": "confidence",
+      "effective_feedback_percent": 15.5,
+      "max_feedback_iterations": 3,
+      "churn_tolerance": 0.01,
+      "semantic_consultant": "whitened_prototype_scorer",
+      "trained_llm_head": false,
+      "selection_parameter": "top_k_percent",
+      "mean_validation_macro_f1": 0.8009,
+      "validation_macro_f1_std": 0.0071,
+      "pooled_oof_test_macro_f1": 0.7393181852683935,
+      "sweep_summary_path": "data/unsw_nb15/processed/step4_feedback/top_k_sweep/summary.json",
+      "injection_mode": "edge",
+      "injection_scale": 2.0
+    }
+  }
+}

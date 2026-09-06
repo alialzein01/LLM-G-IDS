@@ -105,7 +105,11 @@ def _load_seed_preds(
             logits = logits.get("logits", next(iter(logits.values())))
         return mask_dropped_logits(logits, config.dropped_classes).argmax(1).cpu().numpy()
 
-    agaf = np.asarray(json.loads((d / "metrics.json").read_text())["predictions"])
+    # Prefer the slim predictions-only file; the full fusion metrics.json (~1 MB each,
+    # gate and attention weights included) is gitignored in results/ captures.
+    slim = d / "agaf_predictions.json"
+    src = slim if slim.exists() else d / "metrics.json"
+    agaf = np.asarray(json.loads(src.read_text())["predictions"])
     return {
         "gnn": from_logits("oof_logits.pt"),
         "loop": from_logits("feedback_oof_real.pt"),
