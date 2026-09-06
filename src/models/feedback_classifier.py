@@ -633,6 +633,53 @@ ADVICE_RELIABILITY_MODES = ("off", "gate", "gate+scale")
 #          Runs through the shared functions in `fusion_classifier`, not a copy.
 FUSION_BLOCKS = ("loop", "agaf")
 
+# Gate 0's oracle hands the bias projection the true class at +/-4 nats. Any
+# experiment that asks "could a realistic consultant use the channel the way the
+# oracle does?" has to hand it the SAME shape of vector, so the magnitude lives
+# here and `mechanism_only_edge_injection` imports it rather than keeping a
+# second copy that can drift.
+ADVICE_SATURATION_MAGNITUDE = 4.0
+
+# How the consultant's verdict is shaped before it reaches `bias_module`.
+#   logits  - the raw consultant logits (canonical, condition A).
+#   onehot  - +M on the consultant's argmax, -M elsewhere: the oracle's format,
+#             with the consultant's own class instead of the true one.
+#   softmax - the consultant's softmax at its current temperature, rescaled so
+#             the row maximum equals +M. The soft version of `onehot`.
+# Selection and the confidence gate keep ranking on the ORIGINAL logits; only the
+# injected tensor changes.
+ADVICE_FORMATS = ("logits", "onehot", "softmax")
+
+
+def saturated_advice(
+    logits: torch.Tensor,
+    advice_format: str,
+    magnitude: float = ADVICE_SATURATION_MAGNITUDE,
+) -> torch.Tensor:
+    """Reshape consultant logits into the format the bias projection receives.
+
+    `onehot` is exactly the oracle's construction (`-magnitude` everywhere,
+    `+magnitude` on the chosen class) applied to the consultant's argmax, so
+    "oracle format, realistic content" is a one-line substitution rather than a
+    parallel code path.
+    """
+    if advice_format not in ADVICE_FORMATS:
+        raise ValueError(
+            f"advice_format must be one of {ADVICE_FORMATS}, got {advice_format!r}"
+        )
+    if advice_format == "logits":
+        return logits
+    if logits.numel() == 0:
+        return logits
+    if advice_format == "onehot":
+        out = torch.full_like(logits, -float(magnitude))
+        return out.scatter(
+            1, logits.argmax(dim=-1, keepdim=True), float(magnitude)
+        )
+    probs = logits.softmax(dim=-1)
+    peak = probs.max(dim=-1, keepdim=True).values.clamp_min(1e-12)
+    return probs * (float(magnitude) / peak)
+
 
 def consultant_reliability(
     consultant_logits: torch.Tensor,
@@ -723,6 +770,7 @@ class FeedbackLoopClassifier(nn.Module):
         fusion_dim: int | None = None,
         advice_reliability: str = "off",
         fusion_block: str = "loop",
+        advice_format: str = "logits",
     ) -> None:
         super().__init__()
         from src.models.gnn_classifier import (
@@ -779,6 +827,11 @@ class FeedbackLoopClassifier(nn.Module):
                 f"got {advice_reliability!r}"
             )
         self.advice_reliability = advice_reliability
+        if advice_format not in ADVICE_FORMATS:
+            raise ValueError(
+                f"advice_format must be one of {ADVICE_FORMATS}, got {advice_format!r}"
+            )
+        self.advice_format = advice_format
         if fusion_block not in FUSION_BLOCKS:
             raise ValueError(
                 f"fusion_block must be one of {FUSION_BLOCKS}, got {fusion_block!r}"
@@ -1340,9 +1393,18 @@ class FeedbackLoopClassifier(nn.Module):
                 continue
 
             advice = semantic_logits[selected]
-            if self.advice_reliability == "gate+scale":
-                # Advice magnitude proportional to how often this verdict is right.
-                advice = advice * self._advice_weights(advice).unsqueeze(-1)
+            # Format first, then reliability: the E1 scaling means "magnitude
+            # proportional to how often this verdict is right", which is only
+            # meaningful once the magnitude is the one being injected. The
+            # weights are read off the ORIGINAL logits so a format change cannot
+            # move which class they are looked up by.
+            weights = (
+                self._advice_weights(advice)
+                if self.advice_reliability == "gate+scale" else None
+            )
+            advice = saturated_advice(advice, self.advice_format)
+            if weights is not None:
+                advice = advice * weights.unsqueeze(-1)
             bias = self.bias_module(advice, selected, num_edges)
 
         fusion_head: torch.Tensor | None = None

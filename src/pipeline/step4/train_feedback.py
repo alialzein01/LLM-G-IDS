@@ -39,6 +39,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.models.feedback_classifier import (
+    ADVICE_FORMATS,
     ADVICE_RELIABILITY_MODES,
     FEEDBACK_MODES,
     FUSION_BLOCKS,
@@ -211,6 +212,7 @@ def _build_model(
     injection_scale: float | None = None,
     advice_reliability: str = "off",
     fusion_block: str = "loop",
+    advice_format: str = "logits",
     data=None,
 ) -> FeedbackLoopClassifier:
     # Single source of truth for the mode-dependent bias shape. Edge injection needs a
@@ -253,6 +255,7 @@ def _build_model(
         injection_scale=injection_scale,
         advice_reliability=advice_reliability,
         fusion_block=fusion_block,
+        advice_format=advice_format,
         **({} if data is None or getattr(data, "num_protocols", None) is None
            else {"num_protocols": data.num_protocols, "num_ports": data.num_ports}),
     )
@@ -284,6 +287,7 @@ def _train_one_fold(
     legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
     advice_reliability: str = "off",
     fusion_block: str = "loop",
+    advice_format: str = "logits",
 ) -> FoldTrainingResult:
     """Train one fold in one feedback mode; return full-graph logits from the
     best-val checkpoint plus the per-iteration trace on the test edges."""
@@ -291,6 +295,7 @@ def _train_one_fold(
     model = _build_model(
         advice_reliability=advice_reliability,
         fusion_block=fusion_block,
+        advice_format=advice_format,
         top_k_percent=top_k_percent,
         bias_confidence_fraction=bias_confidence_fraction,
         gate_mode=gate_mode,
@@ -764,6 +769,7 @@ def _build_benchmark_summary(
     legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
     advice_reliability: str = "off",
     fusion_block: str = "loop",
+    advice_format: str = "logits",
     fusion_block_parameters: int | None = None,
     trace_summary_by_mode: dict[str, dict[str, float]] | None = None,
 ) -> dict:
@@ -821,6 +827,7 @@ def _build_benchmark_summary(
         "selector_head_loss_weight": selector_head_loss_weight,
         "legacy_temperature": legacy_temperature,
         "advice_reliability": advice_reliability,
+        "advice_format": advice_format,
         "fusion_block": fusion_block,
         "fusion_block_parameters": fusion_block_parameters,
         "llm_access": (
@@ -857,6 +864,7 @@ def train_feedback(
     legacy_temperature: bool = DEFAULT_LEGACY_TEMPERATURE,
     advice_reliability: str = "off",
     fusion_block: str = "loop",
+    advice_format: str = "logits",
 ) -> Path:
     modes = modes or list(FEEDBACK_MODES)
     # Edge injection needs a bias exactly as wide as edge_attr and a live
@@ -941,6 +949,7 @@ def train_feedback(
         injection_scale=resolved_injection_scale,
         advice_reliability=advice_reliability,
         fusion_block=fusion_block,
+        advice_format=advice_format,
         data=data,
     ).fusion_block_parameter_count()
     print(f"fusion_block={fusion_block} ({fusion_block_parameters} parameters)")
@@ -974,6 +983,7 @@ def train_feedback(
                 legacy_temperature=legacy_temperature,
                 advice_reliability=advice_reliability,
                 fusion_block=fusion_block,
+                advice_format=advice_format,
             )
             oof[fold["test_mask"]] = fold_result.logits[fold["test_mask"]]
             trace_by_fold.append(
@@ -1054,6 +1064,7 @@ def train_feedback(
         legacy_temperature=legacy_temperature,
         advice_reliability=advice_reliability,
         fusion_block=fusion_block,
+        advice_format=advice_format,
         fusion_block_parameters=fusion_block_parameters,
         trace_summary_by_mode=trace_summary_by_mode,
     )
@@ -1176,6 +1187,13 @@ def main() -> None:
              "as a gate feature. 1.0 supervises it directly — measured worse at 3 seeds.",
     )
     parser.add_argument(
+        "--advice-format", choices=list(ADVICE_FORMATS), default="logits",
+        help="Shape of the verdict handed to the bias projection: raw consultant "
+             "logits (default, canonical), the oracle's +/-4-nat one-hot on the "
+             "consultant's argmax, or its softmax rescaled to the same peak. "
+             "Selection and the confidence gate keep ranking the raw logits.",
+    )
+    parser.add_argument(
         "--fusion-block", choices=list(FUSION_BLOCKS), default="loop",
         help="E3: which block combines the loop's two projected branches at the "
              "output. 'agaf' swaps the 5-parameter scalar gate for AGAF's own "
@@ -1263,6 +1281,7 @@ def main() -> None:
             legacy_temperature=not args.calibrate_temperature,
             advice_reliability=args.advice_reliability,
             fusion_block=args.fusion_block,
+            advice_format=args.advice_format,
         )
 
 

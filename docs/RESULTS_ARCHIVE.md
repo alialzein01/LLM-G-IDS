@@ -818,3 +818,77 @@ remain within a span of 0.0030, and it does survive on ToN, where the loop is th
 the three. **The echo characterisation stands on both datasets.** The trained head remains
 a separate, stronger baseline and never the ladder's LLM rung (PROJECT_NOTES.md, §5).
 
+---
+
+## 2026-09-07 — Advice format: the bias path does not want saturated advice
+
+**Question.** On ToN the trained head's advice on the flagged edges is right on 245
+disagreements and wrong on 32 (145 vs 4 inside the confidence-gated half), yet Gate 0.5
+measured a macro-F1 *loss* through the bias path while the oracle — one-hot true label at
+±4 nats through the SAME projection — gains. Hypothesis: the projection cannot use raw
+consultant logits but can use saturated one-hot advice, i.e. the problem is the advice
+FORMAT, not selection.
+
+**Answer: no.** Giving a realistic consultant the oracle's exact format does not recover
+the oracle's behaviour on either dataset, in either setting. Seed 42 only.
+
+`--advice-format {logits,onehot,softmax}`, default `logits` (canonical). `onehot` is the
+oracle's own constructor applied to the consultant's argmax rather than the true label —
+`ADVICE_SATURATION_MAGNITUDE = 4.0` is now one shared constant that
+`mechanism_only_edge_injection` imports, so the two cannot drift. Selection and the
+confidence gate keep ranking the raw logits; only the tensor handed to `bias_module`
+changes. Full tables: `docs/experiment_log.md`.
+
+### Diagnostic (trained head, output fusion OFF — Gate 0.5's setting)
+
+| Dataset | control | logits | onehot | softmax | oracle_edge (seed 42) |
+|---|---:|---:|---:|---:|---:|
+| UNSW-NB15 | 0.7543 | 0.7312 | 0.7190 | 0.7355 | 0.7522 |
+| NF-ToN-IoT | 0.3809 | 0.3644 | 0.3639 | 0.3839 | 0.5948 |
+
+Every trained-head arm is below control on UNSW and two of three are below it on ToN. On
+ToN the captured share of oracle headroom is −7.7% (logits), −7.9% (onehot), +1.4%
+(softmax) — the saturated formats do not move it off zero.
+
+**A caveat that matters for anyone quoting the UNSW headroom.** At seed 42 the UNSW oracle
+arm scores 0.7522, *below* the 0.7543 control — headroom −0.0021. A "captured share of
+headroom" is therefore not computable on UNSW at this seed; the +0.0345 in §0/§2.4 is a
+3-seed mean. Report the raw difference from control instead, and never a UNSW share from a
+single seed.
+
+### The loop (canonical prototype, fusion ON)
+
+| Dataset | format | real | head_only | real − head_only [CI] | Δ vs A |
+|---|---|---:|---:|---|---:|
+| UNSW-NB15 | logits (A) | 0.7642 | 0.7543 | +0.0098 [−0.018,+0.038] | — |
+| UNSW-NB15 | onehot | 0.7452 | 0.7543 | −0.0093 [−0.045,+0.027] | −0.0191 |
+| UNSW-NB15 | softmax | 0.7512 | 0.7543 | −0.0029 [−0.040,+0.034] | −0.0126 |
+| NF-ToN-IoT | logits (A) | 0.4414 | 0.3809 | +0.0603 [+0.026,+0.096] | — |
+| NF-ToN-IoT | onehot | 0.3810 | 0.3809 | +0.0007 [−0.042,+0.041] | −0.0596 |
+| NF-ToN-IoT | softmax | 0.4194 | 0.3809 | +0.0388 [−0.012,+0.087] | −0.0215 |
+
+Both formats are strictly worse than A on both datasets. The pre-set keep-threshold
+(`real − head_only` must exceed A's by ≥0.02) is not approached from the right side by any
+arm. Reverted; the flag stays at its `logits` default with tests.
+
+### The finding worth keeping: saturating the input SHRINKS the injected advice
+
+`flagged_bias_absmean`, the magnitude actually injected after the learned projection:
+
+| Dataset | logits (A) | onehot | softmax |
+|---|---:|---:|---:|
+| UNSW-NB15 | 0.0767 | 0.0183 | 0.0205 |
+| NF-ToN-IoT | 0.0234 | 0.0202 | 0.0194 |
+
+The input magnitude went **up** (raw logits → ±4 nats) and the injected magnitude went
+**down**, by 4x on UNSW. The projection is learned, so it adapts its weights to a larger,
+lower-variance input and ends up injecting less. This is why "hand the realistic consultant
+the oracle's format" does not reproduce the oracle: the oracle's advantage is not carried by
+the format of the vector it presents. Combined with §2.4 (the channel has capacity, the
+consultant does not use it) and the E1 result (per-class reliability reweighting does not
+help), **three separate attempts to make the bias path usable by a realistic consultant have
+now failed, from three different angles: selection, weighting, and format.**
+
+Artifacts: `results/dev/advice_format/{task2_summary.json,task3_summary.json}` and the
+per-run directories beneath.
+

@@ -1,0 +1,132 @@
+{
+  "unsw_nb15": {
+    "control_head_only": 0.7542650444992878,
+    "oracle_edge_seed42": 0.7522132886077866,
+    "oracle_headroom_seed42": -0.0020517558915011946,
+    "oracle_headroom_3seed_mean": 0.03452970531626365,
+    "n_flagged": 204,
+    "n_edges": 656,
+    "arms": [
+      {
+        "arm": "trained_head_logits",
+        "macro_f1": 0.7312292287943644,
+        "diff_vs_control": -0.023035815704923412,
+        "ci": {
+          "mean_diff": -0.022786961757179466,
+          "ci_low": -0.0495870659449686,
+          "ci_high": 0.0033143531583017163,
+          "prob_positive": 0.048
+        },
+        "churn_all": 0.07621951401233673,
+        "churn_flagged": 0.20098039507865906,
+        "w2c_flagged": 12,
+        "c2w_flagged": 18,
+        "flagged_bias_absmean": 1.7209823608398438,
+        "advice_format": "logits",
+        "captured_headroom_share_seed42": null
+      },
+      {
+        "arm": "trained_head_onehot",
+        "macro_f1": 0.7190029999293515,
+        "diff_vs_control": -0.03526204456993631,
+        "ci": {
+          "mean_diff": -0.03508929910837226,
+          "ci_low": -0.06715828594956685,
+          "ci_high": -0.003948037331161303,
+          "prob_positive": 0.0105
+        },
+        "churn_all": 0.09603658318519592,
+        "churn_flagged": 0.21078431606292725,
+        "w2c_flagged": 13,
+        "c2w_flagged": 19,
+        "flagged_bias_absmean": 1.605475664138794,
+        "advice_format": "onehot",
+        "captured_headroom_share_seed42": null
+      },
+      {
+        "arm": "trained_head_softmax",
+        "macro_f1": 0.7354853680550839,
+        "diff_vs_control": -0.018779676444203863,
+        "ci": {
+          "mean_diff": -0.01841033662841888,
+          "ci_low": -0.050707306014595825,
+          "ci_high": 0.011913716587102344,
+          "prob_positive": 0.127
+        },
+        "churn_all": 0.09756097197532654,
+        "churn_flagged": 0.2549019753932953,
+        "w2c_flagged": 18,
+        "c2w_flagged": 19,
+        "flagged_bias_absmean": 1.713931107521057,
+        "advice_format": "softmax",
+        "captured_headroom_share_seed42": null
+      }
+    ],
+    "captured_share_note": "NOT COMPUTABLE at seed 42: the oracle arm scores BELOW control here (headroom -0.002052), so a 'share of headroom' has a negative denominator and is meaningless. The +0.0345 headroom quoted in the archive is a 3-seed mean. Read the raw difference vs control instead."
+  },
+  "ton_iot": {
+    "control_head_only": 0.38090190800088425,
+    "oracle_edge_seed42": 0.5948252441590075,
+    "oracle_headroom_seed42": 0.21392333615812326,
+    "oracle_headroom_3seed_mean": 0.10903104646883727,
+    "n_flagged": 532,
+    "n_edges": 2127,
+    "arms": [
+      {
+        "arm": "trained_head_logits",
+        "macro_f1": 0.3643594362049475,
+        "diff_vs_control": -0.016542471795936764,
+        "ci": {
+          "mean_diff": -0.015992096807541392,
+          "ci_low": -0.04918589588787396,
+          "ci_high": 0.016477629296312676,
+          "prob_positive": 0.1695
+        },
+        "churn_all": 0.14245416224002838,
+        "churn_flagged": 0.4022556245326996,
+        "w2c_flagged": 91,
+        "c2w_flagged": 43,
+        "flagged_bias_absmean": 1.65860915184021,
+        "advice_format": "logits",
+        "captured_headroom_share_seed42": -0.07732897257973415
+      },
+      {
+        "arm": "trained_head_onehot",
+        "macro_f1": 0.3638984844272885,
+        "diff_vs_control": -0.017003423573595744,
+        "ci": {
+          "mean_diff": -0.016450261603273283,
+          "ci_low": -0.052147453113366105,
+          "ci_high": 0.0204630814315066,
+          "prob_positive": 0.1775
+        },
+        "churn_all": 0.1462153196334839,
+        "churn_flagged": 0.441729336977005,
+        "w2c_flagged": 79,
+        "c2w_flagged": 58,
+        "flagged_bias_absmean": 1.6485052347183227,
+        "advice_format": "onehot",
+        "captured_headroom_share_seed42": -0.07948372477244614
+      },
+      {
+        "arm": "trained_head_softmax",
+        "macro_f1": 0.383892698298062,
+        "diff_vs_control": 0.002990790297177748,
+        "ci": {
+          "mean_diff": 0.003370771472138123,
+          "ci_low": -0.027905475971502797,
+          "ci_high": 0.03481399992248485,
+          "prob_positive": 0.582
+        },
+        "churn_all": 0.16596144437789917,
+        "churn_flagged": 0.490601509809494,
+        "w2c_flagged": 118,
+        "c2w_flagged": 51,
+        "flagged_bias_absmean": 1.7136178493499756,
+        "advice_format": "softmax",
+        "captured_headroom_share_seed42": 0.013980664058862094
+      }
+    ],
+    "captured_share_note": "share = (arm - control) / (oracle - control), all at seed 42"
+  }
+}
