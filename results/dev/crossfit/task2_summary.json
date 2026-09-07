@@ -1,0 +1,138 @@
+{
+  "unsw_nb15": {
+    "control_head_only": 0.7542650444992878,
+    "oracle_edge_seed42": 0.7522132886077866,
+    "oracle_headroom_seed42": -0.0020517558915011946,
+    "n_flagged": 204,
+    "arms": [
+      {
+        "arm": "trained_head_infold",
+        "macro_f1": 0.7312292287943644,
+        "diff_vs_control": -0.023035815704923412,
+        "ci": {
+          "mean_diff": -0.022786961757179466,
+          "ci_low": -0.0495870659449686,
+          "ci_high": 0.0033143531583017163,
+          "prob_positive": 0.048
+        },
+        "captured_headroom_share": null,
+        "flagged_acc": {
+          "gnn": 0.6029411554336548,
+          "head": 0.7696078419685364,
+          "arm": 0.5735294222831726
+        },
+        "churn_all": 0.07621951401233673,
+        "churn_flagged": 0.20098039507865906,
+        "w2c_flagged": 12,
+        "c2w_flagged": 18,
+        "flagged_bias_absmean": 1.7209823608398438,
+        "learned_bias_strength_per_fold": [
+          1.566238284111023,
+          1.5802357196807861,
+          1.5806264877319336,
+          1.5792566537857056,
+          1.554419755935669
+        ],
+        "learned_bias_strength_mean": 1.5721553802490233
+      },
+      {
+        "arm": "trained_head_crossfit",
+        "macro_f1": 0.6888520614418655,
+        "diff_vs_control": -0.06541298305742227,
+        "ci": {
+          "mean_diff": -0.06515317871795212,
+          "ci_low": -0.1010766743827026,
+          "ci_high": -0.030624166080766412,
+          "prob_positive": 0.0
+        },
+        "captured_headroom_share": null,
+        "flagged_acc": {
+          "gnn": 0.6029411554336548,
+          "head": 0.7696078419685364,
+          "arm": 0.5343137383460999
+        },
+        "churn_all": 0.11890243738889694,
+        "churn_flagged": 0.27450981736183167,
+        "w2c_flagged": 12,
+        "c2w_flagged": 26,
+        "flagged_bias_absmean": 1.7459099292755127,
+        "learned_bias_strength_per_fold": [
+          1.549508810043335,
+          1.5715312957763672,
+          1.5860710144042969,
+          1.556675672531128,
+          1.5682651996612549
+        ],
+        "learned_bias_strength_mean": 1.5664103984832765
+      }
+    ]
+  },
+  "ton_iot": {
+    "control_head_only": 0.38090190800088425,
+    "oracle_edge_seed42": 0.5948252441590075,
+    "oracle_headroom_seed42": 0.21392333615812326,
+    "n_flagged": 532,
+    "arms": [
+      {
+        "arm": "trained_head_infold",
+        "macro_f1": 0.3643594362049475,
+        "diff_vs_control": -0.016542471795936764,
+        "ci": {
+          "mean_diff": -0.015992096807541392,
+          "ci_low": -0.04918589588787396,
+          "ci_high": 0.016477629296312676,
+          "prob_positive": 0.1695
+        },
+        "captured_headroom_share": -0.07732897257973415,
+        "flagged_acc": {
+          "gnn": 0.3590225577354431,
+          "head": 0.7593985199928284,
+          "arm": 0.44924813508987427
+        },
+        "churn_all": 0.14245416224002838,
+        "churn_flagged": 0.4022556245326996,
+        "w2c_flagged": 91,
+        "c2w_flagged": 43,
+        "flagged_bias_absmean": 1.65860915184021,
+        "learned_bias_strength_per_fold": [
+          1.4869484901428223,
+          1.4683258533477783,
+          1.4781711101531982,
+          1.4715614318847656,
+          1.478981852531433
+        ],
+        "learned_bias_strength_mean": 1.4767977476119996
+      },
+      {
+        "arm": "trained_head_crossfit",
+        "macro_f1": 0.3879406054825959,
+        "diff_vs_control": 0.007038697481711653,
+        "ci": {
+          "mean_diff": 0.007295149762990235,
+          "ci_low": -0.030227519402919307,
+          "ci_high": 0.04268111710227378,
+          "prob_positive": 0.6725
+        },
+        "captured_headroom_share": 0.03290289693551217,
+        "flagged_acc": {
+          "gnn": 0.3590225577354431,
+          "head": 0.7593985199928284,
+          "arm": 0.5131579041481018
+        },
+        "churn_all": 0.17066290974617004,
+        "churn_flagged": 0.5,
+        "w2c_flagged": 126,
+        "c2w_flagged": 44,
+        "flagged_bias_absmean": 1.6819464683532714,
+        "learned_bias_strength_per_fold": [
+          1.4666938781738281,
+          1.4587323665618896,
+          1.4721581935882568,
+          1.4584654569625854,
+          1.4698727130889893
+        ],
+        "learned_bias_strength_mean": 1.4651845216751098
+      }
+    ]
+  }
+}
