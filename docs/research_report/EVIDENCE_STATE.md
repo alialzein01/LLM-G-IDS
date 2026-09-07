@@ -15,10 +15,10 @@ claim could not be traced to an artifact, it is marked as such and must not be c
 
 | Artifact | Status |
 |---|---|
-| `results/unsw_nb15_current.json` | **schema 3**, generated 2026-08-27, `v2_log_cont_cat_idx`, pooled five-fold out-of-fold |
-| `results/ton_iot_current.json` | **schema 5**, generated 2026-08-27, 8-class metric |
-| `results/{unsw_nb15,ton_iot}_sota_baselines.json` | 2026-09-02, published-baseline comparison |
-| `results/cross_dataset_comparison.json` | cross-dataset contract |
+| `results/unsw_nb15_current.json` | **schema 5**, generated 2026-09-07, `v2_log_cont_cat_idx`, pooled five-fold OOF, 3 seeds; loop consults the trained LLM head |
+| `results/ton_iot_current.json` | **schema 7**, generated 2026-09-07, 8-class metric, 3 seeds; loop consults the trained LLM head |
+| `results/{unsw_nb15,ton_iot}_sota_baselines.json` | **schema 2**, 3-seed rung-vs-baseline intervals for the new loop and head-alone rows (2026-09-07) |
+| `results/cross_dataset_comparison.json` | **schema 6**, 2026-09-07 |
 | `docs/RESULTS_ARCHIVE.md` | narrative record, including retractions (§3) |
 | `reproduce_ladder.py` | reproduction entry point |
 
@@ -238,6 +238,27 @@ semantic refinement, or structural-statistics-as-text is refuted by DAS.
 did. Search by DOI or exact title, not keywords.
 
 ---
+
+## 7c. Canonical loop redefined (2026-09-07) — supersedes §4 and §5 for the loop rung
+
+The loop's semantic consultant is now the per-fold trained LLM head, not the whitened
+prototype; the LLM rung and AGAF keep the prototype encoder, and the head alone is
+carried as its own rung. Five mechanism treatments on the prototype consultant had all
+failed first (archive 2026-09-07). Consequences for anything written from this file:
+
+- **The ladder moved.** Loop 0.8341 ± 0.004 (UNSW) / 0.5044 ± 0.008 (ToN), separated
+  above AGAF, the GNN and the prototype LLM rung on **both** datasets. §5's "nothing is
+  separated" no longer describes the loop rung.
+- **What is still not separated:** AGAF vs GNN, and **loop vs head_alone**. The head
+  alone carries the higher 3-seed mean on both datasets (0.8374 / 0.5081) with the
+  interval straddling zero and the sign unstable across seeds. §6 risk 6's framing
+  survives in a new form: the system now clears every baseline except the one it is
+  built on top of.
+- **Publication risk, restated.** The proposed system is statistically indistinguishable
+  from its own semantic branch used alone. That must appear wherever the AGAF/GNN gains
+  appear. It is recorded in both contracts as `loop_vs_head_alone_headline`.
+- **The knobs are selected, not tuned** — both curves flat within noise, ToN's scale on
+  the swept range's upper boundary.
 
 ## 8. Readiness assessment
 
