@@ -892,3 +892,77 @@ now failed, from three different angles: selection, weighting, and format.**
 Artifacts: `results/dev/advice_format/{task2_summary.json,task3_summary.json}` and the
 per-run directories beneath.
 
+---
+
+## 2026-09-07 — Cross-fitted advice: the loop does not learn a trust it can be taught
+
+**Premise, and it is real.** `build_llm_heads` stores, for outer fold f, the fold-f head
+applied to every edge. On f's own train edges those logits are IN-FOLD — the head fitted
+those labels — while on its test edges they are out-of-fold. On the entropy-flagged subset
+the consultant is 0.85–0.98 accurate where the loop trains and 0.68–0.85 where it is scored
+(per-fold table in `docs/experiment_log.md`). The loop has been training against advice more
+reliable than the advice it is graded on. The oracle, the only consultant the channel
+converts, is the only one whose reliability is identical on train and test.
+
+**Hypothesis:** with cross-fitted advice the loop learns a realistic trust and the head's
+test-time signal becomes usable. **Answer: no, and for an informative reason.**
+
+`build_llm_heads --crossfit K` (default off, K=5) fills each outer fold's train rows with
+inner out-of-fold logits and leaves val/test rows untouched, so the file's pooled OOF
+macro-F1 is unchanged by construction and measured so (0.8321 / 0.5165). Train accuracy
+moves toward test accuracy on every fold of both datasets. Leakage is asserted per fold:
+permute fold f's test labels and row f returns bit-identical.
+
+### The loop (fusion on, trained head as consultant, seed 42)
+
+| Dataset | consultant | real | head_only | real − head_only | Δ vs in-fold | vs head alone |
+|---|---|---:|---:|---|---:|---:|
+| UNSW-NB15 | in-fold | 0.8351 | 0.7543 | +0.0811 [+0.043,+0.120] | — | +0.0030 |
+| UNSW-NB15 | cross-fit | 0.8106 | 0.7543 | +0.0565 [+0.018,+0.095] | −0.0246 | −0.0215 |
+| NF-ToN-IoT | in-fold | 0.5064 | 0.3809 | +0.1240 [+0.069,+0.181] | — | −0.0101 |
+| NF-ToN-IoT | cross-fit | 0.4724 | 0.3809 | +0.0902 [+0.036,+0.147] | −0.0338 | −0.0441 |
+
+Cross-fitting makes the loop **worse** on both datasets, and pushes it further below the
+head alone. Mechanism-only (fusion off) the picture is the same on UNSW (−0.0230 in-fold →
+−0.0654 cross-fit vs control) and unresolved on ToN (−0.0165 → +0.0070, CI [−0.030,+0.043],
+which includes zero: +3.3% of oracle headroom).
+
+### Why it is informative: the learned trust did not move
+
+`learned_bias_strength` is the scalar the loop learns for how hard to push the advice. If
+the in-fold optimism were what the loop was exploiting, making the advice honestly less
+reliable should lower it. It does not:
+
+| Dataset | setting | in-fold | cross-fit |
+|---|---|---:|---:|
+| UNSW-NB15 | fusion off | 1.5722 | 1.5664 |
+| UNSW-NB15 | fusion on | 1.5227 | 1.5022 |
+| NF-ToN-IoT | fusion off | 1.4768 | 1.4652 |
+| NF-ToN-IoT | fusion on | 1.4842 | 1.4899 |
+
+Four settings, largest change 0.0205, and on ToN with fusion on it moves the *wrong* way.
+The loop is not calibrating its trust to the consultant's reliability at all — it is not a
+trust parameter that in-fold advice was fooling. What *did* move is the injected magnitude
+through the projection weights (`flagged_bias_absmean` 1.3430 → 1.1752 UNSW, 1.3291 →
+1.0745 ToN, fusion on), i.e. the model absorbs the change in the projection rather than in
+the scalar that is supposed to represent trust.
+
+A second oddity worth recording: on ToN with fusion on, cross-fitting *raised* the loop's
+accuracy on flagged edges (0.724 → 0.746) and raised its wrong→correct count (+225 → +240)
+while pooled macro-F1 fell 0.5064 → 0.4724. The per-class table shows where: `xss` 0.3333 →
+0.1667 and `backdoor` 0.4878 → 0.3793 — small rare classes losing more macro-F1 than the
+flagged-edge gains recover.
+
+**Not kept.** The keep-rule (cross-fit `real − head_only` exceeding in-fold's by ≥0.02 AND
+the arm above the head alone) fails on both counts, both datasets. The flag stays in the
+tree, default off, with tests; the canonical `llm_head_logits.pt` is untouched and the
+canonical builder was verified to still reproduce it bit-for-bit after the refactor.
+
+**Four failed angles now.** Selection (E1 reliability gate), weighting (E1 gate+scale),
+format (one-hot / softmax at the oracle's magnitude) and now train/test reliability
+matching. Combined with §2.4 — the channel has capacity, no realistic consultant uses it —
+the constraint is not any of the things that have been varied.
+
+Artifacts: `results/dev/crossfit/{task2_summary.json,task3_summary.json}` and the per-run
+directories.
+

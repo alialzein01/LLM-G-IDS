@@ -391,3 +391,120 @@ the channel the oracle's format does not hand it the oracle's injected magnitude
 Artifacts: `results/dev/advice_format/` — `task2_summary.json`,
 `task3_summary.json`, and per-run `benchmark_summary.json` /
 `mechanism_diagnostics.json`.
+
+---
+
+## Task crossfit — cross-fitted consultant advice
+
+Premise, measured first. `build_llm_heads` writes, for outer fold f, the fold-f
+head applied to EVERY edge. On f's own train edges those logits are in-fold; on
+its test edges they are out-of-fold. Accuracy of fold f's head on fold f's edges,
+in-fold file, and on the entropy-flagged subset of each:
+
+| Dataset | fold | train | val | test | train\|flagged | test\|flagged |
+|---|---:|---:|---:|---:|---:|---:|
+| UNSW-NB15 | 0 | 0.9008 | 0.8931 | 0.8030 | 0.8482 | 0.7778 |
+| UNSW-NB15 | 1 | 0.9873 | 0.8939 | 0.8702 | 0.9764 | 0.6923 |
+| UNSW-NB15 | 2 | 0.9517 | 0.8788 | 0.8931 | 0.9018 | 0.8462 |
+| UNSW-NB15 | 3 | 0.9644 | 0.8712 | 0.9160 | 0.9538 | 0.7407 |
+| UNSW-NB15 | 4 | 0.9517 | 0.8636 | 0.9160 | 0.9281 | 0.6842 |
+| NF-ToN-IoT | 0 | 0.9749 | 0.9061 | 0.9249 | 0.9415 | 0.7647 |
+| NF-ToN-IoT | 1 | 0.9522 | 0.9061 | 0.8920 | 0.8835 | 0.7168 |
+| NF-ToN-IoT | 2 | 0.9867 | 0.9296 | 0.9341 | 0.9658 | 0.7768 |
+| NF-ToN-IoT | 3 | 0.9498 | 0.8991 | 0.8918 | 0.8912 | 0.7714 |
+| NF-ToN-IoT | 4 | 0.9820 | 0.9178 | 0.9318 | 0.9610 | 0.7652 |
+
+The gap is real: on the flagged subset the consultant is 0.85-0.98 accurate where
+the loop trains and 0.68-0.85 where it is scored.
+
+### Task 1 — `build_llm_heads --crossfit K` (default off)
+
+Per outer fold: the train rows are filled by inner 5-fold cross-fitting (stratified,
+seed 42+f, rare classes pooled into one stratum); val and test rows keep the
+full-outer-train head exactly as before. Pooled OOF macro-F1 is therefore unchanged
+by construction and measured so: **0.8321 / 0.5165**, identical to the in-fold file.
+Train accuracy moves toward test accuracy as intended:
+
+| Dataset | fold | train in-fold | train cross-fit | test |
+|---|---:|---:|---:|---:|
+| UNSW-NB15 | 0 | 0.9008 | 0.8830 | 0.8030 |
+| UNSW-NB15 | 1 | 0.9873 | 0.8753 | 0.8702 |
+| UNSW-NB15 | 2 | 0.9517 | 0.8931 | 0.8931 |
+| UNSW-NB15 | 3 | 0.9644 | 0.8601 | 0.9160 |
+| UNSW-NB15 | 4 | 0.9517 | 0.8855 | 0.9160 |
+| NF-ToN-IoT | 0 | 0.9749 | 0.9114 | 0.9249 |
+| NF-ToN-IoT | 1 | 0.9522 | 0.8933 | 0.8920 |
+| NF-ToN-IoT | 2 | 0.9867 | 0.9138 | 0.9341 |
+| NF-ToN-IoT | 3 | 0.9498 | 0.9005 | 0.8918 |
+| NF-ToN-IoT | 4 | 0.9820 | 0.9122 | 0.9318 |
+
+Leakage is asserted per fold: permute fold f's test labels and row f comes back
+bit-identical. Stated per fold on purpose — the five test masks partition the edge
+set, so permuting them all at once also permutes every other fold's TRAIN labels
+and would prove nothing. (My first version of that test made exactly that mistake
+and failed for a reason that was not a defect in the code.)
+
+Condition A re-checked bit-for-bit: UNSW 0.7641720503342035, ToN
+0.4413700353170879. The canonical builder was refactored (`_train_fold` split into
+`_train_head` + wrapper) and verified to reproduce the committed
+`llm_head_logits.pt` exactly, max|Δ| = 0.
+
+### Task 2 — trained head, fusion OFF (mechanism-only diagnostic, NOT a rung)
+
+**UNSW-NB15** — control 0.7543, oracle_edge 0.7522, headroom -0.0021
+
+| arm | macro-F1 | vs control | CI | P | captured headroom | flagged acc GNN/head/arm | churn all/flagged | flips +/− | bias absmean | learned_bias_strength |
+|---|---:|---:|---|---:|---:|---|---|---|---:|---:|
+| control_head_only | 0.7543 | — | — | — | — | — | — | — | — | — |
+| trained_head_infold | 0.7312 | -0.0230 | [-0.0496, +0.0033] | 0.048 | n/a (negative headroom) | 0.603 / 0.770 / 0.574 | 0.076 / 0.201 | +12 / −18 | 1.7210 | 1.5722 |
+| trained_head_crossfit | 0.6889 | -0.0654 | [-0.1011, -0.0306] | 0.000 | n/a (negative headroom) | 0.603 / 0.770 / 0.534 | 0.119 / 0.275 | +12 / −26 | 1.7459 | 1.5664 |
+| oracle_edge (existing) | 0.7522 | -0.0021 | — | — | 100% by def. | — | — | — | — | — |
+
+**NF-ToN-IoT** — control 0.3809, oracle_edge 0.5948, headroom +0.2139
+
+| arm | macro-F1 | vs control | CI | P | captured headroom | flagged acc GNN/head/arm | churn all/flagged | flips +/− | bias absmean | learned_bias_strength |
+|---|---:|---:|---|---:|---:|---|---|---|---:|---:|
+| control_head_only | 0.3809 | — | — | — | — | — | — | — | — | — |
+| trained_head_infold | 0.3644 | -0.0165 | [-0.0492, +0.0165] | 0.170 | -7.7% | 0.359 / 0.759 / 0.449 | 0.142 / 0.402 | +91 / −43 | 1.6586 | 1.4768 |
+| trained_head_crossfit | 0.3879 | +0.0070 | [-0.0302, +0.0427] | 0.672 | +3.3% | 0.359 / 0.759 / 0.513 | 0.171 / 0.500 | +126 / −44 | 1.6819 | 1.4652 |
+| oracle_edge (existing) | 0.5948 | +0.2139 | — | — | 100% by def. | — | — | — | — | — |
+
+UNSW's headroom is negative at seed 42 (the oracle arm scores below control there),
+so a captured share is not computable; read the raw difference. `learned_bias_strength`
+per fold, in-fold vs cross-fit: UNSW 1.566/1.580/1.581/1.579/1.554 vs
+1.550/1.572/1.586/1.557/1.568; ToN 1.487/1.468/1.478/1.472/1.479 vs
+1.467/1.459/1.472/1.458/1.470.
+
+### Task 3 — trained head, fusion ON (the loop; the cross-fitted file feeds the fusion branch too)
+
+**UNSW-NB15** — AGAF seed 42 0.7680, head alone 0.8321
+
+| consultant | real | head_only | random | real − head_only [CI] P | Δ(r−h) vs infold | vs AGAF | vs head alone | flagged acc GNN/head/loop | churn all/flagged | flips +/− | bias absmean | learned_bias_strength | verdict |
+|---|---:|---:|---:|---|---:|---:|---:|---|---|---|---:|---:|---|
+| infold | 0.8351 | 0.7543 | 0.6565 | +0.0811 [+0.043, +0.120] P=1.000 | +0.0000 | +0.0671 | +0.0030 | 0.603 / 0.770 / 0.750 | 0.149 / 0.338 | +43 / −13 | 1.3430 | 1.5227 | reference |
+| crossfit | 0.8106 | 0.7543 | 0.6335 | +0.0565 [+0.018, +0.095] P=0.999 | -0.0246 | +0.0426 | -0.0215 | 0.603 / 0.770 / 0.730 | 0.154 / 0.333 | +40 / −14 | 1.1752 | 1.5022 | **not kept** |
+
+**NF-ToN-IoT** — AGAF seed 42 0.3975, head alone 0.5165
+
+| consultant | real | head_only | random | real − head_only [CI] P | Δ(r−h) vs infold | vs AGAF | vs head alone | flagged acc GNN/head/loop | churn all/flagged | flips +/− | bias absmean | learned_bias_strength | verdict |
+|---|---:|---:|---:|---|---:|---:|---:|---|---|---|---:|---:|---|
+| infold | 0.5064 | 0.3809 | 0.3756 | +0.1240 [+0.069, +0.181] P=1.000 | +0.0000 | +0.1090 | -0.0101 | 0.359 / 0.759 / 0.724 | 0.189 / 0.609 | +225 / −31 | 1.3291 | 1.4842 | reference |
+| crossfit | 0.4724 | 0.3809 | 0.3849 | +0.0902 [+0.036, +0.147] P=0.999 | -0.0338 | +0.0749 | -0.0441 | 0.359 / 0.759 / 0.746 | 0.208 / 0.639 | +240 / −34 | 1.0745 | 1.4899 | **not kept** |
+
+The `infold` rows reproduce the head-echo measurement from the Task-2 head-echo run
+exactly (UNSW 0.8351, ToN 0.5064).
+
+**Keep-rule: not kept.** Cross-fit `real − head_only` must exceed in-fold's by ≥0.02
+and the arm must be above the head alone. It is BELOW in-fold by 0.0246 (UNSW) and
+0.0338 (ToN), and below the head alone on both (−0.0215 / −0.0441).
+
+### Task 4 — not run
+
+Its trigger was: Task 2 cross-fit − control > 0 on ToN with the CI excluding zero, OR
+Task 3 `real − head_only` exceeding in-fold's by ≥0.02 on either dataset. ToN Task 2 is
++0.0070 with CI [−0.0300, +0.0430], which includes zero; Task 3 is negative on both
+datasets. Neither condition fires, so the prototype cross-fit was not built.
+
+Artifacts: `results/dev/crossfit/` — `task2_summary.json`, `task3_summary.json`, and
+the per-run directories. Cross-fitted head files:
+`data/<dataset>/processed/step4_feedback/llm_head_logits_crossfit.pt` (gitignored).
