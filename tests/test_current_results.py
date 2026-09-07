@@ -24,16 +24,25 @@ TON_ORACLE_V2_HEAD_PATH = Path(
 
 
 class CurrentResultsContractTest(unittest.TestCase):
-    """Contracts are 3-training-seed measurements (schema 4 UNSW / 6 ToN, 2026-09-06).
+    """Contracts are 3-training-seed measurements (schema 5 UNSW / 7 ToN, 2026-09-07).
 
-    The headline lives in ``multi_seed``. ``results`` holds the single seed-42 run that
-    ``reproduce_ladder.py`` drift-checks against. Nothing is statistically separated on
-    either dataset once training-seed variance enters the bootstrap, and these tests pin
-    that so no later edit can quietly reintroduce a separation claim.
+    The loop's semantic consultant is now the per-fold trained head; the LLM rung and
+    AGAF keep the whitened prototype encoder, and the head alone is carried as its own
+    rung because it is BOTH the strongest LLM-only baseline and the thing the loop
+    consults. These tests pin what the data shows, including the comparisons that are
+    NOT separated -- above all loop-vs-head_alone, which is the one a reader must not
+    be allowed to lose sight of.
     """
 
-    RUNGS = ("gnn", "llm", "agaf", "feedback")
-    COMPARISONS = ("loop_vs_agaf", "loop_vs_gnn", "agaf_vs_gnn")
+    RUNGS = ("gnn", "llm", "agaf", "feedback", "head_alone")
+    SEPARATED = (
+        "feedback_vs_agaf", "feedback_vs_gnn", "feedback_vs_llm", "head_alone_vs_gnn",
+    )
+    NOT_SEPARATED = ("agaf_vs_gnn", "feedback_vs_head_alone")
+    PARITY_RULE = (
+        "same encoder, same graph, same folds, same seeds on every rung; the loop "
+        "additionally trains a classification head on the semantic embeddings"
+    )
 
     def _assert_multi_seed_contract(self, payload: dict, schema: int) -> None:
         self.assertEqual(payload["schema_version"], schema)
@@ -53,94 +62,124 @@ class CurrentResultsContractTest(unittest.TestCase):
             )
         # The LLM rung is deterministic given folds + frozen embeddings.
         self.assertEqual(ms["rungs"]["llm"]["macro_f1_std"], 0.0)
-        # NOTHING is separated: every two-level CI straddles zero.
-        for name in self.COMPARISONS:
+
+        # Exactly these comparisons are separated, and exactly these are not.
+        self.assertEqual(
+            sorted(ms["separated_comparisons_two_level"]), sorted(self.SEPARATED)
+        )
+        self.assertEqual(
+            sorted(ms["not_separated_comparisons_two_level"]),
+            sorted(self.NOT_SEPARATED),
+        )
+        self.assertFalse(ms["nothing_separated"])
+        for name in self.SEPARATED:
             c = ms["comparisons"][name]
             self.assertEqual(c["two_level"]["resampled"], "edges_and_training_seed")
+            self.assertTrue(c["separated_two_level"], name)
+            self.assertGreater(c["two_level"]["mean_diff"], 0.0, name)
+        for name in self.NOT_SEPARATED:
+            c = ms["comparisons"][name]
+            self.assertFalse(c["separated_two_level"], name)
             self.assertLess(c["two_level"]["ci_low"], 0.0, name)
             self.assertGreater(c["two_level"]["ci_high"], 0.0, name)
-            self.assertFalse(c["separated"], name)
+        for name, c in ms["comparisons"].items():
             self.assertEqual(payload["statistical_comparisons"][name], c["two_level"])
-        self.assertTrue(ms["nothing_separated"])
+
+        # The loop does NOT beat the consultant it consults. This is the single
+        # fact most likely to be dropped when the ladder is written up, so it is
+        # pinned three ways: the interval, the sign instability, and the sentence.
+        head = ms["comparisons"]["feedback_vs_head_alone"]
+        self.assertFalse(head["separated_two_level"])
+        self.assertFalse(head["separated_seed_matched"])
+        self.assertFalse(head["sign_stable_across_seeds"])
+        self.assertLess(head["two_level"]["mean_diff"], 0.0)
+        self.assertIn("NOT separated", payload["loop_vs_head_alone_headline"])
+        self.assertEqual(ms["highest_mean_rung"], "head_alone")
+        self.assertFalse(payload["loop_highest_mean"])
         self.assertFalse(payload["ladder_order_holds"])
-        self.assertNotIn("loop_is_top_rung", payload)  # banned wording; use *_highest_mean
-        # Shared architecture must still be declared.
+        self.assertNotIn("loop_is_top_rung", payload)  # banned wording
+
+        # Architecture, under the new parity rule.
         cfg = payload["configuration"]
-        self.assertEqual(cfg["semantic_consultant"], "whitened_prototype")
-        self.assertFalse(cfg["trained_llm_head"])
+        self.assertEqual(cfg["semantic_consultant"], "trained_llm_head")
+        self.assertTrue(cfg["trained_llm_head"])
+        self.assertEqual(cfg["llm_rung_consultant"], "whitened_prototype")
         self.assertFalse(cfg["agaf_head_fusion"])
         self.assertEqual(cfg["injection_mode"], "edge")
+        self.assertEqual(payload["architecture_parity_rule"], self.PARITY_RULE)
         self.assertEqual(payload["edge_attr_encoding"], "v2_log_cont_cat_idx")
         self.assertEqual(
             payload["selection"]["swept_under_injection_mode"], cfg["injection_mode"]
         )
+        # The knob curves are flat; the contract must say so rather than implying
+        # the knobs were tuned.
+        self.assertTrue(cfg["selection_curve_is_flat"])
+        self.assertTrue(payload["selection"]["curve_is_flat"])
+
+        # The superseded prototype ladder must remain recoverable.
+        sup = payload["supersedes"]
+        self.assertEqual(sup["consultant"], "whitened_prototype_scorer")
+        self.assertIn("multi_seed", sup)
+        self.assertIn("configuration", sup)
 
     def test_authoritative_unsw_ladder_and_configuration(self) -> None:
         payload = json.loads(UNSW_RESULTS_PATH.read_text())
-        self._assert_multi_seed_contract(payload, schema=4)
+        self._assert_multi_seed_contract(payload, schema=5)
         cfg = payload["configuration"]
-        self.assertEqual(cfg["top_k_percent"], 31.0)
+        self.assertEqual(cfg["top_k_percent"], 29.0)
         self.assertEqual(cfg["injection_scale"], 2.0)
         ms = payload["multi_seed"]
-        # GNN and LLM reproduce the schema-3 seed-42 values exactly; AGAF and loop do not.
-        self.assertAlmostEqual(payload["results"]["gnn"]["macro_f1"], 0.7219365593805762)
-        self.assertAlmostEqual(payload["results"]["llm"]["macro_f1"], 0.7353188026257084)
-        self.assertEqual(payload["supersedes"]["schema_version"], 3)
-        self.assertAlmostEqual(
-            payload["supersedes"]["results"]["feedback"]["macro_f1"], 0.772755270351248
-        )
-        # 3-seed ordering by mean: AGAF highest, loop below it at EVERY seed. Not separated.
-        self.assertEqual(ms["highest_mean_rung"], "agaf")
-        la = ms["comparisons"]["loop_vs_agaf"]
-        self.assertTrue(la["sign_stable_across_seeds"])
-        self.assertLess(la["two_level"]["mean_diff"], 0.0)
-        self.assertTrue(all(v < 0 for v in la["per_seed_diff"].values()))
-        # The old multi_seed_caveat was conversation-recorded; it is now resolved by artifact.
-        self.assertNotIn("multi_seed_caveat", payload)
-        self.assertIn("multi_seed_caveat", payload["supersedes"])
-
-    def test_on_disk_selected_config_matches_the_contract(self) -> None:
-        """The knobs a bare `train_feedback --dataset X` will pick up must be the
-        knobs the contract was measured under. This drifted once: the selected
-        configs were overwritten with the condition-C re-selection while the
-        contracts still described condition A, so the default run silently stopped
-        reproducing them."""
-        for path, contract in (
-            (UNSW_RESULTS_PATH, "unsw_nb15"),
-            (TON_RESULTS_PATH, "ton_iot"),
-        ):
-            cfg = json.loads(path.read_text())["configuration"]
-            # `data/` is gitignored, so on a fresh clone there is nothing to
-            # check against -- the drift this guards is local, not committed.
-            selected_path = Path(
-                f"data/{contract}/processed/step4_feedback/"
-                "selected_feedback_config.json"
+        # GNN, LLM and AGAF are untouched by the consultant change and must equal
+        # the values the superseded schema-4 contract recorded.
+        sup = payload["supersedes"]["multi_seed"]["rungs"]
+        for rung in ("gnn", "llm", "agaf"):
+            self.assertAlmostEqual(
+                ms["rungs"][rung]["macro_f1_mean"], sup[rung]["macro_f1_mean"]
             )
-            if not selected_path.exists():
-                self.skipTest(f"{selected_path} not present (data/ is gitignored)")
-            selected = json.loads(selected_path.read_text())
-            for key in ("top_k_percent", "injection_scale",
-                        "bias_confidence_fraction", "max_feedback_iterations",
-                        "churn_tolerance"):
-                contract_key = {
-                    "bias_confidence_fraction": "semantic_confidence_fraction"
-                }.get(key, key)
-                self.assertEqual(
-                    selected[key], cfg[contract_key],
-                    f"{contract}: selected_feedback_config {key}={selected[key]} "
-                    f"but the contract says {cfg[contract_key]}",
-                )
-            self.assertEqual(selected["semantic_consultant"],
-                             "whitened_prototype_scorer")
-            self.assertFalse(selected["trained_llm_head"])
+        self.assertEqual(payload["supersedes"]["schema_version"], 4)
+        self.assertGreater(ms["rungs"]["feedback"]["macro_f1_mean"], 0.83)
+        self.assertGreater(ms["rungs"]["head_alone"]["macro_f1_mean"],
+                           ms["rungs"]["feedback"]["macro_f1_mean"])
 
-    def test_condition_a_is_the_code_default(self) -> None:
-        """Restoring the config alone is not enough -- the two signal knobs live in
-        code, and their defaults are what a bare run actually uses."""
-        from src.pipeline.step4 import train_feedback as tf
+    def test_authoritative_ton_iot_aggregated_ladder(self) -> None:
+        payload = json.loads(TON_RESULTS_PATH.read_text())
+        self._assert_multi_seed_contract(payload, schema=7)
+        self.assertEqual(payload["dataset_key"], "ton_iot")
+        self.assertEqual(payload["graph_scope"], "aggregated")
+        self.assertEqual(payload["n_eval_classes"], 8)
+        cfg = payload["configuration"]
+        self.assertEqual(cfg["top_k_percent"], 16.0)
+        self.assertEqual(cfg["injection_scale"], 20.0)
+        # ToN's scale selected on the upper boundary of the swept range; the
+        # contract has to carry that, not bury it.
+        self.assertTrue(cfg["scale_on_range_boundary"])
+        self.assertFalse(cfg["top_k_on_range_boundary"])
+        self.assertEqual(payload["supersedes"]["schema_version"], 6)
+        ms = payload["multi_seed"]
+        sup = payload["supersedes"]["multi_seed"]["rungs"]
+        for rung in ("gnn", "llm", "agaf"):
+            self.assertAlmostEqual(
+                ms["rungs"][rung]["macro_f1_mean"], sup[rung]["macro_f1_mean"]
+            )
+        # AGAF still sits below the GNN by mean on ToN, and still not separated.
+        self.assertLess(ms["rungs"]["agaf"]["macro_f1_mean"],
+                        ms["rungs"]["gnn"]["macro_f1_mean"])
+        self.assertFalse(ms["comparisons"]["agaf_vs_gnn"]["separated_two_level"])
 
-        self.assertEqual(tf.SELECTOR_HEAD_LOSS_WEIGHT, 0.0)
-        self.assertTrue(tf.DEFAULT_LEGACY_TEMPERATURE)
+    def test_the_two_datasets_separate_the_same_comparisons(self) -> None:
+        """Not required by anything -- recorded because it is true and surprising:
+        after the consultant change the separated/not-separated split is identical
+        on both datasets, which it never was under the prototype."""
+        unsw = json.loads(UNSW_RESULTS_PATH.read_text())["multi_seed"]
+        ton = json.loads(TON_RESULTS_PATH.read_text())["multi_seed"]
+        self.assertEqual(
+            sorted(unsw["separated_comparisons_two_level"]),
+            sorted(ton["separated_comparisons_two_level"]),
+        )
+        self.assertEqual(
+            sorted(unsw["not_separated_comparisons_two_level"]),
+            sorted(ton["not_separated_comparisons_two_level"]),
+        )
 
     def test_reproduction_uses_authoritative_manifest(self) -> None:
         payload = json.loads(UNSW_RESULTS_PATH.read_text())
@@ -155,60 +194,109 @@ class CurrentResultsContractTest(unittest.TestCase):
             accuracy["feedback_loop"], payload["results"]["feedback"]["accuracy"]
         )
 
-    def test_authoritative_ton_iot_aggregated_ladder(self) -> None:
-        """ToN runs the SAME architecture as UNSW. By 3-seed mean the loop is highest and
-        AGAF sits below the GNN, but neither ordering is separated -- the schema-5
-        'AGAF significantly below GNN (P=0.0005)' was a seed-42 artifact."""
-        payload = json.loads(TON_RESULTS_PATH.read_text())
-        self._assert_multi_seed_contract(payload, schema=6)
-        self.assertEqual(payload["dataset_key"], "ton_iot")
-        self.assertEqual(payload["graph_scope"], "aggregated")
-        self.assertEqual(payload["feature_profile"], "structural10")
-        self.assertEqual(payload["n_eval_classes"], 8)
-        cfg = payload["configuration"]
-        self.assertEqual(cfg["top_k_percent"], 25.0)
-        self.assertEqual(cfg["injection_scale"], 20.0)
-        self.assertAlmostEqual(payload["results"]["gnn"]["macro_f1"], 0.4289705488338377)
-        self.assertAlmostEqual(payload["results"]["llm"]["macro_f1"], 0.27852446280044896)
-        self.assertEqual(payload["supersedes"]["schema_version"], 5)
-        ms = payload["multi_seed"]
-        self.assertEqual(ms["highest_mean_rung"], "feedback")
-        self.assertTrue(payload["loop_highest_mean"])
-        self.assertTrue(payload["llm_below_gnn"])
-        self.assertTrue(payload["agaf_below_gnn_by_mean"])
-        # ...but AGAF-vs-GNN is NOT separated and not even sign-stable across seeds.
-        ag = ms["comparisons"]["agaf_vs_gnn"]
-        self.assertFalse(ag["sign_stable_across_seeds"])
-        self.assertLess(ag["two_level"]["ci_low"], 0.0)
-        self.assertGreater(ag["two_level"]["ci_high"], 0.0)
-
     def test_both_datasets_declare_the_same_architecture(self) -> None:
-        """Parity guard: the two datasets must never drift onto different consultants again."""
+        """Parity guard, under the 2026-09-07 rule: same encoder, same graph, same
+        folds, same seeds on every rung; the loop additionally trains a
+        classification head on the semantic embeddings. Only `top_k_percent` and
+        `injection_scale` may differ between datasets."""
         unsw_p = json.loads(UNSW_RESULTS_PATH.read_text())
         ton_p = json.loads(TON_RESULTS_PATH.read_text())
         unsw, ton = unsw_p["configuration"], ton_p["configuration"]
-        self.assertEqual(unsw["semantic_consultant"], ton["semantic_consultant"])
-        self.assertEqual(unsw["trained_llm_head"], ton["trained_llm_head"])
-        self.assertEqual(
-            unsw["semantic_confidence_fraction"], ton["semantic_confidence_fraction"]
+        shared = (
+            "semantic_consultant", "trained_llm_head", "llm_rung_consultant",
+            "agaf_head_fusion", "semantic_confidence_fraction", "injection_mode",
+            "max_feedback_iterations", "churn_tolerance", "seeds",
+            "deterministic_cpu",
         )
-        self.assertEqual(unsw["injection_mode"], ton["injection_mode"])
-        self.assertEqual(unsw["seeds"], ton["seeds"])
-        # injection_scale and top_k_percent are the two quantities allowed to differ.
+        for field in shared:
+            self.assertIn(field, unsw, field)
+            self.assertEqual(unsw[field], ton[field], f"parity drifted on {field}")
+        self.assertEqual(
+            unsw_p["architecture_parity_rule"], ton_p["architecture_parity_rule"]
+        )
+        self.assertEqual(unsw_p["architecture_parity_rule"], self.PARITY_RULE)
+        self.assertEqual(
+            unsw_p["edge_attr_encoding"], ton_p["edge_attr_encoding"]
+        )
+        # The two knobs that are allowed to differ, and do.
+        self.assertNotEqual(unsw["top_k_percent"], ton["top_k_percent"])
         for key in ("top_k_percent", "injection_scale"):
             self.assertIn(key, unsw)
             self.assertIn(key, ton)
+
         comparison = json.loads(COMPARISON_PATH.read_text())
-        self.assertEqual(comparison["schema_version"], 5)
-        self.assertTrue(comparison["architecture"]["shared"])
+        self.assertEqual(comparison["schema_version"], 6)
+        arch = comparison["architecture"]
+        self.assertTrue(arch["shared"])
+        self.assertEqual(arch["parity_rule"], self.PARITY_RULE)
+        self.assertEqual(arch["semantic_consultant"], unsw["semantic_consultant"])
+        self.assertEqual(arch["llm_rung_consultant"], unsw["llm_rung_consultant"])
+        for key in ("unsw_nb15", "ton_iot"):
+            d = comparison["datasets"][key]
+            self.assertFalse(d["nothing_separated"])
+            self.assertEqual(d["highest_mean_rung"], "head_alone")
+
+    def test_cross_dataset_comparison_matches_contracts(self) -> None:
+        comparison = json.loads(COMPARISON_PATH.read_text())
+        for key, path in (("unsw_nb15", UNSW_RESULTS_PATH),
+                          ("ton_iot", TON_RESULTS_PATH)):
+            contract = json.loads(path.read_text())
+            block = comparison["datasets"][key]
+            self.assertEqual(block["schema_version"], contract["schema_version"])
+            for rung in self.RUNGS:
+                self.assertAlmostEqual(
+                    block["rungs"][rung]["mean"],
+                    contract["multi_seed"]["rungs"][rung]["macro_f1_mean"],
+                )
+                self.assertAlmostEqual(
+                    block["rungs"][rung]["std"],
+                    contract["multi_seed"]["rungs"][rung]["macro_f1_std"],
+                )
+            self.assertEqual(block["mean_order"], contract["multi_seed"]["mean_order"])
+            for name, delta_key in (
+                ("agaf", "observed_deltas_feedback_minus_agaf_3seed_mean"),
+                ("gnn", "observed_deltas_feedback_minus_gnn_3seed_mean"),
+                ("head_alone", "observed_deltas_feedback_minus_head_alone_3seed_mean"),
+            ):
+                rungs = contract["multi_seed"]["rungs"]
+                self.assertAlmostEqual(
+                    comparison[delta_key][key],
+                    rungs["feedback"]["macro_f1_mean"] - rungs[name]["macro_f1_mean"],
+                )
+        # The loop trails the head alone on BOTH datasets by 3-seed mean.
+        for key in ("unsw_nb15", "ton_iot"):
+            self.assertLess(
+                comparison["observed_deltas_feedback_minus_head_alone_3seed_mean"][key],
+                0.0,
+            )
         self.assertEqual(
-            comparison["architecture"]["semantic_consultant"], unsw["semantic_consultant"]
+            comparison["supersedes"]["schema_version"], 5
         )
-        for key in ("unsw_nb15", "ton_iot_aggregated"):
-            self.assertTrue(comparison["datasets"][key]["nothing_separated"])
-        self.assertEqual(comparison["datasets"]["unsw_nb15"]["highest_mean_rung"], "agaf")
-        self.assertEqual(
-            comparison["datasets"]["ton_iot_aggregated"]["highest_mean_rung"], "feedback"
+
+    def test_the_head_only_baseline_is_carried_as_a_rung_and_is_not_beaten(self) -> None:
+        """The strongest LLM-only baseline is now the loop's own consultant, so it
+        is a rung in the contract rather than a side file. The claim it supports
+        has changed and must be stated as it now is: by 3-seed mean it is above
+        the loop on both datasets, but the difference is NOT separated, so the
+        honest statement is "indistinguishable", not "beats".
+
+        The v1-era results/*_head_baseline.json files are stale (2026-08-20, v1
+        encoding) and must not be used for this comparison any more.
+        """
+        for path in (UNSW_RESULTS_PATH, TON_RESULTS_PATH):
+            payload = json.loads(path.read_text())
+            rungs = payload["multi_seed"]["rungs"]
+            head, loop = rungs["head_alone"], rungs["feedback"]
+            self.assertIn("consultant", head["role"])
+            self.assertGreater(head["macro_f1_mean"], loop["macro_f1_mean"], str(path))
+            c = payload["multi_seed"]["comparisons"]["feedback_vs_head_alone"]
+            self.assertFalse(c["separated_two_level"], str(path))
+            self.assertFalse(c["separated_seed_matched"], str(path))
+        # ...and at seed 42 on UNSW the ordering actually flips, which is why the
+        # mean alone must never be quoted as if it were a result.
+        unsw = json.loads(UNSW_RESULTS_PATH.read_text())["results"]
+        self.assertGreater(
+            unsw["feedback"]["macro_f1"], unsw["head_alone"]["macro_f1"]
         )
 
     def test_v2_oracle_contracts_declare_shared_architecture_and_evidence(self) -> None:
@@ -332,27 +420,6 @@ class CurrentResultsContractTest(unittest.TestCase):
             self.assertEqual(comparison["n_pairs"], 15)
             self.assertIn("trained_head_captured_share", payload["decision"])
 
-    def test_head_baselines_record_that_they_beat_the_full_system(self) -> None:
-        """The trained-head LLM-only baseline outscores the full system on both datasets.
-
-        That is a genuine weakness of the result. These contracts exist so it cannot be
-        dropped from a write-up by accident. NOTE: these baseline files were generated
-        2026-08-20 on the v1 encoding and have not been re-run on v2 -- see CLAUDE.md.
-        """
-        for path, canonical_path in (
-            (UNSW_HEAD_BASELINE_PATH, UNSW_RESULTS_PATH),
-            (TON_HEAD_BASELINE_PATH, TON_RESULTS_PATH),
-        ):
-            payload = json.loads(path.read_text())
-            canonical = json.loads(canonical_path.read_text())
-            self.assertEqual(payload["role"], "llm_only_baseline")
-            self.assertTrue(payload["must_be_reported"])
-            self.assertGreater(
-                payload["llm_only_macro_f1"],
-                canonical["results"]["feedback"]["macro_f1"],
-                f"{path} no longer beats the loop; update the caveat text",
-            )
-
     def test_loop_attention_mechanism_is_recorded_as_inert(self) -> None:
         """The ~8% attention consultation changes zero predictions, in every config.
 
@@ -381,34 +448,3 @@ class CurrentResultsContractTest(unittest.TestCase):
             self.assertLessEqual(
                 stats["mean"], control, f"{name} now beats the control; re-open Phase 2"
             )
-
-    def test_cross_dataset_comparison_matches_contracts(self) -> None:
-        comparison = json.loads(COMPARISON_PATH.read_text())
-        unsw = json.loads(UNSW_RESULTS_PATH.read_text())["results"]
-        ton = json.loads(TON_RESULTS_PATH.read_text())["results"]
-
-        unsw_ms = json.loads(UNSW_RESULTS_PATH.read_text())["multi_seed"]["rungs"]
-        ton_ms = json.loads(TON_RESULTS_PATH.read_text())["multi_seed"]["rungs"]
-        for name in ("gnn", "llm", "agaf", "feedback"):
-            # seed-42 single run == each contract's results block
-            self.assertAlmostEqual(
-                comparison["datasets"]["unsw_nb15"]["macro_f1"][name],
-                unsw[name]["macro_f1"],
-            )
-            self.assertAlmostEqual(
-                comparison["datasets"]["ton_iot_aggregated"]["macro_f1"][name],
-                ton[name]["macro_f1"],
-            )
-            # 3-seed headline == each contract's multi_seed block
-            self.assertAlmostEqual(
-                comparison["datasets"]["unsw_nb15"]["macro_f1_3seed_mean"][name],
-                unsw_ms[name]["macro_f1_mean"],
-            )
-            self.assertAlmostEqual(
-                comparison["datasets"]["ton_iot_aggregated"]["macro_f1_3seed_mean"][name],
-                ton_ms[name]["macro_f1_mean"],
-            )
-
-
-if __name__ == "__main__":
-    unittest.main()

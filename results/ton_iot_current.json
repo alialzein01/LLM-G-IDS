@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "dataset": "NF-ToN-IoT",
   "dataset_key": "ton_iot",
   "graph_scope": "aggregated",
@@ -21,16 +21,16 @@
   "n_eval_classes": 8,
   "metric_protocol": "pooled five-fold out-of-fold evaluation, 3 training seeds (42, 1, 2), fold partition fixed at the seed-42 split",
   "primary_metric": "macro_f1",
-  "generated": "2026-09-06",
+  "generated": "2026-09-07",
   "edge_attr_encoding": "v2_log_cont_cat_idx",
-  "architecture": "shared canonical architecture (identical to UNSW-NB15)",
+  "architecture": "shared canonical architecture (identical across datasets); loop consults the per-fold trained LLM head",
   "configuration": {
-    "top_k_percent": 25.0,
-    "top_k_source": "multiseed_validation_sweep (3 seeds: 42,1,2), range 15-35, prototype consultant, no test labels",
-    "semantic_consultant": "whitened_prototype",
+    "top_k_percent": 16.0,
+    "top_k_source": "multiseed_validation_sweep_v2_trained_head_consultant (3 seeds: 42,1,2), range 15-35, trained-head consultant, no test labels",
+    "semantic_consultant": "trained_llm_head",
     "semantic_confidence_fraction": 0.5,
-    "effective_feedback_percent": 12.5,
-    "trained_llm_head": false,
+    "effective_feedback_percent": 8.0,
+    "trained_llm_head": true,
     "agaf_head_fusion": false,
     "injection_mode": "edge",
     "injection_scale": 20.0,
@@ -44,7 +44,12 @@
       2
     ],
     "injection_scale_verified_in_run": true,
-    "note": "seed 42 is the reproduction seed used by reproduce_ladder.py; training seeds 42/1/2 all share the seed-42 fold partition"
+    "note": "seed 42 is the reproduction seed used by reproduce_ladder.py; training seeds 42/1/2 all share the seed-42 fold partition",
+    "llm_rung_consultant": "whitened_prototype",
+    "selection_curve_is_flat": true,
+    "selection_curve_note": "Both selection curves lie inside their own noise band (UNSW top_k 0.8241-0.8277 over 21 candidates, scale 0.8252-0.8277 over six; ToN 0.5168-0.5232 and 0.5196-0.5232). The argmax is not a tuned optimum; do not describe either knob as tuned.",
+    "scale_on_range_boundary": true,
+    "top_k_on_range_boundary": false
   },
   "headline": "multi_seed",
   "multi_seed": {
@@ -62,9 +67,7 @@
           "42": 0.4289705488338377,
           "1": 0.4393186030022884,
           "2": 0.43257381262125727
-        },
-        "accuracy_mean": 0.8738993710691824,
-        "weighted_f1_mean": 0.8949278624302063
+        }
       },
       "llm": {
         "macro_f1_mean": 0.27852446280044896,
@@ -74,8 +77,7 @@
           "1": 0.27852446280044896,
           "2": 0.27852446280044896
         },
-        "accuracy_mean": 0.49788434414668553,
-        "weighted_f1_mean": 0.6071204993819181
+        "note": "deterministic given folds and frozen embeddings; carries no training-seed variance"
       },
       "agaf": {
         "macro_f1_mean": 0.4102328190091071,
@@ -84,74 +86,88 @@
           "42": 0.3974711630900891,
           "1": 0.39098143906812927,
           "2": 0.4422458548691029
-        },
-        "accuracy_mean": 0.8328616352201258,
-        "weighted_f1_mean": 0.8549914742723695
+        }
       },
       "feedback": {
-        "macro_f1_mean": 0.45211970221804215,
-        "macro_f1_std": 0.011414089078143137,
+        "macro_f1_mean": 0.504433110924794,
+        "macro_f1_std": 0.007979931626323235,
         "macro_f1_per_seed": {
-          "42": 0.44137003531708785,
-          "1": 0.4508903759473526,
-          "2": 0.4640986953896861
+          "42": 0.49854816237783617,
+          "1": 0.501235158160148,
+          "2": 0.5135160122363981
+        }
+      },
+      "head_alone": {
+        "macro_f1_mean": 0.5081246641248379,
+        "macro_f1_std": 0.007300640317559509,
+        "macro_f1_per_seed": {
+          "42": 0.5165429122825544,
+          "1": 0.5035293114702587,
+          "2": 0.504301768621701
         },
-        "accuracy_mean": 0.8685534591194969,
-        "weighted_f1_mean": 0.8913685698079661
+        "role": "strongest LLM-only baseline AND the loop's own consultant; not a fusion rung"
       }
     },
     "comparisons": {
-      "loop_vs_agaf": {
+      "feedback_vs_agaf": {
+        "per_seed_diff": {
+          "42": 0.10107699928774705,
+          "1": 0.1102537190920187,
+          "2": 0.0712701573672952
+        },
+        "sign_stable_across_seeds": true,
         "two_level": {
-          "mean_diff": 0.04284066291982606,
-          "ci_low": -0.0315536934281711,
-          "ci_high": 0.11054458367719508,
-          "prob_positive": 0.874,
+          "mean_diff": 0.09319510583295318,
+          "ci_low": 0.017992790552236976,
+          "ci_high": 0.16669668206086372,
+          "prob_positive": 0.9955,
           "resampled": "edges_and_training_seed",
           "n_seeds": 3
         },
         "seed_matched": {
-          "mean_diff": 0.04311053185531916,
-          "ci_low": -0.005943538811136215,
-          "ci_high": 0.0935712833145617,
-          "prob_positive": 0.9535,
+          "mean_diff": 0.09398779475519237,
+          "ci_low": 0.040561505842033094,
+          "ci_high": 0.14798057975160014,
+          "prob_positive": 0.9995,
           "resampled": "edges_only_seed_matched",
           "n_seeds": 3
         },
-        "per_seed_diff": {
-          "42": 0.04389887222699873,
-          "1": 0.05990893687922333,
-          "2": 0.021852840520583228
-        },
-        "sign_stable_across_seeds": true,
-        "separated": false
+        "separated_two_level": true,
+        "separated_seed_matched": true
       },
-      "loop_vs_gnn": {
+      "feedback_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.0695776135439985,
+          "1": 0.06191655515785954,
+          "2": 0.08094219961514082
+        },
+        "sign_stable_across_seeds": true,
         "two_level": {
-          "mean_diff": 0.019058546179820775,
-          "ci_low": -0.017999116067982938,
-          "ci_high": 0.059561360257730254,
-          "prob_positive": 0.8385,
+          "mean_diff": 0.0694129890929479,
+          "ci_low": 0.012932871262695137,
+          "ci_high": 0.12879410336104422,
+          "prob_positive": 0.9915,
           "resampled": "edges_and_training_seed",
           "n_seeds": 3
         },
         "seed_matched": {
-          "mean_diff": 0.018187347577442052,
-          "ci_low": -0.005025652396713615,
-          "ci_high": 0.04178351600858754,
-          "prob_positive": 0.938,
+          "mean_diff": 0.06906461047731526,
+          "ci_low": 0.017131737540789678,
+          "ci_high": 0.11999048480292256,
+          "prob_positive": 0.995,
           "resampled": "edges_only_seed_matched",
           "n_seeds": 3
         },
-        "per_seed_diff": {
-          "42": 0.012399486483250177,
-          "1": 0.011571772945064174,
-          "2": 0.03152488276842885
-        },
-        "sign_stable_across_seeds": true,
-        "separated": false
+        "separated_two_level": true,
+        "separated_seed_matched": true
       },
       "agaf_vs_gnn": {
+        "per_seed_diff": {
+          "42": -0.031499385743748554,
+          "1": -0.048337163934159155,
+          "2": 0.009672042247845625
+        },
+        "sign_stable_across_seeds": false,
         "two_level": {
           "mean_diff": -0.023782116740005275,
           "ci_low": -0.09209938256946813,
@@ -168,19 +184,101 @@
           "resampled": "edges_only_seed_matched",
           "n_seeds": 3
         },
+        "separated_two_level": false,
+        "separated_seed_matched": false
+      },
+      "feedback_vs_head_alone": {
         "per_seed_diff": {
-          "42": -0.031499385743748554,
-          "1": -0.048337163934159155,
-          "2": 0.009672042247845625
+          "42": -0.017994749904718277,
+          "1": -0.002294153310110736,
+          "2": 0.009214243614697137
         },
         "sign_stable_across_seeds": false,
-        "separated": false
+        "two_level": {
+          "mean_diff": -0.0028463397158258806,
+          "ci_low": -0.038765459044449196,
+          "ci_high": 0.0317804578766028,
+          "prob_positive": 0.442,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": -0.0034264776132934063,
+          "ci_low": -0.022384876856703626,
+          "ci_high": 0.012877528388522661,
+          "prob_positive": 0.3555,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        },
+        "separated_two_level": false,
+        "separated_seed_matched": false
+      },
+      "feedback_vs_llm": {
+        "per_seed_diff": {
+          "42": 0.2200236995773872,
+          "1": 0.222710695359699,
+          "2": 0.23499154943594913
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.2230974170548285,
+          "ci_low": 0.17034470275779684,
+          "ci_high": 0.2770989326367351,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.22284273839601743,
+          "ci_low": 0.1731783145131109,
+          "ci_high": 0.2713324051683341,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        },
+        "separated_two_level": true,
+        "separated_seed_matched": true
+      },
+      "head_alone_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.08757236344871677,
+          "1": 0.06421070846797028,
+          "2": 0.07172795600044368
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.07225932880877377,
+          "ci_low": 0.012470770895547644,
+          "ci_high": 0.13222449156689287,
+          "prob_positive": 0.9905,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.07249108809060865,
+          "ci_low": 0.022440036991203144,
+          "ci_high": 0.12358012628717678,
+          "prob_positive": 0.999,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        },
+        "separated_two_level": true,
+        "separated_seed_matched": true
       }
     },
-    "highest_mean_rung": "feedback",
-    "mean_order": "llm 0.2785 < agaf 0.4102 < gnn 0.4336 < feedback 0.4521",
-    "nothing_separated": true,
-    "source": "results/multiseed_ladder_v2_legacy.json (condition A: canonical architecture at the selected per-dataset knobs)"
+    "highest_mean_rung": "head_alone",
+    "mean_order": "head_alone 0.5081 > feedback 0.5044 > gnn 0.4336 > agaf 0.4102 > llm 0.2785",
+    "separated_comparisons_two_level": [
+      "feedback_vs_agaf",
+      "feedback_vs_gnn",
+      "feedback_vs_llm",
+      "head_alone_vs_gnn"
+    ],
+    "not_separated_comparisons_two_level": [
+      "agaf_vs_gnn",
+      "feedback_vs_head_alone"
+    ],
+    "nothing_separated": false
   },
   "results": {
     "gnn": {
@@ -189,228 +287,287 @@
     },
     "llm": {
       "macro_f1": 0.27852446280044896,
-      "accuracy": 0.4978843441466855
+      "accuracy": 0.4995283018867924
     },
     "agaf": {
       "macro_f1": 0.3974711630900891,
       "accuracy": 0.8915094339622641
     },
     "feedback": {
-      "macro_f1": 0.44137003531708785,
-      "accuracy": 0.8759433962264151
+      "macro_f1": 0.49854816237783617,
+      "accuracy": 0.9165094339622641
+    },
+    "head_alone": {
+      "macro_f1": 0.5165429122825544,
+      "accuracy": 0.9179245283018868
     }
   },
-  "results_note": "Single-run values at training seed 42 under current code; reproduce_ladder.py compares against these. Report multi_seed, not results.",
-  "weighted_f1_seed42": {
-    "gnn": 0.8950616153817673,
-    "llm": 0.6071204993819181,
-    "agaf": 0.8835200369888082,
-    "feedback": 0.8960476513941296
-  },
-  "ladder_order_holds": false,
-  "observed_order_by_mean": "llm 0.2785 < agaf 0.4102 < gnn 0.4336 < feedback 0.4521",
-  "llm_below_gnn": true,
-  "agaf_below_gnn_by_mean": true,
-  "loop_highest_mean": true,
+  "results_note": "seed-42 slice of multi_seed; the headline is multi_seed. Accuracy is over the dataset's eval-class edges only, matching the macro-F1's support.",
   "feedback_ablations_per_seed": {
     "42": {
-      "real": 0.44137003531708785,
+      "real": 0.49854816237783617,
       "head_only": 0.38090190800088425,
-      "random": 0.3966189058554975,
+      "random": 0.40015217298582206,
       "real_vs_head_only": {
-        "mean_diff": 0.06029635082646764,
-        "ci_low": 0.026151779822724038,
-        "ci_high": 0.09555199013486503,
-        "prob_positive": 0.9995
+        "mean_diff": 0.11593695239680091,
+        "ci_low": 0.059575818216631354,
+        "ci_high": 0.17510521135863716,
+        "prob_positive": 1.0
       }
     },
     "1": {
-      "real": 0.4508903759473526,
+      "real": 0.501235158160148,
       "head_only": 0.4403737404506372,
-      "random": 0.362624997923291,
+      "random": 0.37898468096054927,
       "real_vs_head_only": {
-        "mean_diff": 0.010292619404399218,
-        "ci_low": -0.024737356332072604,
-        "ci_high": 0.04822685211183442,
-        "prob_positive": 0.7155
+        "mean_diff": 0.059492547049234394,
+        "ci_low": 0.00744831971277479,
+        "ci_high": 0.11476837571968028,
+        "prob_positive": 0.986
       }
     },
     "2": {
-      "real": 0.4640986953896861,
+      "real": 0.5135160122363981,
       "head_only": 0.4373729121933627,
-      "random": 0.40646424388914326,
+      "random": 0.406690265504285,
       "real_vs_head_only": {
-        "mean_diff": 0.026990532518683674,
-        "ci_low": -0.0035708043078903602,
-        "ci_high": 0.060130101292663544,
-        "prob_positive": 0.9555
+        "mean_diff": 0.07430004658342101,
+        "ci_low": 0.02230845101207277,
+        "ci_high": 0.12795084750573107,
+        "prob_positive": 0.998
       }
     }
   },
-  "selection": {
-    "criterion": "mean_best_val_macro_f1 (3 seeds: 42,1,2)",
-    "selected_top_k_percent": 25.0,
-    "mean_validation_macro_f1": 0.5136,
-    "validation_macro_f1_std": 0.0043,
-    "sweep_range": [
-      15,
-      35
-    ],
-    "swept_under_injection_mode": "edge"
-  },
-  "statistical_comparisons": {
-    "loop_vs_agaf": {
-      "mean_diff": 0.04284066291982606,
-      "ci_low": -0.0315536934281711,
-      "ci_high": 0.11054458367719508,
-      "prob_positive": 0.874,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
-    },
-    "loop_vs_gnn": {
-      "mean_diff": 0.019058546179820775,
-      "ci_low": -0.017999116067982938,
-      "ci_high": 0.059561360257730254,
-      "prob_positive": 0.8385,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
-    },
-    "agaf_vs_gnn": {
-      "mean_diff": -0.023782116740005275,
-      "ci_low": -0.09209938256946813,
-      "ci_high": 0.06065108286054065,
-      "prob_positive": 0.25,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
-    }
-  },
-  "statistical_comparisons_note": "two-level bootstrap: resamples edges AND training seed. Comparisons with the LLM rung are omitted here because that rung is deterministic given the folds; see supersedes.schema_5_statistical_comparisons.",
   "source_artifacts": {
-    "aggregate": "results/multiseed_ladder_v2_legacy.json",
-    "captures": "results/multiseed_v2/legacy/",
-    "runner": "scripts/run_multiseed_feedback.sh",
-    "archive_section": "docs/RESULTS_ARCHIVE.md 2026-09-06"
+    "aggregate": "results/multiseed_ladder_v2_head.json",
+    "captures": "results/multiseed_v2/head/",
+    "runner": "scripts/run_multiseed_feedback.sh head",
+    "knob_selection": "results/knob_selection_head/",
+    "per_class": "results/multiseed_head_per_class.json",
+    "archive_section": "docs/RESULTS_ARCHIVE.md 2026-09-07 (canonical loop redefined)"
   },
   "supersedes": {
-    "schema_version": 5,
-    "generated": "2026-08-27",
-    "reason": "Schema 5 was a single training run at seed 42 whose AGAF and loop values do not reproduce under current code (GNN and LLM reproduce exactly). Re-measured at 3 training seeds with the fold partition fixed; the two-level bootstrap now carries seed variance. Result: no rung comparison is separated on this dataset. The old multi_seed_caveat (conversation-recorded) is resolved by artifact.",
-    "results": {
-      "gnn": {
-        "accuracy": 0.8711800658204043,
-        "macro_f1": 0.4289705488338377
-      },
-      "llm": {
-        "accuracy": 0.4978843441466855,
-        "macro_f1": 0.27852446280044896
-      },
-      "agaf": {
-        "accuracy": 0.5632346027268453,
-        "macro_f1": 0.3333694556345273
-      },
-      "feedback": {
-        "accuracy": 0.8763516690173954,
-        "macro_f1": 0.4478180285563262
-      }
-    },
-    "weighted_f1": {
-      "gnn_alone": 0.8950616153817673,
-      "llm_alone": 0.6071204993819181,
-      "agaf": 0.6883678161970563,
-      "feedback_loop": 0.8978586834795425
-    },
-    "schema_5_statistical_comparisons": {
-      "loop_vs_agaf": {
-        "mean_diff": 0.11512614044396062,
-        "ci_low": 0.05939597714583861,
-        "ci_high": 0.16703999440093337,
-        "prob_positive": 1.0
-      },
-      "agaf_vs_llm": {
-        "mean_diff": 0.052597742509566864,
-        "ci_low": 0.013359443275603889,
-        "ci_high": 0.09506515541018781,
-        "prob_positive": 0.996
-      },
-      "agaf_vs_gnn": {
-        "mean_diff": -0.09622529218562192,
-        "ci_low": -0.14887266948130742,
-        "ci_high": -0.044148943306091364,
-        "prob_positive": 0.0005
-      },
-      "loop_vs_gnn": {
-        "mean_diff": 0.018900848258338696,
-        "ci_low": -0.013892318770819267,
-        "ci_high": 0.05341208134893891,
-        "prob_positive": 0.8615
-      },
-      "loop_vs_llm": {
-        "mean_diff": 0.1677238829535275,
-        "ci_low": 0.1275838451435802,
-        "ci_high": 0.21033890823529958,
-        "prob_positive": 1.0
-      }
-    },
-    "feedback_ablations": {
-      "random": {
-        "macro_f1": 0.4046260085007621
-      },
-      "head_only": {
-        "macro_f1": 0.40678768397712944
-      },
-      "real_vs_random": {
-        "mean_macro_f1_difference": 0.04281065704970897,
-        "ci_95": [
-          -0.0007661592592248009,
-          0.08622349587981948
-        ]
-      },
-      "real_vs_head_only": {
-        "mean_macro_f1_difference": 0.04081858131959583,
-        "ci_95": [
-          0.0021202528968173665,
-          0.0795943494553056
-        ]
-      }
-    },
-    "multi_seed_caveat": null,
-    "observed_order": "LLM 0.2785 < AGAF 0.3334 < GNN 0.4290 < Loop 0.4478",
-    "ladder_order_holds": false,
-    "llm_below_gnn": true,
-    "agaf_below_gnn": true,
-    "loop_is_top_rung": true,
-    "earlier_reproducibility_note": {
-      "files": [
-        "results/ton_iot_prototype_comparison.json"
+    "schema_version": 6,
+    "generated": "2026-09-06",
+    "reason": "The loop's semantic consultant is the per-fold trained head on CySecBERT embeddings (llm_head_logits.pt, in-fold on train/val, out-of-fold on test; the cross-fitted variant was measured worse, 2026-09-07). The LLM rung and AGAF keep the embedding-only whitened prototype: the semantic branch is compared as an encoder, the loop is the proposed system. The head alone is reported as the strongest LLM-only baseline in every table. Architecture parity rule: same encoder, same graph, same folds, same seeds on every rung; the loop additionally trains a classification head on the semantic embeddings.",
+    "consultant": "whitened_prototype_scorer",
+    "configuration": {
+      "top_k_percent": 25.0,
+      "top_k_source": "multiseed_validation_sweep (3 seeds: 42,1,2), range 15-35, prototype consultant, no test labels",
+      "semantic_consultant": "whitened_prototype",
+      "semantic_confidence_fraction": 0.5,
+      "effective_feedback_percent": 12.5,
+      "trained_llm_head": false,
+      "agaf_head_fusion": false,
+      "injection_mode": "edge",
+      "injection_scale": 20.0,
+      "max_feedback_iterations": 3,
+      "churn_tolerance": 0.01,
+      "seed": 42,
+      "deterministic_cpu": true,
+      "seeds": [
+        42,
+        1,
+        2
       ],
-      "reason": "The previous ToN prototype ladder (GNN 0.3398, LLM 0.2785, AGAF 0.4447, Loop 0.4538, 'ladder holds') does not reproduce. Re-running the unchanged code on the unchanged graph, folds and seed yields GNN 0.3271 and Loop 0.3876. The LLM and AGAF rungs reproduce to 4 decimals; only the two rungs that made the ladder hold do not. The Aug-13 oof_logits.pt artifact preserved in processed_aug06_backup/ also scores 0.3271, so 0.3398 was never obtainable from the stored artifacts."
+      "injection_scale_verified_in_run": true,
+      "note": "seed 42 is the reproduction seed used by reproduce_ladder.py; training seeds 42/1/2 all share the seed-42 fold partition"
     },
-    "earlier_supersedes": {
-      "schema_version": 4,
-      "reason": "Schema 4 was produced on the v1 edge encoding and before the loop-fusion fairness fix (see unsw_nb15_current.json supersedes note). Schema 5 re-runs on v2 encoding with the fix in place. The AGAF rung, previously the top rung on ToN, DROPS under v2 (0.4447->0.3334) and falls below the GNN rung, which the fix does not touch; the loop rung, previously below AGAF, is now the top rung and significantly above AGAF. This reverses the schema-4 headline finding.",
-      "schema_4_values": {
+    "multi_seed": {
+      "seeds": [
+        42,
+        1,
+        2
+      ],
+      "protocol": "Fold partition held fixed at the seed-42 stratified split; only training seeds vary. The pooled OOF edge set is therefore identical across seeds, which is what makes the seed-matched bootstrap a paired comparison.",
+      "rungs": {
         "gnn": {
-          "accuracy": 0.7606958157028679,
-          "macro_f1": 0.32711755971083384
+          "macro_f1_mean": 0.4336209881524611,
+          "macro_f1_std": 0.005252902884421316,
+          "macro_f1_per_seed": {
+            "42": 0.4289705488338377,
+            "1": 0.4393186030022884,
+            "2": 0.43257381262125727
+          },
+          "accuracy_mean": 0.8738993710691824,
+          "weighted_f1_mean": 0.8949278624302063
         },
         "llm": {
-          "accuracy": 0.4978843441466855,
-          "macro_f1": 0.27852446280044896
+          "macro_f1_mean": 0.27852446280044896,
+          "macro_f1_std": 0.0,
+          "macro_f1_per_seed": {
+            "42": 0.27852446280044896,
+            "1": 0.27852446280044896,
+            "2": 0.27852446280044896
+          },
+          "accuracy_mean": 0.49788434414668553,
+          "weighted_f1_mean": 0.6071204993819181
         },
         "agaf": {
-          "accuracy": 0.7244945933239304,
-          "macro_f1": 0.4446525803655099
+          "macro_f1_mean": 0.4102328190091071,
+          "macro_f1_std": 0.027913347670967977,
+          "macro_f1_per_seed": {
+            "42": 0.3974711630900891,
+            "1": 0.39098143906812927,
+            "2": 0.4422458548691029
+          },
+          "accuracy_mean": 0.8328616352201258,
+          "weighted_f1_mean": 0.8549914742723695
         },
         "feedback": {
-          "accuracy": 0.8613070051716032,
-          "macro_f1": 0.3767039979181709
+          "macro_f1_mean": 0.45211970221804215,
+          "macro_f1_std": 0.011414089078143137,
+          "macro_f1_per_seed": {
+            "42": 0.44137003531708785,
+            "1": 0.4508903759473526,
+            "2": 0.4640986953896861
+          },
+          "accuracy_mean": 0.8685534591194969,
+          "weighted_f1_mean": 0.8913685698079661
         }
       },
-      "schema_4_configuration": {
-        "top_k_percent": 18.0,
-        "injection_scale": 10.0
+      "comparisons": {
+        "loop_vs_agaf": {
+          "two_level": {
+            "mean_diff": 0.04284066291982606,
+            "ci_low": -0.0315536934281711,
+            "ci_high": 0.11054458367719508,
+            "prob_positive": 0.874,
+            "resampled": "edges_and_training_seed",
+            "n_seeds": 3
+          },
+          "seed_matched": {
+            "mean_diff": 0.04311053185531916,
+            "ci_low": -0.005943538811136215,
+            "ci_high": 0.0935712833145617,
+            "prob_positive": 0.9535,
+            "resampled": "edges_only_seed_matched",
+            "n_seeds": 3
+          },
+          "per_seed_diff": {
+            "42": 0.04389887222699873,
+            "1": 0.05990893687922333,
+            "2": 0.021852840520583228
+          },
+          "sign_stable_across_seeds": true,
+          "separated": false
+        },
+        "loop_vs_gnn": {
+          "two_level": {
+            "mean_diff": 0.019058546179820775,
+            "ci_low": -0.017999116067982938,
+            "ci_high": 0.059561360257730254,
+            "prob_positive": 0.8385,
+            "resampled": "edges_and_training_seed",
+            "n_seeds": 3
+          },
+          "seed_matched": {
+            "mean_diff": 0.018187347577442052,
+            "ci_low": -0.005025652396713615,
+            "ci_high": 0.04178351600858754,
+            "prob_positive": 0.938,
+            "resampled": "edges_only_seed_matched",
+            "n_seeds": 3
+          },
+          "per_seed_diff": {
+            "42": 0.012399486483250177,
+            "1": 0.011571772945064174,
+            "2": 0.03152488276842885
+          },
+          "sign_stable_across_seeds": true,
+          "separated": false
+        },
+        "agaf_vs_gnn": {
+          "two_level": {
+            "mean_diff": -0.023782116740005275,
+            "ci_low": -0.09209938256946813,
+            "ci_high": 0.06065108286054065,
+            "prob_positive": 0.25,
+            "resampled": "edges_and_training_seed",
+            "n_seeds": 3
+          },
+          "seed_matched": {
+            "mean_diff": -0.02492318427787711,
+            "ci_low": -0.06973592276342583,
+            "ci_high": 0.02263125370176888,
+            "prob_positive": 0.142,
+            "resampled": "edges_only_seed_matched",
+            "n_seeds": 3
+          },
+          "per_seed_diff": {
+            "42": -0.031499385743748554,
+            "1": -0.048337163934159155,
+            "2": 0.009672042247845625
+          },
+          "sign_stable_across_seeds": false,
+          "separated": false
+        }
+      },
+      "highest_mean_rung": "feedback",
+      "mean_order": "llm 0.2785 < agaf 0.4102 < gnn 0.4336 < feedback 0.4521",
+      "nothing_separated": true,
+      "source": "results/multiseed_ladder_v2_legacy.json (condition A: canonical architecture at the selected per-dataset knobs)"
+    },
+    "results": {
+      "gnn": {
+        "macro_f1": 0.4289705488338377,
+        "accuracy": 0.8740566037735849
+      },
+      "llm": {
+        "macro_f1": 0.27852446280044896,
+        "accuracy": 0.4978843441466855
+      },
+      "agaf": {
+        "macro_f1": 0.3974711630900891,
+        "accuracy": 0.8915094339622641
+      },
+      "feedback": {
+        "macro_f1": 0.44137003531708785,
+        "accuracy": 0.8759433962264151
       }
-    }
+    },
+    "feedback_ablations_per_seed": {
+      "42": {
+        "real": 0.44137003531708785,
+        "head_only": 0.38090190800088425,
+        "random": 0.3966189058554975,
+        "real_vs_head_only": {
+          "mean_diff": 0.06029635082646764,
+          "ci_low": 0.026151779822724038,
+          "ci_high": 0.09555199013486503,
+          "prob_positive": 0.9995
+        }
+      },
+      "1": {
+        "real": 0.4508903759473526,
+        "head_only": 0.4403737404506372,
+        "random": 0.362624997923291,
+        "real_vs_head_only": {
+          "mean_diff": 0.010292619404399218,
+          "ci_low": -0.024737356332072604,
+          "ci_high": 0.04822685211183442,
+          "prob_positive": 0.7155
+        }
+      },
+      "2": {
+        "real": 0.4640986953896861,
+        "head_only": 0.4373729121933627,
+        "random": 0.40646424388914326,
+        "real_vs_head_only": {
+          "mean_diff": 0.026990532518683674,
+          "ci_low": -0.0035708043078903602,
+          "ci_high": 0.060130101292663544,
+          "prob_positive": 0.9555
+        }
+      }
+    },
+    "source_artifacts": {
+      "aggregate": "results/multiseed_ladder_v2_legacy.json",
+      "captures": "results/multiseed_v2/legacy/",
+      "runner": "scripts/run_multiseed_feedback.sh",
+      "archive_section": "docs/RESULTS_ARCHIVE.md 2026-09-06"
+    },
+    "note": "The prototype-consultant ladder, measured at 3 seeds and superseded 2026-09-07. Its knobs are preserved in the dataset's selected_feedback_config.json under `prototype_superseded`, so it remains reproducible: run train_feedback WITHOUT --use-llm-head at those knobs."
   },
   "limitations": [
     "Edges are aggregated with the attack label in the grouping key, so these are not deployment-valid estimates.",
@@ -421,5 +578,180 @@
     "The real-versus-head_only ablation combines feedback injection and final semantic fusion. Finding 3 (archive 2026-09-06) shows the canonical injected bias was ~0.02-0.08 on unit-variance features, so the loop's edge over head_only is attributable to fusion, not feedback.",
     "The selected top_k_percent and injection_scale were optimized on rotating validation folds; nested cross-validation or an untouched set is required for a fully unbiased final estimate.",
     "AGAF spans 0.3975-0.4422 across three training seeds (range 0.045); the schema-5 claim that AGAF is significantly below the GNN (P=0.0005) was a seed-42 artifact and is withdrawn."
-  ]
+  ],
+  "consultant_decision": "The loop's semantic consultant is the per-fold trained head on CySecBERT embeddings (llm_head_logits.pt, in-fold on train/val, out-of-fold on test; the cross-fitted variant was measured worse, 2026-09-07). The LLM rung and AGAF keep the embedding-only whitened prototype: the semantic branch is compared as an encoder, the loop is the proposed system. The head alone is reported as the strongest LLM-only baseline in every table. Architecture parity rule: same encoder, same graph, same folds, same seeds on every rung; the loop additionally trains a classification head on the semantic embeddings.",
+  "loop_vs_head_alone_headline": "The loop is NOT separated from the head alone it consults: two-level -0.0028 [-0.0388, +0.0318], seed-matched -0.0034 [-0.0224, +0.0129], sign unstable across seeds. State this wherever the loop's gain over AGAF or the GNN is stated.",
+  "per_class_f1_3seed": {
+    "gnn": {
+      "mean": [
+        0.9598696166831554,
+        0.363284463549243,
+        0.1848460181793515,
+        0.5435602243960672,
+        0.8838409053283499,
+        0.04010251771445802,
+        0.09575638164870469,
+        0.3728200830059882
+      ],
+      "std": [
+        0.004356179142758984,
+        0.03593103856203058,
+        0.05040167779190531,
+        0.012821265073051799,
+        0.012353165493213199,
+        0.034732744005139635,
+        0.015249163024034224,
+        0.0501995325689748
+      ]
+    },
+    "agaf": {
+      "mean": [
+        0.9274628176963945,
+        0.24392156862745096,
+        0.24187278774074192,
+        0.48448072359511474,
+        0.7082164415934716,
+        0.2949712643678161,
+        0.27810120913569186,
+        0.08437761069340016
+      ],
+      "std": [
+        0.05949607574354844,
+        0.1101199932714692,
+        0.0771927291902097,
+        0.022603855119904082,
+        0.020288118996052377,
+        0.1148011882431417,
+        0.006776867868527343,
+        0.07950565749692652
+      ]
+    },
+    "loop": {
+      "mean": [
+        0.9832411582196579,
+        0.44665718349928873,
+        0.29127593066211993,
+        0.6277347302557387,
+        0.8565733968032818,
+        0.2099946836788942,
+        0.3116123642439432,
+        0.2611989459815547
+      ],
+      "std": [
+        0.002522347763290816,
+        0.034959333506243286,
+        0.0024609985898961023,
+        0.019040904990950052,
+        0.025409533194969244,
+        0.03354341638351379,
+        0.024082765756724436,
+        0.011367216025518698
+      ]
+    },
+    "head_alone": {
+      "mean": [
+        0.984019973430526,
+        0.5063795853269537,
+        0.3144691180744312,
+        0.5888257875003603,
+        0.8338503339032216,
+        0.2192696192696193,
+        0.3004148629148629,
+        0.26783216783216784
+      ],
+      "std": [
+        0.0016333065580690321,
+        0.03630798225783798,
+        0.014878797368014788,
+        0.015405716536129295,
+        0.010860947147320457,
+        0.021477290976927094,
+        0.01358304154808745,
+        0.034874007384032665
+      ]
+    },
+    "llm": {
+      "mean": [
+        0.6359375,
+        0.0706713780918728,
+        0.09205020920502092,
+        0.4529616724738676,
+        0.7349081364829396,
+        0.11267605633802817,
+        0.0935672514619883,
+        0.03260869565217391
+      ],
+      "std": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "observed_order_by_mean": "head_alone > feedback > gnn > agaf > llm",
+  "loop_highest_mean": false,
+  "architecture_parity_rule": "same encoder, same graph, same folds, same seeds on every rung; the loop additionally trains a classification head on the semantic embeddings",
+  "statistical_comparisons": {
+    "feedback_vs_agaf": {
+      "mean_diff": 0.09319510583295318,
+      "ci_low": 0.017992790552236976,
+      "ci_high": 0.16669668206086372,
+      "prob_positive": 0.9955,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "feedback_vs_gnn": {
+      "mean_diff": 0.0694129890929479,
+      "ci_low": 0.012932871262695137,
+      "ci_high": 0.12879410336104422,
+      "prob_positive": 0.9915,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "agaf_vs_gnn": {
+      "mean_diff": -0.023782116740005275,
+      "ci_low": -0.09209938256946813,
+      "ci_high": 0.06065108286054065,
+      "prob_positive": 0.25,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "feedback_vs_head_alone": {
+      "mean_diff": -0.0028463397158258806,
+      "ci_low": -0.038765459044449196,
+      "ci_high": 0.0317804578766028,
+      "prob_positive": 0.442,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "feedback_vs_llm": {
+      "mean_diff": 0.2230974170548285,
+      "ci_low": 0.17034470275779684,
+      "ci_high": 0.2770989326367351,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "head_alone_vs_gnn": {
+      "mean_diff": 0.07225932880877377,
+      "ci_low": 0.012470770895547644,
+      "ci_high": 0.13222449156689287,
+      "prob_positive": 0.9905,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    }
+  },
+  "statistical_comparisons_note": "Mirror of multi_seed.comparisons[*].two_level, kept for readers who look here first. `separated_two_level` / `separated_seed_matched` live in the multi_seed block.",
+  "ladder_order_holds": false,
+  "selection": {
+    "swept_under_injection_mode": "edge",
+    "consultant": "trained_llm_head",
+    "curves": "results/knob_selection_head/",
+    "curve_is_flat": true
+  }
 }

@@ -1,0 +1,36 @@
+{
+  "dataset": "unsw_nb15",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "top_k_percent": 29.0,
+  "bias_confidence_fraction": 0.5,
+  "gate_mode": "confidence",
+  "per_mode_pooled_macro_f1": {
+    "real": 0.8332390262699155,
+    "random": 0.6385152699750607,
+    "head_only": 0.7542650444992878
+  },
+  "real_vs_random": {
+    "mean_diff": 0.19562482346340557,
+    "ci_low": 0.15073700637634435,
+    "ci_high": 0.2393405105940823,
+    "prob_positive": 1.0
+  },
+  "real_vs_head_only": {
+    "mean_diff": 0.07924938196419783,
+    "ci_low": 0.04089048928740064,
+    "ci_high": 0.11851677696929666,
+    "prob_positive": 1.0
+  }
+}

@@ -57,8 +57,8 @@ from src.pipeline.step4.train_feedback import _llm_alone_oof
 SEEDS = (42, 1, 2)
 MODELS = ("e_graphsage", "te_g_sage")
 MODES = ("as_published", "refit", "plus_node_features")
-RUNGS = ("gnn", "llm", "agaf", "feedback")
-CAPTURE_ROOT = Path("results/multiseed_v2/legacy")
+RUNGS = ("gnn", "llm", "agaf", "feedback", "head_alone")
+CAPTURE_ROOT = Path("results/multiseed_v2/head")
 SUPERSEDED_NOTE = "rung_seeds was 1; superseded 2026-09-07"
 
 COMPARISON_CAVEAT_3SEED = (
@@ -106,28 +106,33 @@ def _load_rung_seeds(
         _llm_alone_oof(data, embeddings, folds, prototypes), dropped
     ).cpu().numpy()
 
+    # Rung predictions come from `aggregate_multiseed._load_seed_preds`, the same
+    # loader the ladder aggregate uses, so the two can never disagree about what a
+    # capture contains (it accepts either the slim agaf_predictions.json or the
+    # full fusion metrics.json).
+    from src.pipeline.step4.aggregate_multiseed import (
+        _head_alone_preds,
+        _load_seed_preds,
+    )
+
     per_rung: dict[str, list[np.ndarray]] = {r: [] for r in RUNGS}
     for seed in SEEDS:
-        d = root / f"{dataset}_seed{seed}"
-        if not d.is_dir():
-            raise FileNotFoundError(f"missing capture directory {d}")
-        per_rung["gnn"].append(
-            _masked_preds(
-                torch.load(d / "oof_logits.pt", weights_only=False), dropped
-            ).cpu().numpy()
-        )
-        per_rung["feedback"].append(
-            _masked_preds(
-                torch.load(d / "feedback_oof_real.pt", weights_only=False), dropped
-            ).cpu().numpy()
-        )
-        per_rung["agaf"].append(
-            np.asarray(
-                json.loads((d / "agaf_predictions.json").read_text())["predictions"],
-                dtype=np.int64,
+        if not (root / f"{dataset}_seed{seed}").is_dir():
+            raise FileNotFoundError(
+                f"missing capture directory {root / f'{dataset}_seed{seed}'}"
             )
-        )
+        preds = _load_seed_preds(dataset, seed, root)
+        per_rung["gnn"].append(preds["gnn"])
+        per_rung["agaf"].append(preds["agaf"])
+        per_rung["feedback"].append(preds["loop"])
         per_rung["llm"].append(llm)
+        head_alone = _head_alone_preds(dataset, seed, config)
+        if head_alone is None:
+            raise FileNotFoundError(
+                f"missing head-alone logits for {dataset} seed {seed}; build them "
+                f"with `build_llm_heads --dataset {dataset} --seed {seed}`"
+            )
+        per_rung["head_alone"].append(head_alone)
     return {r: np.stack(rows) for r, rows in per_rung.items()}
 
 
@@ -285,12 +290,38 @@ def compare_to_ladder_multiseed(
         superseded["comparison_caveat"] = payload.pop("comparison_caveat", None)
         superseded["schema_version"] = payload["schema_version"]
         superseded["note"] = SUPERSEDED_NOTE
+    # A previous 3-seed block is history too, not scratch space. Re-running this
+    # module after the loop's consultant changed would otherwise overwrite the
+    # earlier consultant's intervals in place and lose them: the first rerun did
+    # exactly that to the prototype-consultant blocks, which had to be recovered
+    # from git. File them under the consultant they were computed for.
+    if "statistical_comparisons_3seed" in payload:
+        prior_consultant = (
+            payload.get("comparison_sources_3seed", {}).get("loop_consultant")
+            or "whitened_prototype_scorer"
+        )
+        key = f"{prior_consultant}_3seed"
+        superseded[key] = {
+            "statistical_comparisons_3seed":
+                payload.pop("statistical_comparisons_3seed"),
+            "seed_matched_comparisons_3seed":
+                payload.pop("seed_matched_comparisons_3seed"),
+            "comparison_sources_3seed": payload.pop("comparison_sources_3seed", None),
+            "generated": payload.pop("generated_3seed", None),
+            "note": (
+                f"Both sides at 3 seeds, with the loop consulting the "
+                f"{prior_consultant}. Superseded when the loop's canonical "
+                f"consultant changed; the rungs other than the loop are unaffected "
+                f"by that change and are reproduced in the current block."
+            ),
+        }
     payload["schema_version"] = 2
     payload["generated_3seed"] = "2026-09-07"
     payload["statistical_comparisons_3seed"] = two_level
     payload["seed_matched_comparisons_3seed"] = matched
     payload["comparison_caveat"] = COMPARISON_CAVEAT_3SEED
     payload["comparison_sources_3seed"] = {
+        "loop_consultant": "trained_llm_head",
         "rung_captures": str(capture_root or CAPTURE_ROOT),
         "baseline_predictions": f"data/{dataset}/processed/baselines/",
         "seeds": list(SEEDS),
