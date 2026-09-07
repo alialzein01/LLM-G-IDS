@@ -8,7 +8,7 @@ from pathlib import Path
 from src.pipeline.common.datasets import get_dataset_config
 
 
-RUNGS = ("gnn", "llm", "agaf", "feedback")
+RUNGS = ("gnn", "llm", "agaf", "feedback", "head_alone")
 MODELS = ("e_graphsage", "te_g_sage")
 MODES = ("as_published", "refit", "plus_node_features")
 BLOCKS = ("statistical_comparisons_3seed", "seed_matched_comparisons_3seed")
@@ -24,11 +24,9 @@ NOT_SEPARATED_ABOVE_FAITHFUL = {
         "gnn_vs_e_graphsage_as_published",
         "llm_vs_e_graphsage_as_published",
         "agaf_vs_e_graphsage_as_published",
-        "feedback_vs_e_graphsage_as_published",
         "gnn_vs_e_graphsage_refit",
         "llm_vs_e_graphsage_refit",
         "agaf_vs_e_graphsage_refit",
-        "feedback_vs_e_graphsage_refit",
     },
     ("ton_iot", "seed_matched_comparisons_3seed"): {
         "gnn_vs_e_graphsage_as_published",
@@ -40,14 +38,19 @@ NOT_SEPARATED_ABOVE_FAITHFUL = {
     },
 }
 
-# The LLM rung is separated BELOW E-GraphSAGE on ToN, which is why it appears
-# above: "not separated above" covers both a null and a separated loss.
+# The LLM (prototype) rung is separated BELOW E-GraphSAGE on ToN, which is why it
+# appears above: "not separated above" covers both a null and a separated loss.
 LLM_SEPARATED_BELOW_ON_TON = {
     "llm_vs_e_graphsage_as_published",
     "llm_vs_e_graphsage_refit",
     "llm_vs_e_graphsage_plus_node_features",
     "llm_vs_te_g_sage_plus_node_features",
 }
+
+# Under the trained-head consultant (contracts schema 5/7, 2026-09-07) the loop and
+# the head-alone baseline clear every faithful baseline on BOTH datasets. Recorded
+# so a later edit cannot quietly lose that, or invent it where it does not hold.
+ALWAYS_SEPARATED_ABOVE_FAITHFUL = ("feedback", "head_alone")
 
 
 def _payload(dataset: str) -> dict:
@@ -142,6 +145,26 @@ class StatisticalComparison3SeedTest(unittest.TestCase):
                         observed, NOT_SEPARATED_ABOVE_FAITHFUL[(dataset, block)]
                     )
 
+    def test_the_loop_and_head_alone_clear_every_faithful_baseline(self) -> None:
+        """The two rungs that carry the system's claim. Both datasets, both
+        interval types, all four faithful configurations."""
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = _payload(dataset)
+            faithful = {
+                f"{model}_{mode}"
+                for model, entries in payload["baselines"].items()
+                for mode, entry in entries.items()
+                if entry["is_faithful_to_paper"]
+            }
+            for block in BLOCKS:
+                for rung in ALWAYS_SEPARATED_ABOVE_FAITHFUL:
+                    for config in sorted(faithful):
+                        key = f"{rung}_vs_{config}"
+                        with self.subTest(dataset=dataset, block=block, key=key):
+                            entry = payload[block][key]
+                            self.assertTrue(entry["separated"], key)
+                            self.assertGreater(entry["mean_diff"], 0.0, key)
+
     def test_the_llm_rung_is_separated_below_e_graphsage_on_ton(self) -> None:
         payload = _payload("ton_iot")
         for block in BLOCKS:
@@ -172,12 +195,30 @@ class StatisticalComparison3SeedTest(unittest.TestCase):
             superseded = payload["superseded"]
             self.assertEqual(superseded["schema_version"], 1)
             self.assertIn("rung_seeds was 1", superseded["note"])
-            for rung in RUNGS:
+            # The schema-1 blocks predate the head_alone rung, so they carry only
+            # the four rungs that existed then.
+            for rung in ("gnn", "llm", "agaf", "feedback"):
                 key = f"{rung}_vs_e_graphsage_refit"
                 self.assertEqual(
                     superseded["statistical_comparisons"][key]["rung_seeds"], 1
                 )
                 self.assertIn(key, superseded["seed_matched_comparisons"])
+
+    def test_the_prototype_consultant_3seed_block_is_kept(self) -> None:
+        """Re-running the comparison after the loop's consultant changed must file
+        the earlier consultant's intervals, not overwrite them. It overwrote them
+        once and they had to be recovered from git."""
+        for dataset in ("unsw_nb15", "ton_iot"):
+            payload = _payload(dataset)
+            prior = payload["superseded"]["whitened_prototype_scorer_3seed"]
+            for block in BLOCKS:
+                self.assertIn(block, prior)
+                entry = prior[block]["feedback_vs_e_graphsage_refit"]
+                self.assertEqual(entry["rung_seeds"], 3)
+            self.assertEqual(
+                payload["comparison_sources_3seed"]["loop_consultant"],
+                "trained_llm_head",
+            )
 
 
 class SotaBaselineContractTest(unittest.TestCase):

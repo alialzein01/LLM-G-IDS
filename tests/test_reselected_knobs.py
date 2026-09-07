@@ -1,9 +1,10 @@
 """Task 3.2 / Task 4 condition C — the re-selection must be recorded, not asserted.
 
-Condition C is recorded, not active. The active knobs are condition A, the ones
-`results/*_current.json` was measured under; C's values and its full selection
-curves live under the config's `condition_c` block so the choice stays auditable
-and reachable by flag. These tests pin exactly that split.
+History, not scratch space. The active knobs are the trained-head consultant's
+(2026-09-07); the prototype's condition-A knobs live under `prototype_superseded`
+with condition C nested inside them. Every layer stays reproducible: A and C by
+running `train_feedback` WITHOUT `--use-llm-head` at their knobs, the head
+condition by running it with. These tests pin that nothing was dropped.
 """
 
 from __future__ import annotations
@@ -37,8 +38,12 @@ def test_selection_refuses_seeds_that_scored_different_candidates():
         select_by_mean_validation({42: {15.0: 0.5}, 1: {20.0: 0.5}})
 
 
+# The trained-head consultant's selected knobs (2026-09-07), now active.
+CONDITION_HEAD = {"unsw_nb15": (29.0, 2.0), "ton_iot": (16.0, 20.0)}
+
+
 @pytest.mark.parametrize("dataset", sorted(CONDITION_A))
-def test_config_records_the_reselection_but_condition_a_is_active(dataset):
+def test_the_head_consultant_is_active_and_the_prototype_is_preserved(dataset):
     path = selected_config_path(dataset)
     if not path.exists():
         pytest.skip(f"missing {path}")
@@ -46,21 +51,51 @@ def test_config_records_the_reselection_but_condition_a_is_active(dataset):
     assert cfg["selection_uses_test_labels"] is False
     assert cfg["selection_seeds"] == list(SELECTION_SEEDS)
 
+    # Active: the trained-head consultant.
+    h_k, h_scale = CONDITION_HEAD[dataset]
+    assert cfg["consultant"] == "trained_llm_head"
+    assert cfg["trained_llm_head"] is True
+    assert cfg["top_k_percent"] == h_k
+    assert cfg["injection_scale"] == h_scale
+    head = cfg["consultant_trained_llm_head"]
+    assert head["top_k_percent"] == h_k and head["injection_scale"] == h_scale
+    for knob in ("top_k", "injection_scale"):
+        curves = head["selection_curves"][knob]
+        assert sorted(int(s) for s in curves) == sorted(SELECTION_SEEDS)
+
+    # Preserved: the prototype's condition A, with condition C nested inside it.
     a_k, a_scale = CONDITION_A[dataset]
-    assert cfg["top_k_percent"] == a_k
-    assert cfg["injection_scale"] == a_scale
-    assert cfg["active_condition"] == "A"
+    proto = cfg["prototype_superseded"]
+    assert proto["top_k_percent"] == a_k
+    assert proto["injection_scale"] == a_scale
+    assert proto["semantic_consultant"] == "whitened_prototype_scorer"
+    assert proto["active_condition"] == "A"
 
     c_k, c_scale = CONDITION_C[dataset]
-    condition_c = cfg["condition_c"]
+    condition_c = proto["condition_c"]
     assert condition_c["source"] == SELECTION_SOURCE
     assert condition_c["top_k_percent"] == c_k
     assert condition_c["injection_scale"] == c_scale
-    # Curves must be present for all three seeds, both knobs, so the recorded
-    # choice stays auditable even though it is not the one in force.
     for knob in ("top_k", "injection_scale"):
         curves = condition_c["selection_curves"][knob]
         assert sorted(int(s) for s in curves) == sorted(SELECTION_SEEDS)
+    assert "condition_c" not in cfg, "condition_c belongs under the prototype block"
+
+
+def test_the_head_selection_records_whether_a_knob_hit_a_range_boundary():
+    """A knob chosen at the edge of its swept range means the range was too
+    narrow. ToN's injection_scale did exactly that and the config must say so."""
+    boundaries = {}
+    for dataset in sorted(CONDITION_A):
+        path = selected_config_path(dataset)
+        if not path.exists():
+            pytest.skip(f"missing {path}")
+        head = json.loads(path.read_text())["consultant_trained_llm_head"]
+        boundaries[dataset] = (
+            head["top_k_on_range_boundary"], head["scale_on_range_boundary"]
+        )
+    assert boundaries["unsw_nb15"] == (False, False)
+    assert boundaries["ton_iot"] == (False, True)
 
 
 def test_knobs_are_not_carried_across_datasets():
@@ -73,9 +108,10 @@ def test_knobs_are_not_carried_across_datasets():
         cfgs[dataset] = json.loads(path.read_text())
     for dataset, cfg in cfgs.items():
         assert cfg["dataset"] == dataset
-        assert cfg["condition_c"]["selection_curves"]["top_k"], (
+        assert cfg["consultant_trained_llm_head"]["selection_curves"]["top_k"], (
             f"{dataset} has no own top_k curve"
         )
+        assert cfg["prototype_superseded"]["condition_c"]["selection_curves"]["top_k"]
     assert (
         cfgs["unsw_nb15"]["top_k_percent"] != cfgs["ton_iot"]["top_k_percent"]
         or cfgs["unsw_nb15"]["injection_scale"] != cfgs["ton_iot"]["injection_scale"]

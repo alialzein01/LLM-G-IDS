@@ -1,0 +1,37 @@
+{
+  "dataset": "ton_iot",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    8,
+    9
+  ],
+  "dropped_classes": [
+    3,
+    7
+  ],
+  "top_k_percent": 16.0,
+  "bias_confidence_fraction": 0.5,
+  "gate_mode": "confidence",
+  "per_mode_pooled_macro_f1": {
+    "real": 0.49854816237783617,
+    "random": 0.40015217298582206,
+    "head_only": 0.38090190800088425
+  },
+  "real_vs_random": {
+    "mean_diff": 0.0973406841033838,
+    "ci_low": 0.03216931795935739,
+    "ci_high": 0.16221517309644548,
+    "prob_positive": 0.998
+  },
+  "real_vs_head_only": {
+    "mean_diff": 0.11593695239680091,
+    "ci_low": 0.059575818216631354,
+    "ci_high": 0.17510521135863716,
+    "prob_positive": 1.0
+  }
+}

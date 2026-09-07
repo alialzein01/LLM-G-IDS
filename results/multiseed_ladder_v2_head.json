@@ -1,0 +1,462 @@
+{
+  "ton_iot": {
+    "schema_version": 1,
+    "dataset": "NF-ToN-IoT",
+    "dataset_key": "ton_iot",
+    "metric": "pooled_oof_macro_f1",
+    "n_eval_classes": 8,
+    "seeds": [
+      42,
+      1,
+      2
+    ],
+    "capture_root": "results/multiseed_v2/head",
+    "feedback_configuration": {
+      "injection_scale": 20.0,
+      "top_k_percent": 16.0,
+      "verified": true,
+      "per_seed": {
+        "42": {
+          "injection_scale": 20.0,
+          "top_k_percent": 16.0
+        },
+        "1": {
+          "injection_scale": 20.0,
+          "top_k_percent": 16.0
+        },
+        "2": {
+          "injection_scale": 20.0,
+          "top_k_percent": 16.0
+        }
+      }
+    },
+    "protocol": "Fold partition held fixed at the seed-42 stratified split; only training seeds vary. The pooled OOF edge set is therefore identical across seeds, which is what makes the seed-matched bootstrap a paired comparison.",
+    "rungs": {
+      "gnn": {
+        "per_seed": {
+          "42": 0.4289705488338377,
+          "1": 0.4393186030022884,
+          "2": 0.43257381262125727
+        },
+        "mean": 0.4336209881524611,
+        "std": 0.005252902884421316
+      },
+      "agaf": {
+        "per_seed": {
+          "42": 0.3974711630900891,
+          "1": 0.39098143906812927,
+          "2": 0.4422458548691029
+        },
+        "mean": 0.4102328190091071,
+        "std": 0.027913347670967977
+      },
+      "loop": {
+        "per_seed": {
+          "42": 0.49854816237783617,
+          "1": 0.501235158160148,
+          "2": 0.5135160122363981
+        },
+        "mean": 0.504433110924794,
+        "std": 0.007979931626323235
+      },
+      "head_alone": {
+        "per_seed": {
+          "42": 0.5165429122825544,
+          "1": 0.5035293114702587,
+          "2": 0.504301768621701
+        },
+        "mean": 0.5081246641248379,
+        "std": 0.007300640317559509
+      },
+      "llm": {
+        "per_seed": {
+          "42": 0.27852446280044896,
+          "1": 0.27852446280044896,
+          "2": 0.27852446280044896
+        },
+        "mean": 0.27852446280044896,
+        "std": 0.0,
+        "note": "deterministic given folds and frozen embeddings; carries no training-seed variance"
+      }
+    },
+    "head_alone_available": true,
+    "comparisons": {
+      "loop_vs_agaf": {
+        "per_seed_diff": {
+          "42": 0.10107699928774705,
+          "1": 0.1102537190920187,
+          "2": 0.0712701573672952
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.09319510583295318,
+          "ci_low": 0.017992790552236976,
+          "ci_high": 0.16669668206086372,
+          "prob_positive": 0.9955,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.09398779475519237,
+          "ci_low": 0.040561505842033094,
+          "ci_high": 0.14798057975160014,
+          "prob_positive": 0.9995,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "loop_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.0695776135439985,
+          "1": 0.06191655515785954,
+          "2": 0.08094219961514082
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.0694129890929479,
+          "ci_low": 0.012932871262695137,
+          "ci_high": 0.12879410336104422,
+          "prob_positive": 0.9915,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.06906461047731526,
+          "ci_low": 0.017131737540789678,
+          "ci_high": 0.11999048480292256,
+          "prob_positive": 0.995,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "agaf_vs_gnn": {
+        "per_seed_diff": {
+          "42": -0.031499385743748554,
+          "1": -0.048337163934159155,
+          "2": 0.009672042247845625
+        },
+        "sign_stable_across_seeds": false,
+        "two_level": {
+          "mean_diff": -0.023782116740005275,
+          "ci_low": -0.09209938256946813,
+          "ci_high": 0.06065108286054065,
+          "prob_positive": 0.25,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": -0.02492318427787711,
+          "ci_low": -0.06973592276342583,
+          "ci_high": 0.02263125370176888,
+          "prob_positive": 0.142,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "loop_vs_head_alone": {
+        "per_seed_diff": {
+          "42": -0.017994749904718277,
+          "1": -0.002294153310110736,
+          "2": 0.009214243614697137
+        },
+        "sign_stable_across_seeds": false,
+        "two_level": {
+          "mean_diff": -0.0028463397158258806,
+          "ci_low": -0.038765459044449196,
+          "ci_high": 0.0317804578766028,
+          "prob_positive": 0.442,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": -0.0034264776132934063,
+          "ci_low": -0.022384876856703626,
+          "ci_high": 0.012877528388522661,
+          "prob_positive": 0.3555,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "loop_vs_llm": {
+        "per_seed_diff": {
+          "42": 0.2200236995773872,
+          "1": 0.222710695359699,
+          "2": 0.23499154943594913
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.2230974170548285,
+          "ci_low": 0.17034470275779684,
+          "ci_high": 0.2770989326367351,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.22284273839601743,
+          "ci_low": 0.1731783145131109,
+          "ci_high": 0.2713324051683341,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "head_alone_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.08757236344871677,
+          "1": 0.06421070846797028,
+          "2": 0.07172795600044368
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.07225932880877377,
+          "ci_low": 0.012470770895547644,
+          "ci_high": 0.13222449156689287,
+          "prob_positive": 0.9905,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.07249108809060865,
+          "ci_low": 0.022440036991203144,
+          "ci_high": 0.12358012628717678,
+          "prob_positive": 0.999,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      }
+    },
+    "highest_mean_rung": "head_alone",
+    "mean_order": "head_alone 0.5081 > loop 0.5044 > gnn 0.4336 > agaf 0.4102 > llm 0.2785"
+  },
+  "unsw_nb15": {
+    "schema_version": 1,
+    "dataset": "UNSW-NB15",
+    "dataset_key": "unsw_nb15",
+    "metric": "pooled_oof_macro_f1",
+    "n_eval_classes": 10,
+    "seeds": [
+      42,
+      1,
+      2
+    ],
+    "capture_root": "results/multiseed_v2/head",
+    "feedback_configuration": {
+      "injection_scale": 2.0,
+      "top_k_percent": 29.0,
+      "verified": true,
+      "per_seed": {
+        "42": {
+          "injection_scale": 2.0,
+          "top_k_percent": 29.0
+        },
+        "1": {
+          "injection_scale": 2.0,
+          "top_k_percent": 29.0
+        },
+        "2": {
+          "injection_scale": 2.0,
+          "top_k_percent": 29.0
+        }
+      }
+    },
+    "protocol": "Fold partition held fixed at the seed-42 stratified split; only training seeds vary. The pooled OOF edge set is therefore identical across seeds, which is what makes the seed-matched bootstrap a paired comparison.",
+    "rungs": {
+      "gnn": {
+        "per_seed": {
+          "42": 0.7219365593805762,
+          "1": 0.7674312792157633,
+          "2": 0.7418399771589683
+        },
+        "mean": 0.7437359385851027,
+        "std": 0.022806542603331665
+      },
+      "agaf": {
+        "per_seed": {
+          "42": 0.7679707333515186,
+          "1": 0.7912012871436847,
+          "2": 0.7788268431971715
+        },
+        "mean": 0.7793329545641249,
+        "std": 0.01162354373285102
+      },
+      "loop": {
+        "per_seed": {
+          "42": 0.8332390262699155,
+          "1": 0.8386597337285349,
+          "2": 0.8304426745571662
+        },
+        "mean": 0.8341138115185389,
+        "std": 0.004177792752141975
+      },
+      "head_alone": {
+        "per_seed": {
+          "42": 0.8321241658653257,
+          "1": 0.8385547512749145,
+          "2": 0.8415939791990734
+        },
+        "mean": 0.8374242987797712,
+        "std": 0.004835057732523828
+      },
+      "llm": {
+        "per_seed": {
+          "42": 0.7353188026257084,
+          "1": 0.7353188026257084,
+          "2": 0.7353188026257084
+        },
+        "mean": 0.7353188026257084,
+        "std": 0.0,
+        "note": "deterministic given folds and frozen embeddings; carries no training-seed variance"
+      }
+    },
+    "head_alone_available": true,
+    "comparisons": {
+      "loop_vs_agaf": {
+        "per_seed_diff": {
+          "42": 0.06526829291839698,
+          "1": 0.04745844658485021,
+          "2": 0.0516158313599947
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.05461742964013861,
+          "ci_low": 0.022771356248866996,
+          "ci_high": 0.0879992260881312,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.055112433375560585,
+          "ci_low": 0.03309791236618833,
+          "ci_high": 0.07792755556539528,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "loop_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.11130246688933931,
+          "1": 0.0712284545127716,
+          "2": 0.08860269739819793
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.09078883702336578,
+          "ci_low": 0.04115315178569134,
+          "ci_high": 0.14072663402398553,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.09074293787519784,
+          "ci_low": 0.05712818038204478,
+          "ci_high": 0.12495600648831494,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "agaf_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.04603417397094234,
+          "1": 0.02377000792792139,
+          "2": 0.036986866038203225
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.03617140738322715,
+          "ci_low": -0.009601370455122273,
+          "ci_high": 0.0821668097027248,
+          "prob_positive": 0.9455,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.03563050449963726,
+          "ci_low": 0.003823831011817262,
+          "ci_high": 0.06777309816642119,
+          "prob_positive": 0.989,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "loop_vs_head_alone": {
+        "per_seed_diff": {
+          "42": 0.001114860404589857,
+          "1": 0.0001049824536203392,
+          "2": -0.011151304641907167
+        },
+        "sign_stable_across_seeds": false,
+        "two_level": {
+          "mean_diff": -0.0030066138912141563,
+          "ci_low": -0.024235444923496694,
+          "ci_high": 0.01361399811875282,
+          "prob_positive": 0.4065,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": -0.003194617826924952,
+          "ci_low": -0.012135812132151473,
+          "ci_high": 0.006405286114221912,
+          "prob_positive": 0.249,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "loop_vs_llm": {
+        "per_seed_diff": {
+          "42": 0.09792022364420716,
+          "1": 0.1033409311028265,
+          "2": 0.09512387193145788
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.09892241003327815,
+          "ci_low": 0.07210534479284238,
+          "ci_high": 0.12671339672676013,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.09906425759704218,
+          "ci_low": 0.07434375884457162,
+          "ci_high": 0.125323605483364,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      },
+      "head_alone_vs_gnn": {
+        "per_seed_diff": {
+          "42": 0.11018760648474946,
+          "1": 0.07112347205915126,
+          "2": 0.0997540020401051
+        },
+        "sign_stable_across_seeds": true,
+        "two_level": {
+          "mean_diff": 0.09379545091457991,
+          "ci_low": 0.042037321189291,
+          "ci_high": 0.14126528037075117,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_training_seed",
+          "n_seeds": 3
+        },
+        "seed_matched": {
+          "mean_diff": 0.09393755570212281,
+          "ci_low": 0.06070036380550961,
+          "ci_high": 0.12784198479384923,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        }
+      }
+    },
+    "highest_mean_rung": "head_alone",
+    "mean_order": "head_alone 0.8374 > loop 0.8341 > agaf 0.7793 > gnn 0.7437 > llm 0.7353"
+  }
+}
