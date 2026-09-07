@@ -508,3 +508,37 @@ datasets. Neither condition fires, so the prototype cross-fit was not built.
 Artifacts: `results/dev/crossfit/` — `task2_summary.json`, `task3_summary.json`, and
 the per-run directories. Cross-fitted head files:
 `data/<dataset>/processed/step4_feedback/llm_head_logits_crossfit.pt` (gitignored).
+
+---
+
+## 2026-09-07 — Canonical loop redefined: trained-head consultant
+
+Not a treatment on the existing loop: a change to what the loop consults, made after
+five separate treatments on the prototype consultant all failed (see the archive's
+table). Knobs re-selected for the new consultant on validation folds only, 3 seeds.
+
+| Date | Commit | Task | Dataset | Seeds | top_k | scale | Consultant | Fusion | loop | head_only | random | vs head_alone | Verdict |
+|---|---|---|---|---|---:|---:|---|---|---:|---:|---:|---:|---|
+| 2026-09-07 | `b03cd0d` | canonical | UNSW-NB15 | 42/1/2 | 29 | 2 | head | on | 0.8341 | 0.7398 | 0.6425 | -0.0033 | **adopted** |
+| 2026-09-07 | `b03cd0d` | canonical | NF-ToN-IoT | 42/1/2 | 16 | 20 | head | on | 0.5044 | 0.4195 | 0.3953 | -0.0037 | **adopted** |
+
+Per-seed ablations (real / head_only / random, and real−head_only with its CI):
+
+| Dataset | seed | real | head_only | random | real − head_only [CI] P |
+|---|---:|---:|---:|---:|---|
+| UNSW-NB15 | 42 | 0.8332 | 0.7543 | 0.6385 | +0.0792 [+0.0409, +0.1185] P=1.0000 |
+| UNSW-NB15 | 1 | 0.8387 | 0.7336 | 0.6511 | +0.1054 [+0.0671, +0.1437] P=1.0000 |
+| UNSW-NB15 | 2 | 0.8304 | 0.7314 | 0.6378 | +0.0994 [+0.0595, +0.1387] P=1.0000 |
+| NF-ToN-IoT | 42 | 0.4985 | 0.3809 | 0.4002 | +0.1159 [+0.0596, +0.1751] P=1.0000 |
+| NF-ToN-IoT | 1 | 0.5012 | 0.4404 | 0.3790 | +0.0595 [+0.0074, +0.1148] P=0.9860 |
+| NF-ToN-IoT | 2 | 0.5135 | 0.4374 | 0.4067 | +0.0743 [+0.0223, +0.1280] P=0.9980 |
+
+`real − head_only` is positive and separated at every seed on both datasets — the
+advice is doing work. That is a different claim from the loop beating the head alone,
+which it does not do.
+
+Selected knobs and the flat curves are in `results/knob_selection_head/` and in each
+`selected_feedback_config.json` under `consultant_trained_llm_head`. ToN's scale sat on
+the upper range boundary. Full write-up: `docs/RESULTS_ARCHIVE.md` 2026-09-07
+(canonical loop redefined).
+

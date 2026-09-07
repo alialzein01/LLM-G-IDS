@@ -12,6 +12,142 @@ disagree, the contract wins and this file is stale.
 
 ---
 
+## 2026-09-07 — Canonical loop redefined: trained-head consultant
+
+### The decision, verbatim
+
+> The loop's semantic consultant is the per-fold trained head on CySecBERT embeddings (llm_head_logits.pt, in-fold on train/val, out-of-fold on test; the cross-fitted variant was measured worse, 2026-09-07).
+> The LLM rung and AGAF keep the embedding-only whitened prototype: the semantic branch is compared as an encoder, the loop is the proposed system.
+> The head alone is reported as the strongest LLM-only baseline in every table.
+> Architecture parity rule: same encoder, same graph, same folds, same seeds on every rung; the loop additionally trains a classification head on the semantic embeddings.
+
+### Why: five mechanism treatments, all negative
+
+Before changing the consultant, five separate attempts were made to get the
+whitened-prototype consultant's advice through the bias channel. Every one failed,
+from a different angle. This table is the case for the change.
+
+| # | Treatment | What it changed | Result | Where |
+|---|---|---|---|---|
+| 1 | Selector-head supervision | `SELECTOR_HEAD_LOSS_WEIGHT` 0.0 -> 1.0, so the head whose entropy ranks edges is trained as a classifier | 3-seed: worse. Reverted to 0.0 as the default | archive 2026-09-06, Findings 1-3 |
+| 2 | Consultant temperature | per-fold calibration instead of the T=10 pin, turning a near-uniform softmax into a rankable one | 3-seed: worse, together with (1). Reverted | archive 2026-09-06, Finding 1 |
+| 3 | Reliability-weighted advice (E1) | gate score, and injected magnitude, scaled by the consultant's measured per-class train precision | seed 42: `gate` +0.0038 UNSW / -0.0107 ToN; `gate+scale` +0.0057 / +0.0094, both under the 0.02 threshold and inside the seed band. Not kept | archive 2026-09-07 (four mechanism fixes) |
+| 4 | Advice format | the oracle's own +/-4-nat one-hot, and its softmax at the same peak, instead of raw logits | seed 42: every arm BELOW baseline on both datasets. Saturating the input made the *injected* magnitude fall 4x, because the projection is learned. Not kept | archive 2026-09-07 (advice format) |
+| 5 | Cross-fitted advice | train rows replaced by inner out-of-fold logits, so the loop trains on advice as reliable as the advice it is scored with | seed 42: loop worse on both (-0.0246 / -0.0338) and further below the head alone. `learned_bias_strength` moved by at most 0.0205 across four settings — the loop never learned a trust that in-fold optimism was fooling | archive 2026-09-07 (cross-fitted advice) |
+
+Read with §2.4 (the channel has capacity; no realistic consultant exploits it), the
+conclusion is that the binding constraint was never selection, weighting, format or
+train/test reliability matching. It was the consultant. So the consultant changed.
+
+### The new 3-seed ladder
+
+Pooled OOF macro-F1, seeds 42/1/2, fold partition fixed at the seed-42 split.
+Class counts differ (UNSW 10, ToN 8); only ladder SHAPE is comparable across datasets.
+
+**UNSW-NB15 (10 classes)**
+
+| rung | mean | std | seed 42 | seed 1 | seed 2 |
+|---|---:|---:|---:|---:|---:|
+| gnn | 0.7437 | 0.0228 | 0.7219 | 0.7674 | 0.7418 |
+| llm | 0.7353 | 0.0000 | 0.7353 | 0.7353 | 0.7353 |
+| agaf | 0.7793 | 0.0116 | 0.7680 | 0.7912 | 0.7788 |
+| **loop** | 0.8341 | 0.0042 | 0.8332 | 0.8387 | 0.8304 |
+| head alone | 0.8374 | 0.0048 | 0.8321 | 0.8386 | 0.8416 |
+
+**NF-ToN-IoT (8 classes)**
+
+| rung | mean | std | seed 42 | seed 1 | seed 2 |
+|---|---:|---:|---:|---:|---:|
+| gnn | 0.4336 | 0.0053 | 0.4290 | 0.4393 | 0.4326 |
+| llm | 0.2785 | 0.0000 | 0.2785 | 0.2785 | 0.2785 |
+| agaf | 0.4102 | 0.0279 | 0.3975 | 0.3910 | 0.4422 |
+| **loop** | 0.5044 | 0.0080 | 0.4985 | 0.5012 | 0.5135 |
+| head alone | 0.5081 | 0.0073 | 0.5165 | 0.5035 | 0.5043 |
+
+### What is separated, and what is not
+
+Two-level bootstrap (resampling edges AND the training seed), 2000 iterations.
+The split is **identical on both datasets**, which it never was under the prototype.
+
+| comparison | UNSW mean [CI] | sep | ToN mean [CI] | sep |
+|---|---|---|---|---|
+| `feedback_vs_agaf` | +0.0546 [+0.0228,+0.0880] | **yes** | +0.0932 [+0.0180,+0.1667] | **yes** |
+| `feedback_vs_gnn` | +0.0908 [+0.0412,+0.1407] | **yes** | +0.0694 [+0.0129,+0.1288] | **yes** |
+| `feedback_vs_llm` | +0.0989 [+0.0721,+0.1267] | **yes** | +0.2231 [+0.1703,+0.2771] | **yes** |
+| `head_alone_vs_gnn` | +0.0938 [+0.0420,+0.1413] | **yes** | +0.0723 [+0.0125,+0.1322] | **yes** |
+| `agaf_vs_gnn` | +0.0362 [-0.0096,+0.0822] | no | -0.0238 [-0.0921,+0.0607] | no |
+| `feedback_vs_head_alone` | -0.0030 [-0.0242,+0.0136] | no | -0.0028 [-0.0388,+0.0318] | no |
+
+**The loop is separated above AGAF, above the GNN and above the prototype LLM rung on
+both datasets — the first separated ladder step this project has measured.**
+
+**And the loop is NOT separated from the head alone that it consults.** On both
+datasets the head alone carries the higher mean, the interval includes zero, and the
+sign is not stable across seeds. The loop matches its consultant; it does not beat it.
+Every statement of the loop's gain over AGAF or the GNN must carry this alongside.
+
+The one place the ordering flips is UNSW seed 42, where the loop scores 0.8332 against
+the head's 0.8321. That is what an unseparated difference looks like from the inside,
+and it is why the 3-seed mean must not be quoted as if it settled the question.
+
+### Per-class F1, 3-seed mean
+
+**UNSW-NB15 (10 classes)**
+
+| class | gnn | llm | agaf | loop | head alone |
+|---|---:|---:|---:|---:|---:|
+| Normal | 0.9129 | 0.8566 | 0.9152 | 0.9543 | 0.9617 |
+| Analysis | 0.4327 | 0.4722 | 0.5886 | 0.6196 | 0.6407 |
+| Backdoors | 0.5929 | 0.5823 | 0.6578 | 0.8019 | 0.7983 |
+| DoS | 0.5831 | 0.6500 | 0.6446 | 0.7424 | 0.7311 |
+| Exploits | 0.9309 | 0.9070 | 0.9583 | 0.9580 | 0.9500 |
+| Fuzzers | 0.6207 | 0.6538 | 0.7330 | 0.7749 | 0.7939 |
+| Generic | 0.6591 | 0.5957 | 0.5409 | 0.6899 | 0.6955 |
+| Reconnaissance | 0.9110 | 0.8434 | 0.8916 | 0.8731 | 0.8865 |
+| Shellcode | 0.8669 | 0.9512 | 0.9428 | 0.9959 | 1.0000 |
+| Worms | 0.9272 | 0.8409 | 0.9205 | 0.9311 | 0.9165 |
+
+**NF-ToN-IoT (8 classes)**
+
+| class | gnn | llm | agaf | loop | head alone |
+|---|---:|---:|---:|---:|---:|
+| Benign | 0.9599 | 0.6359 | 0.9275 | 0.9832 | 0.9840 |
+| backdoor | 0.3633 | 0.0707 | 0.2439 | 0.4467 | 0.5064 |
+| ddos | 0.1848 | 0.0921 | 0.2419 | 0.2913 | 0.3145 |
+| injection | 0.5436 | 0.4530 | 0.4845 | 0.6277 | 0.5888 |
+| mitm | 0.8838 | 0.7349 | 0.7082 | 0.8566 | 0.8339 |
+| password | 0.0401 | 0.1127 | 0.2950 | 0.2100 | 0.2193 |
+| scanning | 0.0958 | 0.0936 | 0.2781 | 0.3116 | 0.3004 |
+| xss | 0.3728 | 0.0326 | 0.0844 | 0.2612 | 0.2678 |
+
+### Knob selection: flat curves, one boundary
+
+Knobs were re-selected for the head consultant on validation folds only, 3 seeds
+(`results/knob_selection_head/`): UNSW top_k 31 -> **29**, scale 2.0 -> **2.0**; ToN
+top_k 25 -> **16**, scale 20.0 -> **20.0**.
+
+Both curves lie inside their own noise band — UNSW's top_k spans 0.8241-0.8277 across
+21 candidates and its scale 0.8252-0.8277 across six; ToN's span 0.5168-0.5232 and
+0.5196-0.5232. **The argmax is picking noise. Neither knob is tuned, and neither
+should be described as tuned.** ToN's scale selected on the UPPER BOUNDARY of the
+swept range (20.0), which means the range was too narrow to contain the optimum if
+one exists; the contract records `scale_on_range_boundary: true`.
+
+### What is preserved
+
+The schema-4 (UNSW) / schema-6 (ToN) prototype-consultant ladders move under
+`supersedes` in each contract, intact, and their knobs stay in each dataset's
+`selected_feedback_config.json` under `prototype_superseded` (with condition C nested
+inside). That ladder is still reproducible: run `train_feedback` WITHOUT
+`--use-llm-head` at those knobs. The single-seed and prototype-consultant baseline
+interval blocks are likewise kept under `superseded` in the two
+`*_sota_baselines.json` files.
+
+Artifacts: `results/multiseed_ladder_v2_head.json`, `results/multiseed_v2/head/`,
+`results/multiseed_head_per_class.json`, `results/knob_selection_head/`.
+
+---
+
 ## 0. Headline finding (2026-08-30)
 
 > ### The feedback channel works. Neither realistic consultant uses it reliably.
@@ -383,83 +519,75 @@ explicit non-faithful ablation, not the published architecture.
 
 ### 5.3 Full rung-vs-baseline comparison — 3-seed rungs, 3-seed baselines, 2026-09-07
 
-Sign convention: `delta = project rung - re-trained baseline`. Positive favours the project
-rung. Each cell is `delta [95% CI]` followed by **sep** if the interval excludes zero and
-*ns* if it does not. `*` marks a non-faithful variant (our node features added), which is
-not a published-architecture comparison.
+**Updated for the trained-head consultant.** The `feedback` row is the new canonical
+loop and `head_alone` is a new row: the loop's own consultant standing alone. The
+gnn / llm / agaf rows are unchanged by the consultant switch and reproduce their earlier
+values. The prototype-consultant version of this table is preserved in each contract
+under `superseded.whitened_prototype_scorer_3seed`.
 
-**This supersedes the seed-42-only table below.** Both sides are now three training seeds
-(42, 1, 2) with the fold partition fixed at the seed-42 split; the previous intervals held
-the rung at seed 42 only and were therefore too narrow, as that table's own caveat said.
-Source: `statistical_comparisons_3seed` / `seed_matched_comparisons_3seed` in
-`results/{unsw_nb15,ton_iot}_sota_baselines.json` (schema 2), computed by
-`src/pipeline/baselines/compare_to_ladder_multiseed.py` through
-`aggregate_multiseed._two_level_bootstrap` / `._seed_matched_bootstrap`, 2000 iterations,
-RNG seed 42. Every per-seed prediction row was re-scored and matched to its contract value
-before the intervals were computed.
+Sign convention: `delta = project rung - re-trained baseline`. Each cell is
+`delta [95% CI]` with **sep** if the interval excludes zero and *ns* if it does not.
+`*` marks a non-faithful variant (our node features added), not a published architecture.
 
 **UNSW-NB15 (10 classes) — two-level (rung seed and baseline seed drawn independently, edges resampled)**
 
-| Re-trained baseline | GNN | LLM | AGAF | Feedback |
-|---|---|---|---|---|
-| E-GraphSAGE, as published | +0.6224 [+0.5684,+0.6764] **sep** | +0.6137 [+0.5711,+0.6558] **sep** | +0.6575 [+0.6103,+0.7027] **sep** | +0.6428 [+0.5993,+0.6868] **sep** |
-| E-GraphSAGE, refit | +0.6054 [+0.5508,+0.6598] **sep** | +0.5967 [+0.5520,+0.6392] **sep** | +0.6404 [+0.5914,+0.6867] **sep** | +0.6257 [+0.5807,+0.6701] **sep** |
-| E-GraphSAGE + our node features * | +0.6251 [+0.5699,+0.6796] **sep** | +0.6164 [+0.5735,+0.6592] **sep** | +0.6601 [+0.6120,+0.7086] **sep** | +0.6454 [+0.6005,+0.6901] **sep** |
-| TE-G-SAGE, as published | +0.3594 [+0.3003,+0.4221] **sep** | +0.3508 [+0.2981,+0.4019] **sep** | +0.3945 [+0.3348,+0.4520] **sep** | +0.3798 [+0.3257,+0.4336] **sep** |
-| TE-G-SAGE, refit | +0.1613 [+0.0919,+0.2337] **sep** | +0.1527 [+0.0933,+0.2156] **sep** | +0.1964 [+0.1319,+0.2629] **sep** | +0.1817 [+0.1216,+0.2454] **sep** |
-| TE-G-SAGE + our node features * | +0.0249 [-0.0270,+0.0755] *ns* | +0.0163 [-0.0291,+0.0607] *ns* | +0.0600 [+0.0096,+0.1093] **sep** | +0.0453 [+0.0033,+0.0847] **sep** |
+| Re-trained baseline | GNN | LLM | AGAF | Loop | head alone |
+|---|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.6224 [+0.5684,+0.6764] **sep** | +0.6137 [+0.5711,+0.6558] **sep** | +0.6575 [+0.6103,+0.7027] **sep** | +0.7130 [+0.6708,+0.7540] **sep** | +0.7161 [+0.6744,+0.7583] **sep** |
+| E-GraphSAGE, refit | +0.6054 [+0.5508,+0.6598] **sep** | +0.5967 [+0.5520,+0.6392] **sep** | +0.6404 [+0.5914,+0.6867] **sep** | +0.6960 [+0.6526,+0.7373] **sep** | +0.6991 [+0.6545,+0.7403] **sep** |
+| E-GraphSAGE + our node features * | +0.6251 [+0.5699,+0.6796] **sep** | +0.6164 [+0.5735,+0.6592] **sep** | +0.6601 [+0.6120,+0.7086] **sep** | +0.7157 [+0.6731,+0.7558] **sep** | +0.7188 [+0.6759,+0.7598] **sep** |
+| TE-G-SAGE, as published | +0.3594 [+0.3003,+0.4221] **sep** | +0.3508 [+0.2981,+0.4019] **sep** | +0.3945 [+0.3348,+0.4520] **sep** | +0.4500 [+0.3924,+0.5042] **sep** | +0.4531 [+0.3976,+0.5052] **sep** |
+| TE-G-SAGE, refit | +0.1613 [+0.0919,+0.2337] **sep** | +0.1527 [+0.0933,+0.2156] **sep** | +0.1964 [+0.1319,+0.2629] **sep** | +0.2519 [+0.1914,+0.3169] **sep** | +0.2550 [+0.1943,+0.3197] **sep** |
+| TE-G-SAGE + our node features * | +0.0249 [-0.0270,+0.0755] *ns* | +0.0163 [-0.0291,+0.0607] *ns* | +0.0600 [+0.0096,+0.1093] **sep** | +0.1155 [+0.0673,+0.1627] **sep** | +0.1186 [+0.0691,+0.1659] **sep** |
 
 **UNSW-NB15 (10 classes) — seed-matched (42↔42, 1↔1, 2↔2, edges resampled)**
 
-| Re-trained baseline | GNN | LLM | AGAF | Feedback |
-|---|---|---|---|---|
-| E-GraphSAGE, as published | +0.6224 [+0.5873,+0.6544] **sep** | +0.6141 [+0.5755,+0.6508] **sep** | +0.6581 [+0.6214,+0.6919] **sep** | +0.6431 [+0.6080,+0.6768] **sep** |
-| E-GraphSAGE, refit | +0.6054 [+0.5709,+0.6378] **sep** | +0.5970 [+0.5579,+0.6351] **sep** | +0.6410 [+0.6041,+0.6757] **sep** | +0.6260 [+0.5893,+0.6601] **sep** |
-| E-GraphSAGE + our node features * | +0.6248 [+0.5902,+0.6582] **sep** | +0.6165 [+0.5778,+0.6540] **sep** | +0.6604 [+0.6242,+0.6951] **sep** | +0.6455 [+0.6109,+0.6804] **sep** |
-| TE-G-SAGE, as published | +0.3595 [+0.3247,+0.3921] **sep** | +0.3511 [+0.3109,+0.3901] **sep** | +0.3951 [+0.3535,+0.4327] **sep** | +0.3801 [+0.3442,+0.4160] **sep** |
-| TE-G-SAGE, refit | +0.1599 [+0.1292,+0.1933] **sep** | +0.1516 [+0.1157,+0.1895] **sep** | +0.1956 [+0.1593,+0.2323] **sep** | +0.1806 [+0.1481,+0.2148] **sep** |
-| TE-G-SAGE + our node features * | +0.0240 [-0.0013,+0.0504] *ns* | +0.0157 [-0.0227,+0.0545] *ns* | +0.0596 [+0.0244,+0.0952] **sep** | +0.0446 [+0.0162,+0.0740] **sep** |
+| Re-trained baseline | GNN | LLM | AGAF | Loop | head alone |
+|---|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.6224 [+0.5873,+0.6544] **sep** | +0.6141 [+0.5755,+0.6508] **sep** | +0.6581 [+0.6214,+0.6919] **sep** | +0.7132 [+0.6754,+0.7491] **sep** | +0.7164 [+0.6806,+0.7506] **sep** |
+| E-GraphSAGE, refit | +0.6054 [+0.5709,+0.6378] **sep** | +0.5970 [+0.5579,+0.6351] **sep** | +0.6410 [+0.6041,+0.6757] **sep** | +0.6961 [+0.6577,+0.7324] **sep** | +0.6993 [+0.6629,+0.7343] **sep** |
+| E-GraphSAGE + our node features * | +0.6248 [+0.5902,+0.6582] **sep** | +0.6165 [+0.5778,+0.6540] **sep** | +0.6604 [+0.6242,+0.6951] **sep** | +0.7156 [+0.6778,+0.7510] **sep** | +0.7187 [+0.6821,+0.7529] **sep** |
+| TE-G-SAGE, as published | +0.3595 [+0.3247,+0.3921] **sep** | +0.3511 [+0.3109,+0.3901] **sep** | +0.3951 [+0.3535,+0.4327] **sep** | +0.4502 [+0.4090,+0.4901] **sep** | +0.4534 [+0.4130,+0.4937] **sep** |
+| TE-G-SAGE, refit | +0.1599 [+0.1292,+0.1933] **sep** | +0.1516 [+0.1157,+0.1895] **sep** | +0.1956 [+0.1593,+0.2323] **sep** | +0.2507 [+0.2133,+0.2909] **sep** | +0.2539 [+0.2172,+0.2924] **sep** |
+| TE-G-SAGE + our node features * | +0.0240 [-0.0013,+0.0504] *ns* | +0.0157 [-0.0227,+0.0545] *ns* | +0.0596 [+0.0244,+0.0952] **sep** | +0.1147 [+0.0748,+0.1540] **sep** | +0.1179 [+0.0768,+0.1588] **sep** |
 
 **NF-ToN-IoT (8 classes) — two-level (rung seed and baseline seed drawn independently, edges resampled)**
 
-| Re-trained baseline | GNN | LLM | AGAF | Feedback |
-|---|---|---|---|---|
-| E-GraphSAGE, as published | +0.0203 [-0.0230,+0.0633] *ns* | -0.1336 [-0.1773,-0.0939] **sep** | -0.0061 [-0.0797,+0.0777] *ns* | +0.0378 [-0.0098,+0.0857] *ns* |
-| E-GraphSAGE, refit | +0.0203 [-0.0230,+0.0633] *ns* | -0.1336 [-0.1773,-0.0939] **sep** | -0.0061 [-0.0797,+0.0777] *ns* | +0.0378 [-0.0098,+0.0857] *ns* |
-| E-GraphSAGE + our node features * | -0.0020 [-0.0734,+0.0726] *ns* | -0.1559 [-0.2301,-0.0848] **sep** | -0.0284 [-0.1258,+0.0775] *ns* | +0.0156 [-0.0616,+0.0908] *ns* |
-| TE-G-SAGE, as published | +0.2396 [+0.1864,+0.2938] **sep** | +0.0858 [+0.0436,+0.1241] **sep** | +0.2132 [+0.1339,+0.3005] **sep** | +0.2572 [+0.2010,+0.3170] **sep** |
-| TE-G-SAGE, refit | +0.1985 [+0.1456,+0.2474] **sep** | +0.0447 [+0.0031,+0.0777] **sep** | +0.1721 [+0.1021,+0.2539] **sep** | +0.2161 [+0.1624,+0.2688] **sep** |
-| TE-G-SAGE + our node features * | +0.0814 [+0.0256,+0.1371] **sep** | -0.0724 [-0.1233,-0.0251] **sep** | +0.0550 [-0.0232,+0.1453] *ns* | +0.0990 [+0.0425,+0.1601] **sep** |
+| Re-trained baseline | GNN | LLM | AGAF | Loop | head alone |
+|---|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.0203 [-0.0230,+0.0633] *ns* | -0.1336 [-0.1773,-0.0939] **sep** | -0.0061 [-0.0797,+0.0777] *ns* | +0.0890 [+0.0312,+0.1480] **sep** | +0.0925 [+0.0361,+0.1506] **sep** |
+| E-GraphSAGE, refit | +0.0203 [-0.0230,+0.0633] *ns* | -0.1336 [-0.1773,-0.0939] **sep** | -0.0061 [-0.0797,+0.0777] *ns* | +0.0890 [+0.0312,+0.1480] **sep** | +0.0925 [+0.0361,+0.1506] **sep** |
+| E-GraphSAGE + our node features * | -0.0020 [-0.0734,+0.0726] *ns* | -0.1559 [-0.2301,-0.0848] **sep** | -0.0284 [-0.1258,+0.0775] *ns* | +0.0667 [-0.0181,+0.1505] *ns* | +0.0702 [-0.0139,+0.1512] *ns* |
+| TE-G-SAGE, as published | +0.2396 [+0.1864,+0.2938] **sep** | +0.0858 [+0.0436,+0.1241] **sep** | +0.2132 [+0.1339,+0.3005] **sep** | +0.3083 [+0.2345,+0.3793] **sep** | +0.3119 [+0.2361,+0.3834] **sep** |
+| TE-G-SAGE, refit | +0.1985 [+0.1456,+0.2474] **sep** | +0.0447 [+0.0031,+0.0777] **sep** | +0.1721 [+0.1021,+0.2539] **sep** | +0.2672 [+0.2015,+0.3348] **sep** | +0.2708 [+0.2034,+0.3362] **sep** |
+| TE-G-SAGE + our node features * | +0.0814 [+0.0256,+0.1371] **sep** | -0.0724 [-0.1233,-0.0251] **sep** | +0.0550 [-0.0232,+0.1453] *ns* | +0.1502 [+0.0749,+0.2268] **sep** | +0.1537 [+0.0796,+0.2246] **sep** |
 
 **NF-ToN-IoT (8 classes) — seed-matched (42↔42, 1↔1, 2↔2, edges resampled)**
 
-| Re-trained baseline | GNN | LLM | AGAF | Feedback |
-|---|---|---|---|---|
-| E-GraphSAGE, as published | +0.0199 [-0.0097,+0.0500] *ns* | -0.1339 [-0.1672,-0.0998] **sep** | -0.0051 [-0.0490,+0.0417] *ns* | +0.0380 [+0.0068,+0.0699] **sep** |
-| E-GraphSAGE, refit | +0.0199 [-0.0097,+0.0500] *ns* | -0.1339 [-0.1672,-0.0998] **sep** | -0.0051 [-0.0490,+0.0417] *ns* | +0.0380 [+0.0068,+0.0699] **sep** |
-| E-GraphSAGE + our node features * | -0.0012 [-0.0336,+0.0314] *ns* | -0.1549 [-0.1903,-0.1162] **sep** | -0.0261 [-0.0735,+0.0238] *ns* | +0.0170 [-0.0154,+0.0521] *ns* |
-| TE-G-SAGE, as published | +0.2393 [+0.2044,+0.2776] **sep** | +0.0855 [+0.0617,+0.1091] **sep** | +0.2144 [+0.1709,+0.2599] **sep** | +0.2575 [+0.2226,+0.2939] **sep** |
-| TE-G-SAGE, refit | +0.1986 [+0.1608,+0.2354] **sep** | +0.0448 [+0.0187,+0.0696] **sep** | +0.1736 [+0.1290,+0.2171] **sep** | +0.2167 [+0.1785,+0.2551] **sep** |
-| TE-G-SAGE + our node features * | +0.0809 [+0.0452,+0.1176] **sep** | -0.0729 [-0.1022,-0.0435] **sep** | +0.0559 [+0.0095,+0.1018] **sep** | +0.0991 [+0.0644,+0.1345] **sep** |
+| Re-trained baseline | GNN | LLM | AGAF | Loop | head alone |
+|---|---|---|---|---|---|
+| E-GraphSAGE, as published | +0.0199 [-0.0097,+0.0500] *ns* | -0.1339 [-0.1672,-0.0998] **sep** | -0.0051 [-0.0490,+0.0417] *ns* | +0.0889 [+0.0391,+0.1393] **sep** | +0.0923 [+0.0447,+0.1401] **sep** |
+| E-GraphSAGE, refit | +0.0199 [-0.0097,+0.0500] *ns* | -0.1339 [-0.1672,-0.0998] **sep** | -0.0051 [-0.0490,+0.0417] *ns* | +0.0889 [+0.0391,+0.1393] **sep** | +0.0923 [+0.0447,+0.1401] **sep** |
+| E-GraphSAGE + our node features * | -0.0012 [-0.0336,+0.0314] *ns* | -0.1549 [-0.1903,-0.1162] **sep** | -0.0261 [-0.0735,+0.0238] *ns* | +0.0679 [+0.0189,+0.1156] **sep** | +0.0713 [+0.0208,+0.1205] **sep** |
+| TE-G-SAGE, as published | +0.2393 [+0.2044,+0.2776] **sep** | +0.0855 [+0.0617,+0.1091] **sep** | +0.2144 [+0.1709,+0.2599] **sep** | +0.3083 [+0.2504,+0.3650] **sep** | +0.3118 [+0.2530,+0.3675] **sep** |
+| TE-G-SAGE, refit | +0.1986 [+0.1608,+0.2354] **sep** | +0.0448 [+0.0187,+0.0696] **sep** | +0.1736 [+0.1290,+0.2171] **sep** | +0.2676 [+0.2103,+0.3238] **sep** | +0.2710 [+0.2160,+0.3273] **sep** |
+| TE-G-SAGE + our node features * | +0.0809 [+0.0452,+0.1176] **sep** | -0.0729 [-0.1022,-0.0435] **sep** | +0.0559 [+0.0095,+0.1018] **sep** | +0.1499 [+0.0918,+0.2048] **sep** | +0.1534 [+0.0956,+0.2090] **sep** |
 
-On UNSW every rung is separated above every one of the six baseline configurations, in both
-interval types. On ToN nothing separates from E-GraphSAGE except the LLM rung, which is
-separated **below** it; the loop is separated above E-GraphSAGE `as_published`/`refit` under
-the paired seed-matched interval but not under the two-level one, and no rung separates from
-E-GraphSAGE + our node features either way.
+**The loop and the head alone clear every faithful baseline on both datasets**, in
+both interval types — which the prototype-consultant loop did not (it was *ns* against
+E-GraphSAGE on ToN). The remaining nulls are all gnn / llm / agaf against E-GraphSAGE
+on ToN, and the LLM (prototype) rung is separated BELOW E-GraphSAGE there.
 
-Three cells change verdict between the two interval types, all on ToN and all in the same
-direction (paired is tighter): `feedback_vs_e_graphsage_as_published`,
-`feedback_vs_e_graphsage_refit` and `agaf_vs_te_g_sage_plus_node_features` are separated
-seed-matched and not separated two-level. No cell disagrees on the SIGN of the difference,
-on either dataset.
+Note the two rungs track each other closely everywhere: the loop's margin over any
+baseline is within ~0.004 of the head alone's. That is the same fact as
+`feedback_vs_head_alone` being unseparated, seen from the baseline side.
 
-Five ToN cells have `sign_stable_across_seed_pairs: false` — the sign of the raw difference
-flips between seeds — all against E-GraphSAGE: `agaf` vs `as_published`/`refit`/`+features`,
-`gnn` vs `+features`, `feedback` vs `+features`. On UNSW only
-`gnn_vs_te_g_sage_plus_node_features` is sign-unstable.
+#### 5.3a Superseded tables
 
-#### 5.3a Superseded: seed-42 rungs vs 3-seed baselines (2026-09-02)
+Two earlier versions are kept in each contract and must not be quoted as current:
+`superseded.statistical_comparisons` (schema 1, rung at seed 42 only) and
+`superseded.whitened_prototype_scorer_3seed` (both sides at 3 seeds, loop consulting the
+prototype). The prototype-consultant table as it was published on 2026-09-07 follows.
 
 Kept for the record and preserved in each contract under `superseded`. Its own caveat is
 the reason it was replaced:

@@ -68,8 +68,8 @@ Mean ± std over seeds 42/1/2. The LLM rung is deterministic given the folds (st
 
 | ID | Claim | Value | Status |
 |---|---|---|---|
-| B1 | UNSW ladder, pooled OOF macro-F1 | GNN 0.7437±0.023 / LLM 0.7353±0 / AGAF **0.7793**±0.012 / Loop 0.7644±0.004 | **PT** |
-| B2 | ToN ladder, pooled OOF macro-F1 | GNN 0.4336±0.005 / LLM 0.2785±0 / AGAF 0.4102±0.028 / Loop **0.4521**±0.011 | **PT** |
+| B1 | UNSW ladder, pooled OOF macro-F1 (loop consults the trained head, 2026-09-07) | GNN 0.7437±0.023 / LLM 0.7353±0 / AGAF 0.7793±0.012 / Loop **0.8341**±0.004 / head alone **0.8374**±0.005 | **PT** — quote the loop and head-alone rows together |
+| B2 | ToN ladder, pooled OOF macro-F1 (loop consults the trained head, 2026-09-07) | GNN 0.4336±0.005 / LLM 0.2785±0 / AGAF 0.4102±0.028 / Loop **0.5044**±0.008 / head alone **0.5081**±0.007 | **PT** — quote the loop and head-alone rows together |
 | B3 | UNSW order by mean is LLM < GNN < Loop < AGAF | `multi_seed.mean_order` | **PT** — order only; nothing separated (§C) |
 | B4 | ToN order by mean is LLM < AGAF < GNN < Loop | `multi_seed.mean_order` | **PT** — order only; nothing separated (§C) |
 | B5 | **AGAF is the highest mean on UNSW; the loop is the highest mean on ToN.** | B1, B2 | **PT** — say "highest mean", never "top rung"; never say the loop is the strongest rung on UNSW |
@@ -341,6 +341,18 @@ the drafted introduction. Part 5 must confront it directly.
 **Note.** `results/ton_iot_current.json` contains a field literally named
 `loop_is_top_rung: true`. It is a contract field, not permission — the rendered text must
 still say "highest point estimate."
+
+---
+
+## B'. The loop's consultant (2026-09-07)
+
+| ID | Claim | Evidence | Status |
+|---|---|---|---|
+| B3 | The loop's semantic consultant is the per-fold trained head on CySecBERT embeddings; the LLM rung and AGAF keep the whitened prototype encoder. Parity rule: same encoder, graph, folds and seeds on every rung; the loop additionally trains a classification head. | `consultant_decision` and `architecture_parity_rule` in both contracts `[verified]` | **PT** |
+| B4 | The loop is separated above AGAF, the GNN and the prototype LLM rung on BOTH datasets. | `multi_seed.separated_comparisons_two_level` in both contracts `[verified]` | **SEP** |
+| B5 | The loop is NOT separated from the head alone it consults: −0.0030 [−0.024,+0.014] UNSW, −0.0028 [−0.039,+0.032] ToN, sign unstable across seeds; head alone has the higher mean on both. | `multi_seed.comparisons.feedback_vs_head_alone`, `loop_vs_head_alone_headline` `[verified]` | **PT** — must accompany B4 wherever B4 is stated |
+| B6 | Five mechanism treatments on the prototype consultant were tried and none was kept (selector-head supervision, consultant temperature, reliability weighting, advice format, cross-fitting). | archive 2026-09-06 and 2026-09-07 sections `[verified]` | **PT** — this is the justification for B3 |
+| B7 | The head-consultant knobs are selected, not tuned: both curves flat within noise, ToN's injection_scale on the swept range's upper boundary. | `configuration.selection_curve_is_flat`, `scale_on_range_boundary` `[verified]` | **PT** — never write "tuned" |
 
 ---
 
