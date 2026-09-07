@@ -18,6 +18,8 @@
 #   condition: legacy            selector-head loss off + T=10 (pre-Task-1/2 behaviour)
 #              fixed             defaults (Tasks 1+2)
 #              fixed_reselected  defaults, after top_k / injection_scale re-selection
+#              head              legacy signals + the TRAINED HEAD as consultant, at
+#                                the head's own selected knobs (2026-09-07 canonical)
 # Env:    JOBS=<n>   parallel jobs (default 4)
 #         SEEDS="1 2 42"  seed order; 42 last so the tree ends on the canonical seed
 set -euo pipefail
@@ -30,8 +32,11 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
 case "$COND" in
-  legacy)                    EXTRA="--selector-head-loss-weight 0.0 --legacy-temperature" ;;
-  fixed|fixed_reselected)    EXTRA="" ;;
+  # `legacy` predates the --calibrate-temperature rename; both spellings of the
+  # condition-A signals are the current defaults, so no flags are needed for it.
+  legacy)                    EXTRA="" ;;
+  fixed|fixed_reselected)    EXTRA="--selector-head-loss-weight 1.0 --calibrate-temperature" ;;
+  head)                      EXTRA="--use-llm-head" ;;
   *) echo "unknown condition: $COND" >&2; exit 2 ;;
 esac
 
@@ -56,6 +61,12 @@ run_one() {
       --dataset "$ds" --modes real random head_only --seed "$seed" \
       --output-dir "$work" --prototypes-path "$canon/prototypes.pt" \
       $EXTRA > "$out/train.log" 2>&1
+
+  # head_only and random are needed by the per-seed ablation block, and the
+  # head condition's loop is compared against them, so carry them too.
+  for f in feedback_oof_head_only.pt feedback_oof_random.pt; do
+    [ -f "$work/$f" ] && cp "$work/$f" "$out/"
+  done
 
   cp "$work/feedback_oof_real.pt"      "$out/"
   cp "$work/ablation_summary.json"     "$out/"
