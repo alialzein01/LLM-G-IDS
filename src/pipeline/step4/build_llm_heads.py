@@ -104,10 +104,10 @@ def _train_head(emb, labels, train_mask, val_mask, seed, eval_classes):
     return full_logits.detach(), float(best_f1)
 
 
-def _train_fold(emb, labels, fold, fold_idx, eval_classes):
+def _train_fold(emb, labels, fold, fold_idx, eval_classes, seed: int = SEED):
     """Today's behaviour: one head per outer fold, its logits over every edge."""
     full_logits, best_f1 = _train_head(
-        emb, labels, fold["train_mask"], fold["val_mask"], SEED + fold_idx, eval_classes
+        emb, labels, fold["train_mask"], fold["val_mask"], seed + fold_idx, eval_classes
     )
     test_f1 = eval_macro_f1(
         labels[fold["test_mask"]],
@@ -229,20 +229,30 @@ def build_llm_heads_crossfit(
     return out
 
 
-def build_llm_heads(dataset: str) -> Path:
+def build_llm_heads(
+    dataset: str,
+    seed: int = SEED,
+    output_path: str | Path | None = None,
+) -> Path:
+    """Per-fold heads at one training seed.
+
+    `seed` varies only the head's own initialisation and batch RNG; the folds and
+    the embeddings are fixed. Seed 42 with no `output_path` writes the canonical
+    `llm_head_logits.pt` and must reproduce it bit-for-bit — the other seeds exist
+    so the head-alone baseline row carries its own +/- instead of borrowing the
+    loop's.
+    """
     config = get_dataset_config(dataset)
-    data = torch.load(config.graph_path, weights_only=False)
-    emb = torch.load(config.llm_embedding_path, weights_only=False).float()
-    folds = torch.load(config.splits_path, weights_only=False)
-    labels = data.edge_label
+    labels, emb, folds = _load_inputs(config)
     ec = config.eval_classes
 
     num_edges = labels.shape[0]
     per_fold = torch.zeros(len(folds), num_edges, NUM_CLASSES)
     oof = torch.zeros(num_edges, NUM_CLASSES)
-    print(f"Building per-fold LLM heads for {dataset} ({num_edges} edges, {len(folds)} folds)")
+    print(f"Building per-fold LLM heads for {dataset} ({num_edges} edges, "
+          f"{len(folds)} folds, seed {seed})")
     for fi, fold in enumerate(folds):
-        full_logits = _train_fold(emb, labels, fold, fi, ec)
+        full_logits = _train_fold(emb, labels, fold, fi, ec, seed=seed)
         per_fold[fi] = full_logits
         oof[fold["test_mask"]] = full_logits[fold["test_mask"]]
 
@@ -250,7 +260,9 @@ def build_llm_heads(dataset: str) -> Path:
     oof_f1 = eval_macro_f1(labels, oof_pred, ec)
     print(f"\nPooled OOF macro-F1 ({len(ec)} classes): {oof_f1:.4f}")
 
-    out = Path(f"data/{dataset}/processed/step4_feedback/llm_head_logits.pt")
+    out = Path(output_path) if output_path else Path(
+        f"data/{dataset}/processed/step4_feedback/llm_head_logits.pt"
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(per_fold, out)
     print(f"Saved per-fold LLM head logits -> {out}  [{len(folds)}, {num_edges}, {NUM_CLASSES}]")
@@ -261,6 +273,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     parser.add_argument(
+        "--seed", type=int, default=SEED,
+        help="Head training seed. Any seed other than 42 writes "
+             "llm_head_logits_seed<S>.pt so the canonical file is never clobbered.",
+    )
+    parser.add_argument(
         "--crossfit", type=int, nargs="?", const=DEFAULT_CROSSFIT_K, default=None,
         help="Cross-fit the TRAIN rows with K inner folds (default K=5) and write "
              "llm_head_logits_crossfit.pt. Off by default: the canonical file keeps "
@@ -269,6 +286,12 @@ def main() -> None:
     args = parser.parse_args()
     if args.crossfit:
         build_llm_heads_crossfit(args.dataset, args.crossfit)
+    elif args.seed != SEED:
+        build_llm_heads(
+            args.dataset, seed=args.seed,
+            output_path=f"data/{args.dataset}/processed/step4_feedback/"
+                        f"llm_head_logits_seed{args.seed}.pt",
+        )
     else:
         build_llm_heads(args.dataset)
 
