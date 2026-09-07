@@ -48,6 +48,50 @@ CAPTURE_ROOT = Path("results/multiseed")
 # Seed-varying rungs only. See the module docstring on the LLM rung.
 RUNGS = ("gnn", "agaf", "loop")
 COMPARISONS = (("loop", "agaf"), ("loop", "gnn"), ("agaf", "gnn"))
+# Extra rung and comparisons when the loop consults the trained head: the head
+# alone is then the loop's own consultant standing on its own, and is the
+# strongest LLM-only baseline, so the loop MUST be compared against it.
+HEAD_ALONE_COMPARISONS = (
+    ("loop", "head_alone"), ("loop", "llm"), ("head_alone", "gnn"),
+)
+
+
+def _llm_alone_preds(dataset: str, config) -> np.ndarray:
+    """The prototype LLM rung's pooled OOF predictions, computed the ladder's way."""
+    from src.pipeline.step4.train_feedback import _llm_alone_oof
+
+    data = torch.load(config.graph_path, weights_only=False)
+    emb = torch.load(config.llm_embedding_path, weights_only=False).float()
+    folds = torch.load(config.splits_path, weights_only=False)
+    protos = torch.load(
+        Path(f"data/{dataset}/processed/step4_feedback/prototypes.pt"),
+        weights_only=False,
+    )
+    return mask_dropped_logits(
+        _llm_alone_oof(data, emb, folds, protos), config.dropped_classes
+    ).argmax(1).cpu().numpy()
+
+
+def _head_alone_preds(dataset: str, seed: int, config) -> np.ndarray | None:
+    """Pooled OOF predictions of the head-alone baseline at one training seed.
+
+    Seed 42 is the canonical `llm_head_logits.pt`; other seeds live in
+    `llm_head_logits_seed<S>.pt`, built so this baseline carries its own spread
+    rather than borrowing the loop's.
+    """
+    root = Path(f"data/{dataset}/processed/step4_feedback")
+    path = root / ("llm_head_logits.pt" if seed == 42
+                   else f"llm_head_logits_seed{seed}.pt")
+    if not path.exists():
+        return None
+    stacked = torch.load(path, weights_only=False).float()
+    folds = torch.load(config.splits_path, weights_only=False)
+    pooled = torch.full((stacked.shape[1], stacked.shape[2]), float("nan"))
+    for fi, fold in enumerate(folds):
+        pooled[fold["test_mask"]] = stacked[fi][fold["test_mask"]]
+    return mask_dropped_logits(
+        torch.nan_to_num(pooled, nan=-1e9), config.dropped_classes
+    ).argmax(1).cpu().numpy()
 
 
 # Knobs that must agree across the seeds being pooled. They are read from each
@@ -192,9 +236,21 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
 
     knobs = _verify_knobs(dataset, seeds, capture_root)
     per_seed = {s: _load_seed_preds(dataset, s, capture_root) for s in seeds}
+
+    # The head-alone baseline, when its per-seed files exist. It is a rung in its
+    # own right under the trained-head consultant: the loop consults exactly this
+    # classifier, so "does the loop beat the thing it consults?" is the question
+    # a reader asks first, and it has to be answerable from the contract.
+    head_alone = {s: _head_alone_preds(dataset, s, config) for s in seeds}
+    has_head_alone = all(v is not None for v in head_alone.values())
+    if has_head_alone:
+        for s in seeds:
+            per_seed[s]["head_alone"] = head_alone[s]
+    rungs = RUNGS + (("head_alone",) if has_head_alone else ())
+
     scores = {
         rung: {s: eval_macro_f1(labels, per_seed[s][rung], config.eval_classes) for s in seeds}
-        for rung in RUNGS
+        for rung in rungs
     }
 
     # Only `llm_alone_prototype` is read from the ladder summary. That rung is an
@@ -212,7 +268,7 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
             "mean": float(np.mean(list(scores[rung].values()))),
             "std": float(np.std(list(scores[rung].values()), ddof=1)),
         }
-        for rung in RUNGS
+        for rung in rungs
     }
     per_rung["llm"] = {
         "per_seed": {str(s): llm for s in seeds},
@@ -221,8 +277,27 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
         "note": "deterministic given folds and frozen embeddings; carries no training-seed variance",
     }
 
+    # `llm` is the prototype rung: an argmax over frozen prototypes, identical at
+    # every training seed. Give it a per-seed entry anyway so the paired
+    # bootstraps can treat it like any other rung, and check the predictions it
+    # scores agree with the value the ladder summary recorded.
+    llm_preds = _llm_alone_preds(dataset, config)
+    llm_recomputed = float(eval_macro_f1(labels, llm_preds, config.eval_classes))
+    if abs(llm_recomputed - llm) > 5e-4:
+        raise RuntimeError(
+            f"[{dataset}] LLM rung disagrees with the capture's ladder_summary: "
+            f"recomputed {llm_recomputed} vs recorded {llm}"
+        )
+    for s in seeds:
+        per_seed[s]["llm"] = llm_preds
+    scores["llm"] = {s: llm for s in seeds}
+
+    pairs = list(COMPARISONS)
+    if has_head_alone:
+        pairs += [p for p in HEAD_ALONE_COMPARISONS]
+
     comparisons = {}
-    for a, b in COMPARISONS:
+    for a, b in pairs:
         signs = {str(s): float(scores[a][s] - scores[b][s]) for s in seeds}
         comparisons[f"{a}_vs_{b}"] = {
             "per_seed_diff": signs,
@@ -236,7 +311,7 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
         }
 
     order = sorted(
-        [(r, per_rung[r]["mean"]) for r in list(RUNGS) + ["llm"]],
+        [(r, per_rung[r]["mean"]) for r in list(rungs) + ["llm"]],
         key=lambda kv: kv[1],
         reverse=True,
     )
@@ -255,6 +330,7 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
             "which is what makes the seed-matched bootstrap a paired comparison."
         ),
         "rungs": per_rung,
+        "head_alone_available": has_head_alone,
         "comparisons": comparisons,
         "highest_mean_rung": order[0][0],
         "mean_order": " > ".join(f"{r} {v:.4f}" for r, v in order),
