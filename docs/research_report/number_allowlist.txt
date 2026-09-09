@@ -1,0 +1,41 @@
+# Numbers the report may use that are not in results/*.json, RESULTS_ARCHIVE.md
+# or dataset_stats.json. These are configuration and architecture constants that
+# live in source code, plus arithmetic derived from them.
+#
+# Format:  <token>  # <where it comes from>
+#
+# Anything added here is a deliberate decision, not a silent pass. Give the file
+# and symbol, so the W8 audit can check the entry rather than trust it.
+
+# --- evaluation protocol -----------------------------------------------------
+42        # seed 42; src/pipeline/common/splits.py SEED
+2000      # bootstrap iterations; src/pipeline/step4/assemble_ladder.py BOOTSTRAP_ITERS
+95        # 95% confidence intervals; assemble_ladder._bootstrap_ci
+10000     # bootstrap samples in phase4_validate._bootstrap_delta
+300       # max training epochs; src/pipeline/baselines/harness.py max_epochs
+25        # early-stopping patience; src/pipeline/baselines/harness.py patience
+
+# --- model dimensions --------------------------------------------------------
+64        # GATv2 hidden width; src/pipeline/common/datasets.py gnn_dim
+768       # CySecBERT embedding width; datasets.py llm_dim
+110       # CySecBERT parameter count in millions; Bayer et al. 2022, BERT-base
+32        # port embedding width; src/models/gnn_classifier.py EdgeFeatureEncoder
+39        # encoded edge vector width = 3 continuous + 4 protocol + 32 port
+295       # fusion input width = 4 * 64 + 39; sections/03_method.tex Eq. edge head
+430       # advice projection parameter count, order of magnitude; archive 3.4
+30000     # 768-d advice projection parameter count, order of magnitude; archive 3.4
+
+# --- feedback loop defaults --------------------------------------------------
+0.01      # churn tolerance; src/models/feedback_classifier.py churn_tol
+0.50      # semantic-confidence gate fraction; step4/feedback_config.py
+0.02      # pre-set keep threshold for a mechanism treatment; archive 2026-09-07
+
+# --- baseline protocol (published configurations, archive 5.4 D1-D5) ---------
+4999      # E-GraphSAGE published epoch count
+20        # TE-G-SAGE published epoch count
+4096      # TE-G-SAGE published batch size
+50        # TE-G-SAGE rare_min_freq
+60        # TE-G-SAGE published chronological split, train share
+30        # TE-G-SAGE published chronological split, validation share
+11000     # port-vs-feature scale ratio under the v1 encoding bug; archive 4
+443       # example port number in the encoding discussion

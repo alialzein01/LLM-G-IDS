@@ -10,5 +10,15 @@ if [ "${1:-}" = "watch" ]; then
     exec tectonic -X watch
 fi
 
+# Number and vocabulary audit. A warning step: it reports, it does not block the
+# compile. Run scripts/check_report_numbers.py directly for the exit code.
+PYTHON=../../.venv/bin/python
+[ -x "$PYTHON" ] || PYTHON=$(command -v python3)
+if [ -n "$PYTHON" ]; then
+    echo "--- number audit ---"
+    OMP_NUM_THREADS=1 "$PYTHON" ../../scripts/check_report_numbers.py --quiet || true
+    echo "--------------------"
+fi
+
 tectonic main.tex --outdir build
 echo "-> $(pwd)/build/main.pdf"

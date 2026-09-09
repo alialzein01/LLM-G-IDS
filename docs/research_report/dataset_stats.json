@@ -1,0 +1,94 @@
+{
+  "cross_dataset": {
+    "imbalance_ratio_of_ratios": 46.7846
+  },
+  "ton_iot": {
+    "attack_classes_at_or_below_35": 7,
+    "attack_classes_at_or_below_40": 7,
+    "benign_share_percent": 82.0874,
+    "class_counts": {
+      "Benign": 1746,
+      "backdoor": 16,
+      "ddos": 35,
+      "dos": 4,
+      "injection": 116,
+      "mitm": 157,
+      "password": 25,
+      "ransomware": 3,
+      "scanning": 13,
+      "xss": 12
+    },
+    "class_shares_percent": {
+      "Benign": 82.0874,
+      "backdoor": 0.7522,
+      "ddos": 1.6455,
+      "dos": 0.1881,
+      "injection": 5.4537,
+      "mitm": 7.3813,
+      "password": 1.1754,
+      "ransomware": 0.141,
+      "scanning": 0.6112,
+      "xss": 0.5642
+    },
+    "display_name": "NF-ToN-IoT",
+    "dropped_class_edges": {
+      "dos": 4,
+      "ransomware": 3
+    },
+    "imbalance_ratio_all_classes": 582.0,
+    "imbalance_ratio_eval_classes": 145.5,
+    "largest_class_edges": 1746,
+    "num_classes": 10,
+    "num_edge_features": 5,
+    "num_edges": 2127,
+    "num_eval_classes": 8,
+    "num_node_features": 10,
+    "num_nodes": 1501,
+    "num_ports": 235,
+    "num_protocols": 4,
+    "smallest_class_edges": 3
+  },
+  "unsw_nb15": {
+    "attack_classes_at_or_below_35": 1,
+    "attack_classes_at_or_below_40": 9,
+    "benign_share_percent": 47.4085,
+    "class_counts": {
+      "Analysis": 25,
+      "Backdoors": 40,
+      "DoS": 40,
+      "Exploits": 40,
+      "Fuzzers": 40,
+      "Generic": 40,
+      "Normal": 311,
+      "Reconnaissance": 40,
+      "Shellcode": 40,
+      "Worms": 40
+    },
+    "class_shares_percent": {
+      "Analysis": 3.811,
+      "Backdoors": 6.0976,
+      "DoS": 6.0976,
+      "Exploits": 6.0976,
+      "Fuzzers": 6.0976,
+      "Generic": 6.0976,
+      "Normal": 47.4085,
+      "Reconnaissance": 6.0976,
+      "Shellcode": 6.0976,
+      "Worms": 6.0976
+    },
+    "display_name": "UNSW-NB15",
+    "dropped_class_edges": {},
+    "imbalance_ratio_all_classes": 12.44,
+    "imbalance_ratio_eval_classes": 12.44,
+    "largest_class_edges": 311,
+    "num_classes": 10,
+    "num_edge_features": 5,
+    "num_edges": 656,
+    "num_eval_classes": 10,
+    "num_node_features": 10,
+    "num_nodes": 49,
+    "num_ports": 169,
+    "num_protocols": 7,
+    "smallest_class_edges": 25
+  }
+}
