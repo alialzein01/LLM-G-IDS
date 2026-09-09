@@ -175,13 +175,18 @@ stage under one consistent protocol. The work makes five contributions.
 
     \item It implements and compares two multimodal stages: AGAF for parallel structural--
     semantic fusion, and uncertainty-guided semantic feedback that reintroduces semantic
-    evidence into the edge representations of uncertain edges.
+    evidence into the edge representations of uncertain edges. The feedback loop consults
+    a classification head trained on the semantic embeddings; that head, evaluated alone,
+    is reported beside the loop as the strongest single-modality baseline, so the reader
+    can see whether the loop adds to its own consultant or only repeats it.
 
     \item It provides a controlled evaluation on NF-UNSW-NB15 and NF-ToN-IoT, including
     unimodal baselines, fusion comparisons, uncertainty-selection ablations, trained-head
     baselines, mechanism-isolation tests, and two published graph-based intrusion
     detection architectures re-trained on the same representation. It reports both
-    positive and negative results to show which components carry the measured gain.
+    positive and negative results to show which components carry the measured gain,
+    including five measured attempts to make an embedding-only consultant's advice usable
+    by the feedback channel, none of which succeeded.
 
     \item It provides a cross-dataset comparison under one shared architecture across two
     substantially different class-imbalance regimes, testing whether the behaviour of each
@@ -191,7 +196,13 @@ stage under one consistent protocol. The work makes five contributions.
 
 The contribution is therefore not presented as a universal improvement over existing
 intrusion detectors. It is an implementation and controlled evaluation of a particular
-form of structural--semantic cooperation, together with evidence about its limits.
+form of structural--semantic cooperation, together with evidence about its limits. The
+headline of that evidence is stated here so it is not mistaken for a footnote later: the
+feedback loop is the strongest system measured on both datasets, separated from the graph
+model, the fusion model and every re-trained baseline, and it is statistically
+indistinguishable from the semantic head it consults. The feedback channel is live and
+measurable; what it adds in accuracy beyond its consultant is, on these graphs, nothing we
+could separate from zero.
 Deployment-valid evaluation remains open and requires graph construction in which edge
 identity can be determined without access to the target class.
 
