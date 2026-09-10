@@ -1,0 +1,521 @@
+\section{Results}
+\label{sec:results}
+
+This section reports what was measured. Interpretation is deferred to
+Section~\ref{sec:discussion}, and the wording is deliberately narrow: a difference is called
+\emph{separated} only when its bootstrap interval excludes zero, and an ordering of means is
+called an ordering of means.
+
+\subsection{The protocol as it was run}
+\label{sec:res-protocol}
+
+Every rung is evaluated by pooled five-fold out-of-fold macro-F1. Each fold's held-out
+predictions are collected, the five folds are concatenated into one prediction vector covering
+every edge exactly once, and macro-F1 is computed on that vector. The metric covers all ten
+classes on NF-UNSW-NB15 and eight of ten on NF-ToN-IoT, where \texttt{dos} (4 edges) and
+\texttt{ransomware} (3 edges) remain in the graph for message passing but cannot survive a
+five-way split. Because the class counts differ, the two datasets' absolute levels are not
+comparable. Only the shape of the ladder is.
+
+Each rung was trained at three seeds, 42, 1 and 2, with the fold partition held fixed at the
+seed-42 stratified split. Only training stochasticity varies, so the pooled out-of-fold edge
+set is identical across seeds, which is what makes the seed-matched bootstrap a paired
+comparison. Reported standard deviations are training-seed variance at a fixed partition.
+Fold-partition variance was not measured, so every $\pm$ in this section is a lower bound on
+total uncertainty.
+
+Two bootstrap procedures are used, both at 2{,}000 iterations. The primary is two-level: it
+resamples edges and independently draws a training seed, so seed-to-seed variation enters the
+interval. The secondary is seed-matched, pairing seed 42 with seed 42 and so on, resampling
+edges only. The seed-matched intervals are narrower by construction and are reported so the
+reader can see how much of an interval's width is seed variance. The decision rule was fixed
+before the runs: separated if the 95\% two-level interval excludes zero, not separated
+otherwise. Where the two procedures disagree, the two-level result decides and both are shown.
+
+The semantic rung is deterministic given the folds and the frozen embeddings. Its standard
+deviation is exactly 0.0000 at three seeds, and it enters every comparison as a fixed side.
+All runs export \texttt{OMP\_NUM\_THREADS=1}. That pin is not cosmetic: unpinned runs drift by
+roughly 0.012 macro-F1 at a fixed seed, which is larger than several of the differences
+reported below, and one earlier finding in this project was retracted for exactly that reason.
+Re-running the graph and semantic rungs at seed 42 reproduces their committed values exactly.
+That has not always been true. A pre-v2 NF-ToN-IoT ladder failed to reproduce on two of four
+rungs in August 2026, and thread pinning became mandatory afterwards.
+
+Finally, one boundary carries through everything below. Edges are aggregated by source IP,
+destination IP and attack class, so the label participates in defining edge identity. These are
+controlled comparisons between representations and mechanisms, not deployment-valid detection
+estimates.
+
+\subsection{The model ladder}
+\label{sec:res-ladder}
+
+Table~\ref{tab:ladder} gives the five rungs on both datasets. Alongside the four rungs of the
+designed ladder sits \emph{head alone}: the per-fold classification head trained on the semantic
+embeddings, evaluated on its own. It is the strongest single-modality baseline available, and it
+is also the consultant the loop queries, so it is reported in every table rather than only in the
+ablations.
+
+\begin{table}[htbp]
+\centering
+\caption{Pooled out-of-fold macro-F1 by rung, three training seeds at a fixed fold partition.
+The $\pm$ is training-seed variance only. Absolute levels are not comparable across datasets.}
+\label{tab:ladder}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{NF-UNSW-NB15 (10 classes)} & \multicolumn{2}{c}{NF-ToN-IoT (8 classes)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Rung & mean $\pm$ std & seeds 42 / 1 / 2 & mean $\pm$ std & seeds 42 / 1 / 2 \\
+\midrule
+Graph encoder      & $0.7437 \pm 0.0228$ & 0.7219 / 0.7674 / 0.7418 & $0.4336 \pm 0.0053$ & 0.4290 / 0.4393 / 0.4326 \\
+Semantic rung      & $0.7353 \pm 0.0000$ & 0.7353 / 0.7353 / 0.7353 & $0.2785 \pm 0.0000$ & 0.2785 / 0.2785 / 0.2785 \\
+AGAF               & $0.7793 \pm 0.0116$ & 0.7680 / 0.7912 / 0.7788 & $0.4102 \pm 0.0279$ & 0.3975 / 0.3910 / 0.4422 \\
+Feedback loop      & $0.8341 \pm 0.0042$ & 0.8332 / 0.8387 / 0.8304 & $0.5044 \pm 0.0080$ & 0.4985 / 0.5012 / 0.5135 \\
+Head alone         & $0.8374 \pm 0.0048$ & 0.8321 / 0.8386 / 0.8416 & $0.5081 \pm 0.0073$ & 0.5165 / 0.5035 / 0.5043 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+By mean, the order is identical on the two datasets at the top and differs in the middle. On
+NF-UNSW-NB15 it runs head alone, loop, AGAF, graph encoder, semantic rung. On NF-ToN-IoT it runs
+head alone, loop, graph encoder, AGAF, semantic rung: AGAF falls below the rung it is supposed to
+improve on. The semantic rung is the weakest on both, and the gap is far larger under NF-ToN-IoT's
+imbalance, where the embedding-only prototype scorer reaches 0.2785 against the graph encoder's
+0.4336.
+
+Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into intervals.
+
+\begin{table}[htbp]
+\centering
+\caption{Rung comparisons, both bootstrap procedures, 2{,}000 iterations. \emph{Sep} marks an
+interval that excludes zero. \emph{Stable} reports whether the sign of the per-seed difference
+is the same at all three seeds.}
+\label{tab:comparisons}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccc}
+\toprule
+Dataset & Comparison & two-level mean [95\% CI] & sep & seed-matched mean [95\% CI] & stable \\
+\midrule
+\multirow{6}{*}{UNSW}
+ & loop $-$ AGAF        & $+0.0546$ [$+0.0228$, $+0.0880$] & yes & $+0.0551$ [$+0.0331$, $+0.0779$] & yes \\
+ & loop $-$ graph       & $+0.0908$ [$+0.0412$, $+0.1407$] & yes & $+0.0907$ [$+0.0571$, $+0.1250$] & yes \\
+ & loop $-$ semantic    & $+0.0989$ [$+0.0721$, $+0.1267$] & yes & $+0.0991$ [$+0.0743$, $+0.1253$] & yes \\
+ & head $-$ graph       & $+0.0938$ [$+0.0420$, $+0.1413$] & yes & $+0.0939$ [$+0.0607$, $+0.1278$] & yes \\
+ & AGAF $-$ graph       & $+0.0362$ [$-0.0096$, $+0.0822$] & no  & $+0.0356$ [$+0.0038$, $+0.0678$] & yes \\
+ & loop $-$ head        & $-0.0030$ [$-0.0242$, $+0.0136$] & no  & $-0.0032$ [$-0.0121$, $+0.0064$] & no \\
+\midrule
+\multirow{6}{*}{ToN}
+ & loop $-$ AGAF        & $+0.0932$ [$+0.0180$, $+0.1667$] & yes & $+0.0940$ [$+0.0406$, $+0.1480$] & yes \\
+ & loop $-$ graph       & $+0.0694$ [$+0.0129$, $+0.1288$] & yes & $+0.0691$ [$+0.0171$, $+0.1200$] & yes \\
+ & loop $-$ semantic    & $+0.2231$ [$+0.1703$, $+0.2771$] & yes & $+0.2228$ [$+0.1732$, $+0.2713$] & yes \\
+ & head $-$ graph       & $+0.0723$ [$+0.0125$, $+0.1322$] & yes & $+0.0725$ [$+0.0224$, $+0.1236$] & yes \\
+ & AGAF $-$ graph       & $-0.0238$ [$-0.0921$, $+0.0607$] & no  & $-0.0249$ [$-0.0697$, $+0.0226$] & no \\
+ & loop $-$ head        & $-0.0028$ [$-0.0388$, $+0.0318$] & no  & $-0.0034$ [$-0.0224$, $+0.0129$] & no \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Four results hold on both datasets. The loop is separated above AGAF, above the graph encoder
+and above the semantic rung, and the head alone is separated above the graph encoder. This is
+the first ladder step in this project's history that survives training-seed variance, and it
+survives on two datasets with the same architecture and the same folds.
+
+Two results are negative, also on both datasets. AGAF is not separated from the graph encoder:
+positive on NF-UNSW-NB15 and negative on NF-ToN-IoT, with an interval crossing zero either way.
+The seed-matched interval for NF-UNSW-NB15 does exclude zero, $+0.0356$ [$+0.0038$, $+0.0678$],
+which is the clearest illustration in this report of what the two-level procedure is for: once
+seed variance enters, the same difference stops being separated. Under the pre-registered rule,
+AGAF versus the graph encoder is not separated, and the answer to RQ2 is negative on both
+datasets.
+
+The second negative result is the one that matters most. The loop is not separated from the head
+it consults. The difference is $-0.0030$ [$-0.0242$, $+0.0136$] on NF-UNSW-NB15 and $-0.0028$
+[$-0.0388$, $+0.0318$] on NF-ToN-IoT. The head carries the higher mean on both, the sign is
+unstable across seeds, and at NF-UNSW-NB15 seed 42 the ordering flips, with the loop at 0.8332
+against the head's 0.8321. The right word is indistinguishable. No statement of the loop's
+margin over AGAF or the graph encoder in this report appears without this sentence beside it.
+
+\subsection{Feedback ablations and the mechanism in isolation}
+\label{sec:res-ablations}
+
+RQ3 asks whether the feedback stage adds anything beyond static fusion, and if so, through which
+path. Two experiments answer it, and they answer differently.
+
+The first is the ladder-level ablation, in which the full system runs with real advice, with the
+advice channel switched off (\texttt{head\_only}), and with random advice. Fusion at the output
+is active in all three arms. Table~\ref{tab:ablations} gives every seed.
+
+\begin{table}[htbp]
+\centering
+\caption{Feedback ablation, per training seed, fusion active in all arms. The interval is a
+paired bootstrap of real against \texttt{head\_only}.}
+\label{tab:ablations}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcccc}
+\toprule
+Dataset & Seed & real & \texttt{head\_only} & random & real $-$ \texttt{head\_only} [95\% CI] \\
+\midrule
+\multirow{3}{*}{UNSW}
+ & 42 & 0.8332 & 0.7543 & 0.6385 & $+0.0792$ [$+0.0409$, $+0.1185$] \\
+ & 1  & 0.8387 & 0.7336 & 0.6511 & $+0.1054$ [$+0.0671$, $+0.1437$] \\
+ & 2  & 0.8304 & 0.7314 & 0.6378 & $+0.0994$ [$+0.0595$, $+0.1387$] \\
+\midrule
+\multirow{3}{*}{ToN}
+ & 42 & 0.4985 & 0.3809 & 0.4002 & $+0.1159$ [$+0.0596$, $+0.1751$] \\
+ & 1  & 0.5012 & 0.4404 & 0.3790 & $+0.0595$ [$+0.0074$, $+0.1148$] \\
+ & 2  & 0.5135 & 0.4374 & 0.4067 & $+0.0743$ [$+0.0223$, $+0.1280$] \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Feedback on scores above feedback off at every seed on both datasets, and every interval excludes
+zero. Random advice costs at least 0.09 macro-F1 against real advice at every seed, so the arm is
+sensitive to what the advice says and not merely to the presence of an extra tensor. What this
+comparison cannot do is attribute the gain, because the real arm differs from
+\texttt{head\_only} in two ways at once: semantic evidence re-enters the edge representations,
+and semantic logits are fused at the output.
+
+The second experiment separates them. Output fusion is disabled in every arm, so advice can
+only reach the classifier through the injection path under test. Table~\ref{tab:mechanism}
+gives the result.
+
+\begin{table}[htbp]
+\centering
+\caption{Mechanism in isolation, output fusion disabled in every arm. Means are over three
+seeds; intervals are paired over the fifteen (seed, fold) pairs. Captured share is the arm's
+gain as a fraction of the oracle's.}
+\label{tab:mechanism}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{NF-UNSW-NB15} & \multicolumn{2}{c}{NF-ToN-IoT} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Arm & mean & paired diff vs control [95\% CI] & mean & paired diff vs control [95\% CI] \\
+\midrule
+control (\texttt{head\_only}) & 0.7398 & -- & 0.4195 & -- \\
+prototype, edge   & 0.7382 & $-0.0046$ [$-0.0273$, $+0.0158$] & 0.4325 & $+0.0099$ [$-0.0111$, $+0.0286$] \\
+trained head, edge & 0.7441 & $+0.0007$ [$-0.0183$, $+0.0201$] & 0.3781 & $-0.0378$ [$-0.0588$, $-0.0167$] \\
+oracle, edge      & 0.7743 & $+0.0369$ [$+0.0097$, $+0.0618$] & 0.5286 & $+0.1354$ [$+0.0919$, $+0.1797$] \\
+oracle, attention & 0.7382 & $-0.0007$ [$-0.0211$, $+0.0180$] & 0.4310 & $+0.0114$ [$-0.0083$, $+0.0307$] \\
+\midrule
+\multicolumn{5}{l}{\emph{Pooled headroom and captured share}} \\
+oracle headroom   & \multicolumn{2}{c}{$+0.0345$} & \multicolumn{2}{c}{$+0.1090$} \\
+prototype share   & \multicolumn{2}{c}{$-4.5\%$} & \multicolumn{2}{c}{$11.9\%$} \\
+trained head share & \multicolumn{2}{c}{$12.5\%$} & \multicolumn{2}{c}{$-38.0\%$} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The oracle receives the true label at $\pm 4$ nats through the same projection every other arm
+uses. It is a deliberate leak and is a diagnostic only, never a performance figure. It gains
+$+0.0369$ [$+0.0097$, $+0.0618$] on NF-UNSW-NB15 and $+0.1354$ [$+0.0919$, $+0.1797$] on
+NF-ToN-IoT, both separated. The channel therefore has measurable capacity on both graphs.
+
+Neither realistic consultant uses it. The embedding-only prototype captures $-4.5\%$ of the
+NF-UNSW-NB15 headroom and $11.9\%$ of the NF-ToN-IoT headroom, neither separated from zero. The
+trained head, which scores 0.8374 and 0.5081 as a standalone classifier, captures $12.5\%$ on
+NF-UNSW-NB15, again not separated, and $-38.0\%$ on NF-ToN-IoT, which is a separated regression.
+A cross-fitted variant of the same head, measured at seed 42 only, moves the arm from $-0.0230$
+to $-0.0654$ against control on NF-UNSW-NB15 and from $-0.0165$ to $+0.0070$ on NF-ToN-IoT, so
+matching the advice's train-time and test-time reliability does not rescue it either.
+
+One caveat travels with the NF-UNSW-NB15 headroom. At seed 42 alone the oracle arm scores
+0.7522 against a control of 0.7543, a headroom of $-0.0021$, so a captured share is not
+computable there. The $+0.0345$ is a three-seed mean, and single-seed shares on NF-UNSW-NB15 are
+not reported.
+
+Read together, the two experiments give RQ3 a split answer. Feedback plus fusion is separated
+from fusion alone at every seed on both datasets. The injection mechanism alone, driven by any
+consultant we can actually build, is not separated from doing nothing.
+
+\subsection{Five attempts on the embedding-only consultant}
+\label{sec:res-prototype}
+
+Before the consultant was changed, five treatments were run against the whitened-prototype
+scorer. Each attacked a different candidate explanation for why its advice does not convert.
+All five failed, and the pattern of failure is the evidence that the constraint is the
+consultant rather than the mechanism around it.
+
+Two of them were signal-quality fixes, measured at three seeds as conditions A, B and C.
+Condition A is the canonical configuration. Condition B trains the selector head whose entropy
+ranks edges, and calibrates the consultant's temperature per fold instead of pinning it. Condition
+C re-selects the knobs on top of B. The two defects were genuinely removed: on NF-UNSW-NB15 the
+selector head's macro-F1 moved from 0.019--0.036 to 0.646--0.684, mean disagreement fell from
+0.8975 to 0.524--0.548, and the consultant's maximum softmax probability rose from 0.102 to
+0.487, with the temperature falling from about 9.4 to 0.105. The loop then scored 0.7644 in A,
+0.7610 in B and 0.7809 in C on NF-UNSW-NB15, and 0.4521, 0.4147 and 0.4630 on NF-ToN-IoT.
+Fixing both signals made the loop worse on both datasets. Condition C recovers, but its
+selection curves are flat, NF-UNSW-NB15's argmax landed on the boundary of the swept range at
+$k = 35$, and \texttt{loop\_vs\_agaf} includes zero in all three conditions.
+
+The same runs produced the clearest single diagnostic in the feedback work. The magnitude
+actually added to the 39-wide encoded edge vector, whose features have unit variance, was
+0.077 / 0.060 / 0.061 on NF-UNSW-NB15 and 0.023 / 0.021 / 0.023 on NF-ToN-IoT under condition A.
+Calibrating the temperature raised it to roughly 1.2 and 2.8 respectively, a factor of about 17
+and about 125. The canonical prototype loop was, in effect, injecting almost nothing.
+
+Table~\ref{tab:treatments} lists all five treatments and what each was worth.
+
+\begin{table}[htbp]
+\centering
+\caption{Five treatments applied to the embedding-only consultant. None was kept. Rows marked
+seed 42 carry no interval across seeds and are single-seed orderings only.}
+\label{tab:treatments}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l X X c@{}}
+\toprule
+Treatment & What it changed & Result & Kept \\
+\midrule
+Selector-head supervision & the ranking head is trained as a classifier & 3 seeds: loop worse on both datasets & no \\
+Consultant temperature & per-fold calibration instead of a pinned $T$ & 3 seeds: loop worse, jointly with the above & no \\
+Reliability weighting & gate and magnitude scaled by per-class train precision & seed 42: $+0.0057$ / $+0.0094$, below the 0.02 rule & no \\
+Advice format & one-hot and softmax at the oracle's $\pm 4$ nats & seed 42: every arm below baseline on both & no \\
+Cross-fitted advice & train rows replaced by inner out-of-fold logits & seed 42: $-0.0246$ / $-0.0338$ against in-fold & no \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The advice-format arm produced a counter-intuitive measurement worth stating on its own. Handing
+the consultant the oracle's saturated format made the input magnitude larger and the injected
+magnitude smaller, from 0.0767 to 0.0183 on NF-UNSW-NB15 and from 0.0234 to 0.0202 on
+NF-ToN-IoT. The projection is learned, so it adapts to a larger and lower-variance input by
+injecting less. Whatever the oracle's advantage is, it is not the shape of the vector it presents.
+
+The cross-fitting arm tested the loop's trust directly. If in-fold optimism in the advice were
+what the loop was exploiting, honest advice should lower the scalar the loop learns for how hard
+to push. Across four settings the learned trust scalar moved by at most 0.0205, from 1.5722 to
+1.5664 and 1.5227 to 1.5022 on NF-UNSW-NB15 and from 1.4768 to 1.4652 and 1.4842 to 1.4899 on
+NF-ToN-IoT, moving the wrong way in the last of those. What did move was the injected magnitude,
+from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The model absorbs the change in the projection
+rather than in the parameter that is supposed to represent trust.
+
+Finally, the consultants differ in how well they complement the graph encoder on the edges the
+loop actually consults. On the flagged set at seed 42 the graph encoder is 0.603 accurate on
+NF-UNSW-NB15 and 0.359 on NF-ToN-IoT. The prototype scorer reaches 0.672 and 0.348 there, so on
+NF-ToN-IoT it is no better than the model it is meant to correct. The trained head reaches 0.770
+and 0.759, and the resulting loop reaches 0.750 and 0.724. On NF-ToN-IoT, among the flagged edges
+where the head and the graph encoder disagree, the head is right 245 times and wrong 32, and
+inside the confidence-gated half the split is 145 to 4.
+\emph{[GAP: the same disagreement split for NF-UNSW-NB15, and the equivalent for the prototype
+consultant on either dataset, was never recorded as an artifact.]}
+
+\subsection{Attention injection}
+\label{sec:res-attention}
+
+The alternative injection design biases graph attention rather than the edge representation. It
+produces churn of exactly 0.0000 in every configuration tested, including when handed the true
+label at $\pm 4$ nats. Not one prediction changes. Table~\ref{tab:mechanism} confirms it a third
+time under the current encoding: the oracle attention arm is $-0.0007$ [$-0.0211$, $+0.0180$] on
+NF-UNSW-NB15 and $+0.0114$ [$-0.0083$, $+0.0307$] on NF-ToN-IoT, neither separated from zero.
+
+The cause is structural and holds independently of the encoding. Attention modifies node
+embeddings, but 58.7\% of NF-UNSW-NB15 edges share a source and destination pair with at least
+one other edge, so node-derived terms are identical for them and only the edge attributes
+distinguish them, which attention never touches. On NF-ToN-IoT a different mechanism produces the
+same outcome: 62.8\% of edges have a destination of in-degree one, where a softmax over incoming
+edges is 1.0 whatever bias is applied. Two datasets, two independent reasons, the same null.
+
+\subsection{Re-trained published baselines}
+\label{sec:res-baselines}
+
+RQ5 compares the system against two published graph-based intrusion detection architectures,
+E-GraphSAGE and TE-G-SAGE, re-trained on the same aggregated rows, folds, evaluation classes and
+metric. These are not comparisons against the papers' published numbers, which were obtained on
+per-flow graphs roughly 300 times larger. Table~\ref{tab:baselines} gives the point estimates.
+
+\begin{table}[htbp]
+\centering
+\caption{Re-trained baselines, mean pooled out-of-fold macro-F1 over seeds 42, 1 and 2.
+\emph{Faithful} marks a configuration that is the published architecture; \texttt{+ node
+features} is a labelled ablation of ours and must not be tabulated under the paper's name.}
+\label{tab:baselines}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lllcc}
+\toprule
+Architecture & Configuration & Faithful & NF-UNSW-NB15 & NF-ToN-IoT \\
+\midrule
+\multirow{3}{*}{E-GraphSAGE}
+ & as published        & yes & $0.1194 \pm 0.0065$ & $0.4141 \pm 0.0046$ \\
+ & refit               & yes & $0.1368 \pm 0.0076$ & $0.4141 \pm 0.0046$ \\
+ & $+$ our node features & no & $0.1173 \pm 0.0065$ & $0.4358 \pm 0.0323$ \\
+\midrule
+\multirow{3}{*}{TE-G-SAGE}
+ & as published        & yes & $0.3841 \pm 0.0078$ & $0.1931 \pm 0.0161$ \\
+ & refit               & yes & $0.5842 \pm 0.0224$ & $0.2345 \pm 0.0101$ \\
+ & $+$ our node features & no & $0.7196 \pm 0.0094$ & $0.3523 \pm 0.0182$ \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The collapse of E-GraphSAGE on NF-UNSW-NB15 is a representation effect with a testable
+prediction attached, not evidence that the architecture is weak. Its edge classifier reads only the
+concatenation $[h_u \Vert h_v]$ of the two endpoint embeddings. An edge's own attributes never
+reach it, so parallel edges between one address pair cannot be told apart. That predicts a
+collapse
+proportional to how common parallel edges are. On NF-UNSW-NB15, 385 of 656 edges are
+indistinguishable by endpoints, that is 58.7\%, and the architecture scores 0.1194. On
+NF-ToN-IoT only 167 of 2{,}127 edges are, that is 7.9\%, and the same architecture scores
+0.4141. The prediction and the inversion agree.
+The ceiling is also not a training-schedule artifact: trained to the authors' full 4{,}999
+epochs on fold 0, validation macro-F1 plateaus near 0.11 and peaks at 0.1384 at epoch 1{,}400.
+
+Table~\ref{tab:vsbaselines} gives the intervals for the two strongest rungs.
+
+\begin{table}[htbp]
+\centering
+\caption{Loop and head alone against each re-trained baseline, two-level bootstrap over edges
+and both seed sets. Positive favours our rung. \emph{ns} marks an interval containing zero.}
+\label{tab:vsbaselines}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llll}
+\toprule
+Dataset & Baseline & Loop $-$ baseline & Head alone $-$ baseline \\
+\midrule
+\multirow{6}{*}{UNSW}
+ & E-GraphSAGE, as published & $+0.7130$ [$+0.6708$, $+0.7540$] & $+0.7161$ [$+0.6744$, $+0.7583$] \\
+ & E-GraphSAGE, refit        & $+0.6960$ [$+0.6526$, $+0.7373$] & $+0.6991$ [$+0.6545$, $+0.7403$] \\
+ & E-GraphSAGE $+$ features  & $+0.7157$ [$+0.6731$, $+0.7558$] & $+0.7188$ [$+0.6759$, $+0.7598$] \\
+ & TE-G-SAGE, as published   & $+0.4500$ [$+0.3924$, $+0.5042$] & $+0.4531$ [$+0.3976$, $+0.5052$] \\
+ & TE-G-SAGE, refit          & $+0.2519$ [$+0.1914$, $+0.3169$] & $+0.2550$ [$+0.1943$, $+0.3197$] \\
+ & TE-G-SAGE $+$ features    & $+0.1155$ [$+0.0673$, $+0.1627$] & $+0.1186$ [$+0.0691$, $+0.1659$] \\
+\midrule
+\multirow{6}{*}{ToN}
+ & E-GraphSAGE, as published & $+0.0890$ [$+0.0312$, $+0.1480$] & $+0.0925$ [$+0.0361$, $+0.1506$] \\
+ & E-GraphSAGE, refit        & $+0.0890$ [$+0.0312$, $+0.1480$] & $+0.0925$ [$+0.0361$, $+0.1506$] \\
+ & E-GraphSAGE $+$ features  & $+0.0667$ [$-0.0181$, $+0.1505$] \emph{ns} & $+0.0702$ [$-0.0139$, $+0.1512$] \emph{ns} \\
+ & TE-G-SAGE, as published   & $+0.3083$ [$+0.2345$, $+0.3793$] & $+0.3119$ [$+0.2361$, $+0.3834$] \\
+ & TE-G-SAGE, refit          & $+0.2672$ [$+0.2015$, $+0.3348$] & $+0.2708$ [$+0.2034$, $+0.3362$] \\
+ & TE-G-SAGE $+$ features    & $+0.1502$ [$+0.0749$, $+0.2268$] & $+0.1537$ [$+0.0796$, $+0.2246$] \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The loop and the head alone are separated above every faithful re-trained baseline on both
+datasets. The only cells that are not separated involve \texttt{+ our node features}, which is
+our ablation and not a published architecture, and even those are separated under the
+seed-matched procedure. The lower rungs are weaker: on NF-ToN-IoT neither the graph encoder
+($+0.0203$ [$-0.0230$, $+0.0633$]) nor AGAF ($-0.0061$ [$-0.0797$, $+0.0777$]) is separated from
+E-GraphSAGE as published, and on NF-UNSW-NB15 neither the graph encoder ($+0.0249$) nor the
+semantic rung ($+0.0163$) is separated from TE-G-SAGE with our node features. Note also that the
+loop's margin over any baseline stays within about 0.004 of the head alone's, everywhere in the
+table. That is the unseparated \mbox{loop--head} difference seen from the baseline side.
+
+Because most of the NF-UNSW-NB15 margin is not architectural, it is worth decomposing.
+Table~\ref{tab:decomposition} walks from the strongest published configuration to our rungs.
+Every level is a three-seed mean, no step carries an interval, and no step is a separation claim.
+
+\begin{table}[htbp]
+\centering
+\caption{Decomposition of the NF-UNSW-NB15 gap against TE-G-SAGE. Point estimates only.
+Shares are of the total gap to the loop.}
+\label{tab:decomposition}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llcc}
+\toprule
+Step & macro-F1 & attributable to & share \\
+\midrule
+TE-G-SAGE as published        & 0.3841 & -- & -- \\
+$+$ fair tuning (refit)       & 0.5842 & $+0.2001$, graph scale and schedule & 44.5\% \\
+$+$ our ten centralities      & 0.7196 & $+0.1354$, feature engineering      & 30.1\% \\
+our loop rung                 & 0.8341 & $+0.1145$, architecture            & 25.4\% \\
+\midrule
+(our AGAF rung)               & 0.7793 & $+0.0597$ over the same base       & 15.1\% of 0.3952 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+Roughly 45\% of the naive gap is our choice of how to tune, roughly 30\% is our node features,
+and roughly 25\% is the architecture. Measured to AGAF instead of the loop, the architecture
+share is 15.1\%.
+
+\subsection{Per-class behaviour}
+\label{sec:res-perclass}
+
+Macro-F1 averages over classes of very different sizes, so Table~\ref{tab:perclass} gives the
+per-class picture with the class sizes beside it.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-class F1, mean over three seeds, with edge counts. NF-ToN-IoT's \texttt{dos} and
+\texttt{ransomware} are excluded from the metric and omitted here.}
+\label{tab:perclass}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrcccc}
+\toprule
+Class & edges & graph & AGAF & loop & head alone \\
+\midrule
+\multicolumn{6}{l}{\emph{NF-UNSW-NB15}} \\
+Normal          & 311 & 0.9129 & 0.9152 & 0.9543 & 0.9617 \\
+Analysis        & 25  & 0.4327 & 0.5886 & 0.6196 & 0.6407 \\
+Backdoors       & 40  & 0.5929 & 0.6578 & 0.8019 & 0.7983 \\
+DoS             & 40  & 0.5831 & 0.6446 & 0.7424 & 0.7311 \\
+Exploits        & 40  & 0.9309 & 0.9583 & 0.9580 & 0.9500 \\
+Fuzzers         & 40  & 0.6207 & 0.7330 & 0.7749 & 0.7939 \\
+Generic         & 40  & 0.6591 & 0.5409 & 0.6899 & 0.6955 \\
+Reconnaissance  & 40  & 0.9110 & 0.8916 & 0.8731 & 0.8865 \\
+Shellcode       & 40  & 0.8669 & 0.9428 & 0.9959 & 1.0000 \\
+Worms           & 40  & 0.9272 & 0.9205 & 0.9311 & 0.9165 \\
+\midrule
+\multicolumn{6}{l}{\emph{NF-ToN-IoT}} \\
+Benign          & 1746 & 0.9599 & 0.9275 & 0.9832 & 0.9840 \\
+backdoor        & 16   & 0.3633 & 0.2439 & 0.4467 & 0.5064 \\
+ddos            & 35   & 0.1848 & 0.2419 & 0.2913 & 0.3145 \\
+injection       & 116  & 0.5436 & 0.4845 & 0.6277 & 0.5888 \\
+mitm            & 157  & 0.8838 & 0.7082 & 0.8566 & 0.8339 \\
+password        & 25   & 0.0401 & 0.2950 & 0.2100 & 0.2193 \\
+scanning        & 13   & 0.0958 & 0.2781 & 0.3116 & 0.3004 \\
+xss             & 12   & 0.3728 & 0.0844 & 0.2612 & 0.2678 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+The loop is above AGAF on eight of ten NF-UNSW-NB15 classes. The two exceptions are
+Reconnaissance, 0.8731 against 0.8916, and Exploits, where the two are level to three decimals.
+On NF-ToN-IoT the loop is above AGAF on seven of eight, losing only \texttt{password} at 0.2100
+against 0.2950. Against the head alone the picture is a near-tie, as the pooled numbers imply.
+The loop is above the head on four NF-UNSW-NB15 classes, Backdoors, DoS, Exploits and Worms, and
+on three NF-ToN-IoT classes, \texttt{injection}, \texttt{mitm} and \texttt{scanning}. Every
+NF-UNSW-NB15 difference between the two is smaller than 0.022. The largest single deficit against
+the head anywhere is NF-ToN-IoT \texttt{backdoor}, 0.4467 against 0.5064, on a class of 16
+edges.
+
+Two rare-class observations matter for RQ4. AGAF's NF-ToN-IoT collapse is concentrated in the
+classes where the graph encoder is strong: \texttt{mitm} falls from 0.8838 to 0.7082 and
+\texttt{xss} from 0.3728 to 0.0844. Meanwhile AGAF is the only rung that lifts \texttt{password}
+above 0.29 from the graph encoder's 0.0401. On the smallest classes, single edges move F1 by
+large amounts, and none of these per-class differences carries an interval.
+
+\subsection{Knob selection}
+\label{sec:res-knobs}
+
+Two quantities are selected per consultant and per dataset on validation folds only, never on
+test: the entropy percentile that flags edges and the injection scale. The selected values are
+$k = 29$ and scale 2.0 on NF-UNSW-NB15 and $k = 16$ and scale 20.0 on NF-ToN-IoT. With the
+confidence gate keeping the top half of the flagged set, the effective consultation rate is
+14.5\% of edges on NF-UNSW-NB15 and 8.0\% on NF-ToN-IoT. At seed 42 that is 204 of 656 edges
+flagged and 102 gated on NF-UNSW-NB15, and 532 of 2{,}127 flagged and 266 gated on NF-ToN-IoT.
+
+Neither quantity is tuned, and the report does not describe them that way. Averaged over the
+three selection seeds, the 21 candidates for $k$ span 0.8238 to 0.8277 of validation macro-F1 on
+NF-UNSW-NB15 and 0.5170 to 0.5232 on NF-ToN-IoT. The six injection-scale candidates span 0.8252
+to 0.8277 and 0.5196 to 0.5232. Every one of those spans is smaller than the rungs' own
+seed-to-seed spread, so the argmax is not distinguishable from its neighbours and the selection
+is picking noise. NF-ToN-IoT's scale selected on the upper boundary of the swept range at 20.0,
+which means the sweep cannot say whether an optimum lies outside it. The contract records that
+boundary condition explicitly.

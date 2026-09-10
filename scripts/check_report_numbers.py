@@ -38,6 +38,7 @@ SECTIONS = REPORT / "sections"
 RESULTS = ROOT / "results"
 ARCHIVE = ROOT / "docs" / "RESULTS_ARCHIVE.md"
 STATS_CACHE = REPORT / "dataset_stats.json"
+DERIVED = REPORT / "derived_numbers.json"
 ALLOWLIST = REPORT / "number_allowlist.txt"
 
 # ---------------------------------------------------------------------------
@@ -287,6 +288,15 @@ def load_archive_numbers() -> set[str]:
     return set(numeric_tokens(text))
 
 
+def load_derived_numbers() -> set[str]:
+    """Arithmetic on contract values, computed by scripts/derive_report_numbers.py."""
+    if not DERIVED.exists():
+        return set()
+    sink: set[str] = set()
+    walk_json(json.loads(DERIVED.read_text()), sink)
+    return sink
+
+
 def load_bib_years() -> set[str]:
     bib = REPORT / "references.bib"
     if not bib.exists():
@@ -487,8 +497,9 @@ def main() -> int:
     archive = load_archive_numbers()
     _, stats_numbers = load_dataset_stats(args.refresh_stats)
     allowlisted, allow_why = load_allowlist()
+    derived = load_derived_numbers()
     years = load_bib_years()
-    allowed = contract | archive | stats_numbers | allowlisted | years
+    allowed = contract | archive | stats_numbers | derived | allowlisted | years
     run_only = load_run_numbers() - allowed
 
     if args.explain:
@@ -499,6 +510,7 @@ def main() -> int:
                 ("results/*.json contracts", contract),
                 ("RESULTS_ARCHIVE.md", archive),
                 ("dataset_stats.json", stats_numbers),
+                ("derived_numbers.json", derived),
                 ("number_allowlist.txt", allowlisted),
                 ("references.bib years", years),
                 ("raw run artifacts only", run_only),
@@ -520,7 +532,8 @@ def main() -> int:
         print(
             f"allowed set: {len(allowed)} tokens "
             f"({len(contract)} contracts, {len(archive)} archive, "
-            f"{len(stats_numbers)} dataset stats, {len(allowlisted)} allowlist, {len(years)} bib years)"
+            f"{len(stats_numbers)} dataset stats, {len(derived)} derived, "
+            f"{len(allowlisted)} allowlist, {len(years)} bib years)"
         )
         print(
             f"discrimination: {four_dp}/10000 of the 0.xxxx range is accepted "
