@@ -1,0 +1,103 @@
+{
+  "consultation_rates": {
+    "note": "The confidence gate keeps the top half of the flagged set by consultant confidence (bias_confidence_fraction 0.5), so gated = flagged // 2.",
+    "ton_iot": {
+      "edges": 2127,
+      "flagged": 532,
+      "flagged_percent": 25.0,
+      "gated": 266,
+      "gated_percent": 12.5,
+      "source": "results/dev/crossfit/task2_summary.json:ton_iot.n_flagged, seed 42"
+    },
+    "unsw_nb15": {
+      "edges": 656,
+      "flagged": 204,
+      "flagged_percent": 31.1,
+      "gated": 102,
+      "gated_percent": 15.5,
+      "source": "results/dev/crossfit/task2_summary.json:unsw_nb15.n_flagged, seed 42"
+    }
+  },
+  "decomposition_unsw": {
+    "endpoint_agaf": {
+      "share_architecture_percent": 15.1,
+      "share_node_features_percent": 34.3,
+      "share_tuning_percent": 50.6,
+      "step_architecture": 0.0597,
+      "total_gap": 0.3952
+    },
+    "endpoint_loop": {
+      "share_architecture_percent": 25.4,
+      "share_node_features_percent": 30.1,
+      "share_tuning_percent": 44.5,
+      "step_architecture": 0.1145,
+      "total_gap": 0.45
+    },
+    "inputs": [
+      "results/unsw_nb15_sota_baselines.json:baselines.te_g_sage",
+      "results/multiseed_ladder_v2_head.json:unsw_nb15.rungs"
+    ],
+    "levels": {
+      "agaf": 0.7793,
+      "loop": 0.8341,
+      "te_g_sage_as_published": 0.3841,
+      "te_g_sage_plus_node_features": 0.7196,
+      "te_g_sage_refit": 0.5842
+    },
+    "note": "Point estimates only. Every level is a 3-seed mean; no step carries an interval and no step is a separation claim.",
+    "step_node_features": 0.1354,
+    "step_tuning": 0.2001
+  },
+  "generated_by": "scripts/derive_report_numbers.py",
+  "knob_curves": {
+    "note": "Mean validation macro-F1 over selection seeds 42/1/2, per candidate. The selection_curve_note string in the *_current.json contracts records 0.8241-0.8277 (UNSW top_k) and 0.5168-0.5232 (ToN top_k); recomputed from the sweep artifacts the endpoints are 0.8238-0.8277 and 0.5170-0.5232.",
+    "ton_iot": {
+      "scale": {
+        "argmax_candidate": 20.0,
+        "argmax_on_range_boundary": true,
+        "candidate_max": 20.0,
+        "candidate_min": 0.5,
+        "n_candidates": 6,
+        "source": "results/knob_selection_head/ton_iot/scale_seed*.json",
+        "span": 0.0037,
+        "validation_max": 0.5232,
+        "validation_min": 0.5196
+      },
+      "top_k": {
+        "argmax_candidate": 16.0,
+        "argmax_on_range_boundary": false,
+        "candidate_max": 35.0,
+        "candidate_min": 15.0,
+        "n_candidates": 21,
+        "source": "results/knob_selection_head/ton_iot/top_k_seed*.json",
+        "span": 0.0062,
+        "validation_max": 0.5232,
+        "validation_min": 0.517
+      }
+    },
+    "unsw_nb15": {
+      "scale": {
+        "argmax_candidate": 2.0,
+        "argmax_on_range_boundary": false,
+        "candidate_max": 20.0,
+        "candidate_min": 0.5,
+        "n_candidates": 6,
+        "source": "results/knob_selection_head/unsw_nb15/scale_seed*.json",
+        "span": 0.0025,
+        "validation_max": 0.8277,
+        "validation_min": 0.8252
+      },
+      "top_k": {
+        "argmax_candidate": 29.0,
+        "argmax_on_range_boundary": false,
+        "candidate_max": 35.0,
+        "candidate_min": 15.0,
+        "n_candidates": 21,
+        "source": "results/knob_selection_head/unsw_nb15/top_k_seed*.json",
+        "span": 0.0038,
+        "validation_max": 0.8277,
+        "validation_min": 0.8238
+      }
+    }
+  }
+}
