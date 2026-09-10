@@ -1,0 +1,41 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This work built one reproducible edge-level intrusion detection pipeline and ran it unchanged on
+two NetFlow datasets that differ by roughly a factor of 47 in class imbalance. Each aggregated
+flow is encoded twice, once structurally by a graph attention encoder and once as a label-free
+sentence read by a frozen cybersecurity language encoder. Four stages are compared under one
+protocol: each branch alone, gated attention fusion, and a feedback loop that consults the
+semantic branch about high-entropy edges and returns the judgement into the edge representations.
+Beside them sits the classification head trained on the semantic embeddings, which is both the
+strongest single-modality baseline and the loop's own consultant.
+
+Everything was measured at three training seeds with the fold partition fixed, scored by pooled
+five-fold out-of-fold macro-F1, and compared with a bootstrap that resamples edges and training
+seed. A difference counts as separated only when its interval excludes zero. Two sentences carry
+the result.
+
+The loop is separated above the fusion stage, above the graph encoder, above the semantic rung
+and above every faithful re-trained baseline, on both datasets. It is also indistinguishable
+from the head it consults, at $-0.0030$ and $-0.0028$ with intervals containing zero and the
+head higher on both means.
+
+The second result explains the first. An oracle consultant, handed the true label through the
+same projection, converts the feedback channel into a separated gain on both datasets, so the
+channel has real capacity. No consultant we could build exploits it. Five treatments were tried
+and all five reverted, the learned trust scalar barely moves when the consultant's reliability
+is changed deliberately, and with output fusion disabled neither realistic consultant is
+separated from doing nothing. The binding constraint is the consultant, not the mechanism around
+it.
+
+Two findings stand on their own. Gated attention fusion is not separated from the graph encoder
+on either dataset and falls below it under heavy imbalance. The alternative injection design,
+which biases graph attention instead of the edge representation, changes no prediction at all,
+for two independent structural reasons on the two graphs.
+
+What none of this establishes is deployment performance. Edges are aggregated with the attack
+label in the grouping key, so these numbers compare representations and mechanisms under a
+controlled protocol. Removing that dependency is the prerequisite for any operational claim, and
+it changes the task rather than the code. Beyond it, what would matter is not a larger consultant
+but a better calibrated one, with a trust parameter that responds when reliability changes. The
+oracle says the headroom is there. Nothing measured here has reached it.
