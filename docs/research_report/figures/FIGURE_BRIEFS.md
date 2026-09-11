@@ -4,7 +4,28 @@ Nine figures. Each entry has a **description** (what it is for and what it must 
 **prompt** that can be handed to a generating agent on its own. Every number needed is inside
 the prompt, so no prompt requires access to this repository.
 
-Status: **proposed, not approved, nothing drawn.**
+Status: **approved. All nine are drawn externally, one at a time.**
+
+## How to use this file
+
+Each figure is generated on its own. Hand the generating agent the **Prompt** block for one
+figure plus the **Conventions** section below, and nothing else. The prompts are
+self-contained: every number a figure needs is written into its prompt, so the agent does not
+need to open a contract or any other file in this repository.
+
+**Where the output goes.** Save the result into `docs/research_report/figures/` under exactly
+the filename in that figure's heading, for example `fig_ladder.pdf`. Nothing else needs to
+move, and the file does not need to be sent anywhere: it is read from that directory when the
+figure is wired into the manuscript. A figure that is not yet drawn is simply absent, and the
+report compiles without it.
+
+**After a figure lands**, it gets checked against the contracts and given a caption, a label
+and a position in the text. That is a separate step from drawing it, and it is where a wrong
+number or a mislabelled axis is caught.
+
+**Suggested order.** Figures 1, 2 and 5 are the explanatory diagrams and carry the most weight
+per unit of effort, so draw those first. Then 3, 6 and 7, which are the results the report
+turns on. Then 4, 8 and 9.
 
 ---
 
@@ -25,14 +46,22 @@ Status: **proposed, not approved, nothing drawn.**
 - Rung names are fixed: "graph encoder", "semantic rung", "AGAF", "loop". Do not invent
   synonyms and do not use "LLM" for our own component.
 
-### Generation route
+### Layout problems to avoid
 
-Figures 3, 4, 6, 7 and 9 are data plots. These should be produced by
-`figures/make_figures.py` in this repository, reading only `results/*.json`,
-`dataset_stats.json` and `derived_numbers.json`, so they regenerate when a number changes and
-stay inside the number audit. Figures 1, 2 and 5 are conceptual diagrams with no data
-dependence beyond a handful of constants, and are a good fit for an external generator.
-The prompts below are written so either route works.
+These are not hypothetical. A trial render of the six data figures hit all of them, and every
+prompt below has been adjusted, but they are worth stating once because they recur.
+
+- **Long category labels collide.** Where a bar chart has labels like "loop, trained head",
+  rotate the tick labels about 25 degrees and right-align them rather than shrinking the font
+  until it is unreadable.
+- **Annotations drift outside the axes.** An arrow or a delta label placed between two bars
+  needs its text anchored inside the axis limits, with a white background box so it does not
+  sit on a gridline.
+- **Legends land on the data.** Put the legend below the panels as a figure-level legend rather
+  than inside a panel, unless there is obvious empty space.
+- **Group labels on a stacked heatmap need real coordinates**, not an approximate offset, or
+  they end up over the title.
+- Leave headroom at the top of a bar panel for the error bar plus any annotation above it.
 
 ---
 

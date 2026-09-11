@@ -10,13 +10,12 @@ if [ "${1:-}" = "watch" ]; then
     exec tectonic -X watch
 fi
 
-# Regenerate the figures and tables from the contracts, so a stale fragment
-# cannot survive a build. Both scripts read results/*.json only.
+# Regenerate the table fragments from the contracts, so a stale fragment cannot
+# survive a build. Figures are drawn externally and are not generated here.
 PYGEN=../../.venv/bin/python
 [ -x "$PYGEN" ] || PYGEN=$(command -v python3)
 if [ -n "$PYGEN" ]; then
-    echo "--- figures and tables ---"
-    OMP_NUM_THREADS=1 "$PYGEN" figures/make_figures.py
+    echo "--- tables ---"
     OMP_NUM_THREADS=1 "$PYGEN" tables/make_tables.py
 fi
 
