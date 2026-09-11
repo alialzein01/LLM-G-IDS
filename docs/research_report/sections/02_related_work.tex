@@ -7,7 +7,7 @@ Intrusion detection is conventionally divided into signature-based and anomaly-b
 approaches \citep{scarfone2007idps}, but either can be posed over a flow graph, and a flow
 graph makes the edge the natural prediction unit when the object to be classified is a
 communication event between two endpoints. Nodes represent communicating entities such as
-IP addresses; edges represent flows or aggregated flows. This formulation preserves the
+IP addresses, and edges represent flows or aggregated flows. This formulation preserves the
 relational context around a connection without changing the classification target: the
 decision remains edge-level. It also separates information attached to the communicating
 endpoints from information carried by the flow itself.
@@ -31,7 +31,7 @@ indirectly from node embeddings.
 
 For network-flow intrusion detection that distinction matters, because the graph and the
 individual connection encode different kinds of evidence. The graph describes who
-communicates with whom and under what relational context; the edge describes the flow being
+communicates with whom and under what relational context. The edge describes the flow being
 classified. The graph-based IDS literature therefore motivates an edge-level representation
 retaining both endpoint structure and edge-specific content. The next question is whether
 edge content has to remain numeric, or whether some of it can be represented semantically.
@@ -52,7 +52,7 @@ serialisation step itself: network observations that begin as structured traffic
 be converted into a controlled token sequence and processed by a BERT-class encoder.
 
 These two lines solve different problems. Domain adaptation addresses the vocabulary and
-semantics of cybersecurity text; traffic serialisation creates text-like input from network
+semantics of cybersecurity text. Traffic serialisation creates text-like input from network
 measurements. Together they support a semantic branch in which a flow description is
 encoded as text rather than treating every field as a scalar magnitude. They do not, by
 themselves, determine how that semantic representation should interact with graph structure.
@@ -71,7 +71,7 @@ families cover the relevant design space.
 
 The simplest family is late fusion with a fixed interface between branches. GMLM uses
 separate graph and language towers, concatenates their representations, and passes the
-result to an MLP \citep{sinha2025gmlm}; its own comparison explicitly distinguishes this
+result to an MLP \citep{sinha2025gmlm}. Its own comparison explicitly distinguishes this
 design from cross-attention, gating, and learned modality weights. BertGCN gives an even
 cleaner example of fixed weighting: its final prediction linearly interpolates a GCN
 prediction and a BERT prediction using a global hyperparameter \citep{lin2021bertgcn}. Every
@@ -93,7 +93,7 @@ RAGFormer stacks the two branch embeddings as a short token sequence and applies
 self-attention over them with a residual connection \citep{li2024ragformer}. CAST uses
 cross-attention between graph and text representations in materials prediction and motivates
 the text branch by arguing that graph conversion can discard global information which
-textual descriptions restore \citep{lee2025cast}; the semantic representation is therefore
+textual descriptions restore \citep{lee2025cast}. The semantic representation is therefore
 not a duplicate encoding of graph structure. BiGTex goes further and interleaves a two-way
 exchange: structural information enters the language model as a soft prompt, and text
 returns to the graph side through cross-attention with the query supplied from the graph
@@ -136,7 +136,7 @@ two components are never combined as concurrent representations at the classifie
 
 Other intrusion-detection systems occupy adjacent points in the design space without forming
 a GNN--language pair at all. GCN-2-Former combines a GCN with a temporal transformer and
-fuses the two by global average pooling and concatenation \citep{gcn2former2025}; the second
+fuses the two by global average pooling and concatenation \citep{gcn2former2025}. The second
 tower is a temporal transformer, not a language model. CPS-IDS uses gated fusion between a
 DeBERTa payload-semantic branch and a statistical branch \citep{xiong2026cpsids}, so it has
 both a language-based semantic component and an explicit fusion mechanism, but no graph
@@ -159,8 +159,8 @@ DAS is the closest prior work to the feedback mechanism used in this report. It 
 an explicit closed feedback loop between a frozen GNN and an LLM: GNN predictions provide
 implicit supervision that steers semantic refinement, and the refined semantics are fed back
 to update the same graph learner \citep{thapaliya2025das}. DAS also constructs node
-descriptions by expressing structural statistics in natural language --- degree,
-betweenness, closeness, clustering coefficient, and square clustering coefficient --- and
+descriptions by expressing structural statistics in natural language, using degree,
+betweenness, closeness, clustering coefficient and square clustering coefficient, and
 gives a Majorization--Minimization argument under which its refinement loop monotonically
 decreases a task-adaptive surrogate objective. Its setting is node-level, over general
 text-rich graphs. Closed graph--language feedback, and the conversion of structural
@@ -171,7 +171,7 @@ MC-dropout variance to identify uncertain nodes, prompts the LLM with node text 
 topology, and receives a predicted label together with a free-text explanation
 \citep{qiao2024login}. Incorporation depends on correctness: if the LLM's label matches the
 ground-truth label, the explanation is appended to the node text and the augmented text is
-re-embedded; if the label is wrong, edges in the node's one-hop neighbourhood are pruned.
+re-embedded. If the label is wrong, edges in the node's one-hop neighbourhood are pruned.
 The LLM remains outside autograd and edits the learning inputs between training rounds.
 Selecting uncertain graph elements for semantic consultation is therefore also established.
 
@@ -180,8 +180,8 @@ router decides per node whether querying is worthwhile from inexpensive node fea
 an advantage-based objective trains that router on the outcome of querying versus not
 querying, because the LLM call is non-differentiable \citep{loveland2025glance}. Its gains
 concentrate on heterophilous and structurally ambiguous nodes. This addresses the same
-allocation problem as uncertainty-based consultation --- directing language-model effort at
-selected graph elements rather than applying it uniformly --- with a learned criterion in
+allocation problem as uncertainty-based consultation, directing language-model effort at
+selected graph elements rather than applying it uniformly, with a learned criterion in
 place of a fixed uncertainty rule.
 
 RoGRAD places iterative refinement, rather than static one-shot signal injection, at the
@@ -205,16 +205,16 @@ at the level of configuration rather than of individual mechanisms.
 
 The four feedback anchors operate at node level, whereas the present setting treats a
 network flow as an edge and makes the classification decision there. Their semantic
-consultants are prompted generative LLMs; here the semantic branch is a frozen sentence
+consultants are prompted generative LLMs. Here the semantic branch is a frozen sentence
 encoder whose embeddings are scored against class prototypes. Their feedback actions refine
-semantic inputs or edit graph inputs; here the accepted semantic signal modifies the edge
+semantic inputs or edit graph inputs. Here the accepted semantic signal modifies the edge
 representations consumed by the next graph update. These are differences of instantiation,
 not claims that the underlying ideas originated here
 \citep{qiao2024login,thapaliya2025das,loveland2025glance,wang2025rograd}.
 
 Two signals travel in opposite directions in the resulting loop, and it is worth stating
 precisely which. The graph model's per-edge uncertainty determines \emph{which} edges are
-routed to the semantic branch, and that selection is recomputed as predictions shift; the
+routed to the semantic branch, and that selection is recomputed as predictions shift. The
 semantic branch returns a per-edge judgement that re-enters the graph model's edge
 representations. The coupling is bidirectional in this routing sense. It is not bidirectional
 in content: the consultant's verdict on an edge depends on that edge's text alone, not on

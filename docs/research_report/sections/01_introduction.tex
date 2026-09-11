@@ -34,7 +34,7 @@ Laboratory~\citep{moustafa2015unsw}. NF-ToN-IoT derives from the TON\_IoT datase
 provides an IoT-focused telemetry setting~\citep{moustafa2021toniot}. This study uses both
 in their NetFlow-standardised forms~\citep{sarhan2021netflow}. One identical processing
 and modelling pipeline is applied to the two datasets. Every architectural choice is
-shared between them; only two quantities selected on validation data differ.
+shared between them. Only two quantities selected on validation data differ.
 
 The two datasets were chosen because they occupy very different points on the
 class-imbalance axis. After aggregation, NF-UNSW-NB15 contains 656 edges, is 47.4\%
@@ -50,7 +50,7 @@ That difference is the methodological reason for using two datasets. A single da
 cannot separate a property of the architecture from a property of the class distribution
 that architecture happened to face. Holding the architecture fixed while changing the
 imbalance regime by roughly $47\times$ makes that distinction experimentally addressable.
-RQ4 already asks how class imbalance affects fusion and feedback; the two-dataset design
+RQ4 already asks how class imbalance affects fusion and feedback, and the two-dataset design
 gives that question two substantially different regimes to compare. No stage is assumed in
 advance to be sensitive or insensitive to that change.
 
@@ -58,7 +58,7 @@ The scoring protocol also differs in one necessary respect. Macro-F1 covers ten 
 NF-UNSW-NB15 and eight classes on NF-ToN-IoT, because two NF-ToN-IoT classes are too small
 to survive five-fold splitting. Their edges remain in the graph for message passing but
 are excluded from the metric. Because the class counts differ, absolute scores are not
-comparable across the two datasets; only the shape of the model ladder is. This constraint
+comparable across the two datasets. Only the shape of the model ladder is. This constraint
 applies throughout the report.
 
 \subsection{Why combine graph and language representations?}
@@ -70,7 +70,7 @@ hosts and produces a structural representation for each edge. This branch can le
 patterns that are difficult to express as independent rows in a conventional feature
 table. It does not, however, possess an explicit vocabulary for interpreting the traffic.
 The graph tells the model \emph{who communicated with whom} and how that interaction is
-positioned in the network; it does not automatically explain what a high-frequency TCP
+positioned in the network. It does not explain what a high-frequency TCP
 connection to a particular service may signify.
 
 A pretrained cybersecurity language encoder offers a complementary view. The same
@@ -82,15 +82,15 @@ frozen and used purely as a sentence encoder. Throughout this report, this compo
 called the \emph{semantic branch}. That terminology distinguishes its representational
 role from that of a generative large language model.
 
-Neither representation is assumed to be superior in every case. The central idea is
+Neither representation is assumed to win in every case. The central idea is
 instead to let them challenge and complement one another. The parallel fusion stage runs
 the graph and semantic encoders side by side and combines their edge embeddings through
 Adaptive Gated Attention Fusion (AGAF). The feedback stage adds uncertainty-guided
 semantic feedback: edges with high-entropy GNN predictions are selected for semantic
 consultation, and the resulting signal is reintroduced by modifying the edge
 representations that the next graph update consumes. A second design, which biases graph
-attention directly, was also implemented and measured; it produced no change in prediction
-and is reported as a verified negative result.
+attention directly, was also implemented and measured. It produced no change in prediction
+at all, and is reported as a verified negative result.
 
 The coupling is bidirectional in routing. The graph model's per-edge uncertainty decides
 which edges are consulted, while the semantic branch returns a per-edge judgement that
@@ -107,7 +107,7 @@ after classification to generate explanations and remedial guidance
 \citep{farrukh2024xgnid}. DAS is the closest prior work to the feedback mechanism
 considered here. It already implements a closed feedback loop between a frozen GNN and an
 LLM, feeds refined semantics back to update the same graph learner, and constructs node
-descriptions by expressing structural statistics in natural language; its setting is
+descriptions by expressing structural statistics in natural language. Its setting is
 node-level and concerns general text-rich graphs~\citep{thapaliya2025das}. The
 contribution here is therefore instantiation plus measurement: an edge-level
 network-intrusion-detection instantiation, together with a diagnostic question about
@@ -153,7 +153,7 @@ The study is organised around five research questions:
 
 These questions deliberately allow a negative answer. The purpose of the experiments is
 to determine when the proposed interaction works, when it does not, and why. This matters
-because a model ladder---GNN, semantic encoder, fusion, then feedback---is only meaningful
+because a model ladder of GNN, semantic encoder, fusion and then feedback is only meaningful
 if each higher rung is compared fairly with the strongest relevant lower rung.
 
 \subsection{Objectives and contributions}
