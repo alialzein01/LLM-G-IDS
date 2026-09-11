@@ -1,0 +1,2 @@
+top_k_percent,effective_feedback_percent,mean_best_val_macro_f1,std_best_val_macro_f1,pooled_oof_test_macro_f1
+35,17.5,0.8091366103548223,0.029432027811165315,0.7618775496181402

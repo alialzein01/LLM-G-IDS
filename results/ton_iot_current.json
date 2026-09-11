@@ -567,15 +567,20 @@
       "runner": "scripts/run_multiseed_feedback.sh",
       "archive_section": "docs/RESULTS_ARCHIVE.md 2026-09-06"
     },
-    "note": "The prototype-consultant ladder, measured at 3 seeds and superseded 2026-09-07. Its knobs are preserved in the dataset's selected_feedback_config.json under `prototype_superseded`, so it remains reproducible: run train_feedback WITHOUT --use-llm-head at those knobs."
+    "note": "The prototype-consultant ladder, measured at 3 seeds and superseded 2026-09-07. Its knobs are preserved in the dataset's selected_feedback_config.json under `prototype_superseded`, so it remains reproducible: run train_feedback WITHOUT --use-llm-head at those knobs.",
+    "limitations_pre_head_consultant": {
+      "replaced_2026_09_11": [
+        "No rung comparison is statistically separated once training-seed variance is included (two-level bootstrap, 3 seeds). Point-estimate orderings are reported as orderings only."
+      ]
+    }
   },
   "limitations": [
     "Edges are aggregated with the attack label in the grouping key, so these are not deployment-valid estimates.",
     "Classes 3 (dos, 4 edges) and 7 (ransomware, 3 edges) remain in the graph for message passing but are excluded from the metric. A 10-class macro-F1 on this graph is not a reportable number.",
     "The LLM rung (0.2785) sits below the GNN rung: the whitened-prototype scorer collapses under this graph's imbalance (582:1; seven attack classes have <=35 edges).",
-    "No rung comparison is statistically separated once training-seed variance is included (two-level bootstrap, 3 seeds). Point-estimate orderings are reported as orderings only.",
+    "With the trained-head consultant every loop comparison is separated under the two-level bootstrap (loop above AGAF, the GNN rung and the LLM rung, 3 seeds). With the superseded whitened-prototype consultant nothing was separated on either dataset; that earlier state is preserved under `supersedes`.",
     "Training-seed variance is measured; fold-partition variance is NOT (the split is fixed at seed 42). The reported std is a lower bound on total uncertainty.",
-    "The real-versus-head_only ablation combines feedback injection and final semantic fusion. Finding 3 (archive 2026-09-06) shows the canonical injected bias was ~0.02-0.08 on unit-variance features, so the loop's edge over head_only is attributable to fusion, not feedback.",
+    "The real-versus-head_only ablation combines feedback injection and final semantic fusion, and does not attribute the gain between them. The mechanism-only experiment (output fusion off) does: neither realistic consultant is separated from control through the injection path, while the oracle is separated on both datasets. Under the superseded prototype consultant the injected bias was ~0.02-0.08 on unit-variance features (archive 2026-09-06, Finding 3); under the trained head it is ~1.33.",
     "The selected top_k_percent and injection_scale were optimized on rotating validation folds; nested cross-validation or an untouched set is required for a fully unbiased final estimate.",
     "AGAF spans 0.3975-0.4422 across three training seeds (range 0.045); the schema-5 claim that AGAF is significantly below the GNN (P=0.0005) was a seed-42 artifact and is withdrawn."
   ],

@@ -1,4 +1,4 @@
-# Evidence State — verification completed 2026-09-03
+# Evidence State — verification completed 2026-09-03, audited against the final manuscript 2026-09-11
 
 Independent verification of the project's scientific state, performed against artifacts and
 source code rather than recollection. **This work is done. Do not repeat it.**
@@ -22,19 +22,31 @@ claim could not be traced to an artifact, it is marked as such and must not be c
 | `docs/RESULTS_ARCHIVE.md` | narrative record, including retractions (§3) |
 | `reproduce_ladder.py` | reproduction entry point |
 
-Canonical ladder (pooled OOF macro-F1):
+Canonical ladder (pooled OOF macro-F1), **updated 2026-09-11 (W8)**:
 
-| Dataset | GNN | semantic | AGAF | feedback |
-|---|---:|---:|---:|---:|
-| NF-UNSW-NB15 (10 cls) | 0.7437 ± 0.023 | 0.7353 ± 0 | **0.7793 ± 0.012** | 0.7644 ± 0.004 |
-| NF-ToN-IoT (8 cls) | 0.4336 ± 0.005 | 0.2785 ± 0 | 0.4102 ± 0.028 | **0.4521 ± 0.011** |
+| Dataset | GNN | semantic | AGAF | loop, prototype | loop, trained head |
+|---|---:|---:|---:|---:|---:|
+| NF-UNSW-NB15 (10 cls) | 0.7437 ± 0.023 | 0.7353 ± 0 | 0.7793 ± 0.012 | 0.7644 ± 0.005 | **0.8341 ± 0.004** |
+| NF-ToN-IoT (8 cls) | 0.4336 ± 0.005 | 0.2785 ± 0 | 0.4102 ± 0.028 | 0.4521 ± 0.011 | **0.5044 ± 0.008** |
 
-**UPDATED 2026-09-06.** Values are means ± std over 3 training seeds (42/1/2), fold
-partition fixed at the seed-42 split; contracts are schema 4 (UNSW) / 6 (ToN), aggregate
-`results/multiseed_ladder_v2_legacy.json`. Bold = highest mean. **No rung comparison is
-separated on either dataset** (every two-level CI includes zero). The single-seed
-schema-3/5 values that used to sit here (UNSW loop 0.7728; ToN AGAF 0.3334) are withdrawn
-and preserved under each contract's `supersedes`.
+Means ± std over three training seeds (42/1/2), fold partition fixed at the seed-42 split.
+Aggregates: `results/multiseed_ladder_v2_head.json` and
+`results/multiseed_ladder_v2_legacy.json`.
+
+**With the trained-head consultant every loop comparison is separated on both datasets**
+(loop above AGAF, above the GNN rung, above the semantic rung, two-level bootstrap).
+**With the prototype consultant nothing is separated on either dataset.** AGAF is not
+separated from the GNN rung under either consultant. The earlier statement here, that no
+rung comparison is separated, described the prototype configuration only and is superseded.
+The single-seed schema-3/5 values (UNSW loop 0.7728; ToN AGAF 0.3334) remain withdrawn and
+preserved under each contract's `supersedes`.
+
+The head standing alone (0.8374 ± 0.005 / 0.5081 ± 0.007) is a component of the loop, not a
+comparative rung, and is not reported as one in the manuscript. That is a scope decision
+taken 2026-09-11. The honest qualifier it used to carry is supplied instead by the
+isolation experiment: with output fusion disabled, neither realistic consultant is
+separated from control through the injection path, while the oracle is separated on both
+datasets.
 
 **Out-of-fold discipline is enforced in code, not merely asserted.** `reproduce_ladder.py`
 documents two rules it exists to enforce, both "violated by earlier runs": every rung uses

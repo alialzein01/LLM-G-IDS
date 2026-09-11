@@ -17,12 +17,14 @@ current part is approved.
 
 | Part | Section | Status |
 |---|---|---|
-| 1 | Introduction and Context | Review |
-| 2 | Background and State of the Art | Waiting |
-| 3 | Method | Waiting |
-| 4 | Results | Waiting |
-| 5 | Discussion and Conclusion | Waiting |
-| Final | Abstract, references, appendices, full QA | Waiting |
+| 1 | Introduction and Context | Drafted, revised W1 and W6 |
+| 2 | Background and State of the Art | Drafted, revised W6 |
+| 3 | Method | Drafted, revised W1 and W6 |
+| 4 | Results | Drafted W2, tables generated W4 |
+| 5 | Discussion and Conclusion | Drafted W3 |
+| Final | Abstract, statements, appendices | Drafted W7 |
+| Final | Audits | W8 |
+| Final | Figures | Drawn externally, one at a time, none placed yet |
 
 ## Writing standard
 
@@ -70,6 +72,22 @@ deliverables are SVG and PDF, with PNG only as a preview.
 
 ## Current scope
 
-The report evaluates the structural--semantic intrusion-detection pipeline only on
-NF-UNSW-NB15. All research questions, methods, results, figures, and conclusions must
-remain within that dataset scope.
+The report evaluates the structural--semantic intrusion-detection pipeline on **both**
+NF-UNSW-NB15 and NF-ToN-IoT. The two datasets were chosen because they sit at very
+different points on the class-imbalance axis, roughly a factor of 47 apart, which is what
+makes it possible to separate a property of the architecture from a property of the class
+distribution it faced.
+
+Because the two datasets score different numbers of classes, ten against eight, their
+absolute macro-F1 values are not comparable. Only the shape of the ladder is. That
+constraint applies to every research question, table and figure.
+
+*(This section previously restricted the report to NF-UNSW-NB15. That restriction was
+lifted when the two-dataset scope was accepted, and the note was corrected in W8.)*
+
+## Reported ladder
+
+The ladder has four rungs: the graph encoder, the semantic rung, AGAF, and the feedback
+loop. The loop is reported under both of the consultants it was built with, the whitened
+prototype scorer and the per-fold trained head. The trained head standing alone is a
+component of the loop rather than a competing rung, and is not tabulated as one.
