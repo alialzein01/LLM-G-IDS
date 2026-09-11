@@ -1,0 +1,24 @@
+\begin{abstract}
+\noindent
+Intrusion detection can be posed as a graph problem, where flows between hosts carry structure
+worth learning, or as a language problem, where a flow can be described in words a pretrained
+encoder understands. This report builds one edge-level pipeline that does both. Flows are
+aggregated into a directed multigraph over IP addresses. Each edge is encoded twice: once structurally by a graph attention network, and once
+as a label-free sentence read by a frozen cybersecurity language encoder. Four stages are
+compared on two NetFlow datasets whose class imbalance differs by roughly a factor of 47:
+each branch alone, gated attention fusion, and a feedback loop that consults the semantic
+branch about high-entropy edges and returns its judgement into the edge representations. Everything is measured at three training seeds. A
+difference counts as separated only when a bootstrap over edges and seed excludes zero.
+
+Two results carry the work. Given a classification head trained on the semantic embeddings as
+its consultant, the loop is separated above every other rung and above every faithful
+re-trained baseline, on both datasets. Given the weaker embedding-only consultant it was first
+built with, nothing is separated at all. Second, with output fusion disabled, an oracle
+consultant converts the feedback channel into a separated gain on both datasets and no
+consultant we could build does. The binding constraint is the consultant, not the mechanism
+around it.
+\end{abstract}
+
+\vspace{1em}
+\noindent\textbf{Keywords:} intrusion detection, graph neural networks, edge classification,
+structural--semantic fusion, uncertainty-guided feedback, negative results.

@@ -23,8 +23,8 @@
 \setlength{\parindent}{1.25em}
 \setlength{\parskip}{0.25em}
 
-\newcommand{\reporttitle}{LLM-Enhanced Graph-Based Intrusion Detection}
-\newcommand{\reportsubtitle}{A Parallel GNN--LLM Framework with Bidirectional Refinement}
+\newcommand{\reporttitle}{Graph-Based Intrusion Detection with a Cybersecurity Language Encoder}
+\newcommand{\reportsubtitle}{Structural--Semantic Fusion with Uncertainty-Guided Feedback}
 \newcommand{\reportauthor}{Ali Alzein}
 \newcommand{\reportsupervisor}{Fouad Al Tfaily}
 \newcommand{\reportinstitutions}{CESI LINEACT / Lebanese University}
@@ -49,6 +49,9 @@
     {\large 2026\par}
 \end{titlepage}
 
+\input{sections/00_abstract}
+\clearpage
+
 \tableofcontents
 \clearpage
 
@@ -66,7 +69,14 @@
 \input{sections/06_conclusion}
 
 \clearpage
+\input{sections/99_statements}
+
+\clearpage
 \bibliographystyle{plainnat}
 \bibliography{references}
+\addcontentsline{toc}{section}{References}
+
+\clearpage
+\input{sections/07_appendices}
 
 \end{document}

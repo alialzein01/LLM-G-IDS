@@ -1,0 +1,244 @@
+\appendix
+
+\section{Negative mechanism results}
+\label{app:negative}
+
+This appendix holds the measurements behind Section~\ref{sec:res-prototype}. They are
+reported in full because the case for changing the loop's consultant rests on them, and
+because each one closes a line of investigation that would otherwise look open.
+
+\subsection{Conditions A, B and C}
+\label{app:abc}
+
+Three configurations of the loop were run at three seeds on both datasets, with the fold
+partition fixed. Condition A is the canonical prototype-consultant loop. Condition B trains
+the selector head whose entropy ranks edges and calibrates the consultant's temperature per
+fold instead of pinning it. Condition C re-selects the two knobs on top of B. The graph
+encoder and AGAF rungs are unaffected by any of the three and are shown for reference.
+
+\begin{table}[htbp]
+\centering
+\caption{Pooled out-of-fold macro-F1, mean over three seeds, by condition.}
+\label{tab:abc}
+\small
+\begin{tabular}{llccc}
+\toprule
+Dataset & Rung & A (canonical) & B (signals fixed) & C (B, re-selected) \\
+\midrule
+\multirow{3}{*}{UNSW}
+ & loop          & 0.7644 & 0.7610 & 0.7809 \\
+ & AGAF          & 0.7793 & 0.7793 & 0.7793 \\
+ & graph encoder & 0.7437 & 0.7437 & 0.7437 \\
+\midrule
+\multirow{3}{*}{ToN}
+ & loop          & 0.4521 & 0.4147 & 0.4630 \\
+ & AGAF          & 0.4102 & 0.4102 & 0.4102 \\
+ & graph encoder & 0.4336 & 0.4336 & 0.4336 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The decision rule was fixed before the runs, and it returns the same verdict in all three
+conditions: the loop is not separated from AGAF on either dataset. On NF-UNSW-NB15 the
+two-level interval for loop minus AGAF is $-0.0156$ [$-0.0552$, $+0.0268$] in A, $-0.0192$
+[$-0.0594$, $+0.0197$] in B and $+0.0008$ [$-0.0464$, $+0.0447$] in C. On NF-ToN-IoT it is
+$+0.0428$ [$-0.0316$, $+0.1105$], $+0.0060$ [$-0.0667$, $+0.0739$] and $+0.0527$ [$-0.0118$,
+$+0.1194$]. Condition C carries the highest point estimate on both datasets. That is not a
+separation, and its selection curves are flat, with NF-UNSW-NB15's argmax landing on the
+boundary of the swept range at $k = 35$.
+
+Both defects were genuinely removed in B, which is what makes the negative result
+informative rather than a failed implementation. On NF-UNSW-NB15 the selector head's macro-F1
+moved from the range 0.019 to 0.036 up to the range 0.646 to 0.684, mean disagreement fell
+from 0.8975 to between 0.524 and 0.548, the consultant's maximum softmax probability rose
+from 0.102 to 0.487, and the temperature fell from about 9.4 to 0.105. On NF-ToN-IoT the
+selector head moved from 0.029 to 0.065 up to 0.293 to 0.333, disagreement fell from 0.8988
+to between 0.580 and 0.638, maximum probability rose from 0.101 to 0.500, and temperature
+fell from about 9.5 to 0.030. A better calibrated consultant and a genuinely
+uncertainty-ranked selector made the loop worse on both datasets.
+
+\subsection{What the canonical loop was actually injecting}
+\label{app:magnitudes}
+
+The quantity below is the mean absolute magnitude added to the 39-wide encoded edge vector on
+flagged edges, per seed. The encoded features have unit variance, so these numbers are
+directly interpretable as a fraction of a standard deviation.
+
+\begin{table}[htbp]
+\centering
+\caption{Injected bias magnitude on flagged edges, per seed, by condition.}
+\label{tab:magnitudes}
+\small
+\begin{tabular}{llll}
+\toprule
+Condition & NF-UNSW-NB15 & NF-ToN-IoT & \\
+\midrule
+A (canonical)        & 0.077 / 0.060 / 0.061 & 0.023 / 0.021 / 0.023 & \\
+B (signals fixed)    & 1.228 / 1.171 / 1.218 & 2.796 / 2.854 / 2.762 & \\
+C (B, re-selected)   & 1.103 / 1.100 / 1.158 & 2.845 / 2.893 / 2.992 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Under the canonical prototype configuration the mechanism was injecting between 0.02 and 0.08
+of a standard deviation. Calibrating the temperature raised that by a factor of roughly 17 on
+NF-UNSW-NB15 and roughly 125 on NF-ToN-IoT. Two things follow. The prototype loop's advantage
+over feedback-off was late fusion rather than feedback, and the injection scale is close to
+redundant with the learned bias strength, since condition C moved the scale from 2.0 to 5.0 and
+from 20.0 to 10.0 while the end-to-end magnitude barely moved.
+
+\subsection{Per-class reliability of the embedding-only consultant}
+\label{app:reliability}
+
+The reliability-weighting treatment computes, for each class, the precision of the prototype
+consultant's argmax on the fold's training edges. The weights are a more useful result than
+the macro-F1 deltas they produced, because they quantify the consultant's weakness per class
+from training labels alone.
+
+\begin{table}[htbp]
+\centering
+\caption{Mean per-class precision of the prototype consultant on training edges, over five
+folds. Class indices follow the label mapping.}
+\label{tab:reliability}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccccc}
+\toprule
+Dataset & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\midrule
+NF-UNSW-NB15 & 1.000 & 0.852 & 0.976 & 0.893 & 0.961 & 0.662 & 0.895 & 0.984 & 1.000 & 0.960 \\
+NF-ToN-IoT   & 1.000 & 0.071 & 0.179 & 0.021 & 0.570 & 0.740 & 0.226 & 0.020 & 0.095 & 0.089 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+On NF-UNSW-NB15 six of ten classes sit at or above 0.9 and the minimum is 0.662, so
+reweighting has little to reorder. On NF-ToN-IoT six of ten sit at or below 0.226. That is the
+same weakness the isolation experiment measures as the binding constraint, now quantified per
+class.
+
+\subsection{The five treatments}
+\label{app:treatments}
+
+\input{tables/tab_treatments}
+
+\section{Supporting tables}
+\label{app:tables}
+
+\subsection{Per-class F1}
+\label{app:perclass}
+
+\input{tables/tab_perclass}
+
+\subsection{Knob selection curves}
+\label{app:knobs}
+
+\input{tables/tab_knobcurves}
+
+\subsection{Consultant complementarity on the flagged set}
+\label{app:complementarity}
+
+The loop consults the edges the graph encoder is least certain about, so what matters is not a
+consultant's accuracy over the whole graph but its accuracy where it is actually asked.
+Table~\ref{tab:complementarity} gives that, at seed 42.
+
+\begin{table}[htbp]
+\centering
+\caption{Accuracy on the entropy-flagged edge set at seed 42, for the graph encoder, each
+consultant, and the resulting loop.}
+\label{tab:complementarity}
+\small
+\begin{tabular}{llccc}
+\toprule
+Dataset & Consultant & graph encoder & consultant & resulting loop \\
+\midrule
+\multirow{2}{*}{NF-UNSW-NB15}
+ & prototype    & 0.603 & 0.672 & 0.652 \\
+ & trained head & 0.603 & 0.770 & 0.750 \\
+\midrule
+\multirow{2}{*}{NF-ToN-IoT}
+ & prototype    & 0.359 & 0.348 & 0.573 \\
+ & trained head & 0.359 & 0.759 & 0.724 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The NF-ToN-IoT prototype row is the clearest statement of the problem. On the edges the loop
+selects, that consultant is no more accurate than the model it is supposed to correct. On
+NF-ToN-IoT with the trained head, among flagged edges where the consultant and the graph
+encoder disagree, the consultant is right 245 times and wrong 32, and inside the
+confidence-gated half the split is 145 to 4.
+\emph{[GAP: the same disagreement split for NF-UNSW-NB15, and the equivalent for the prototype
+consultant on either dataset, was never recorded as an artifact.]}
+
+\section{Reproducibility}
+\label{app:repro}
+
+\paragraph{Environment.} Python 3.14.3 in a virtual environment built from
+\texttt{requirements.txt}. All runs export \texttt{OMP\_NUM\_THREADS=1}. Without that pin,
+pooled macro-F1 drifts by roughly 0.012 at a fixed seed, which is larger than several of the
+differences this report measures, and one earlier finding in the project was retracted because
+of it.
+
+\paragraph{Seeds and folds.} Three training seeds, 42, 1 and 2. The stratified five-fold
+partition is generated once at seed 42 and held fixed across all three, so the pooled
+out-of-fold edge set is identical between seeds and the seed-matched bootstrap is a paired
+comparison. Fold-partition variance is therefore not measured anywhere in this report.
+
+\paragraph{Pipeline.} Graph construction runs from
+\texttt{src.pipeline.step1.run\_step1}, writing \texttt{pyg\_data.pt} and
+\texttt{aggregated\_edges.csv} under \texttt{data/<dataset>/processed/step1/}. The downstream
+stages run through one entry point:
+
+\begin{quote}
+\texttt{python -m src.pipeline.common.run\_pipeline --dataset <key> \textbackslash} \\
+\texttt{\ \ --only fusion oof prototypes top\_k\_sweep feedback ladder}
+\end{quote}
+
+with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. The loop consults
+the trained head when \texttt{train\_feedback} is given \texttt{--use-llm-head}. Without
+that flag it reproduces the superseded prototype-consultant ladder, at the knobs kept under
+\texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold semantic embeddings must be
+regenerated with
+\texttt{step3.build\_oof\_gnn\_embeddings} before the fusion stage whenever the graph
+encoder changes. The fusion stage does not do it, and will otherwise train on stale
+embeddings.
+
+\paragraph{Result contracts.} Every number in this report traces to one of these files.
+
+\begin{table}[htbp]
+\centering
+\caption{Committed artifacts behind the report's numbers.}
+\label{tab:artifacts}
+\footnotesize
+\begin{tabular}{@{}p{0.56\textwidth}p{0.40\textwidth}@{}}
+\toprule
+Artifact & What it carries \\
+\midrule
+\texttt{results/unsw\_nb15\_current.json} (schema 5) & UNSW ladder, ablations, knobs \\
+\texttt{results/ton\_iot\_current.json} (schema 7) & ToN ladder, ablations, knobs \\
+\texttt{results/cross\_dataset\_comparison.json} (schema 6) & both datasets side by side \\
+\texttt{results/multiseed\_ladder\_v2\_head.json} & three-seed ladder, trained-head consultant \\
+\texttt{results/multiseed\_ladder\_v2\_legacy.json} & three-seed ladder, prototype \\
+\texttt{results/multiseed\_head\_per\_class.json} & per-class F1, three-seed means \\
+\texttt{results/*\_sota\_baselines.json} & re-trained baselines and intervals \\
+\texttt{results/*\_oracle\_ceiling\_v2\_trained\_head.json} & the isolation test \\
+\texttt{results/knob\_selection\_head/} & the selection curves \\
+\texttt{docs/RESULTS\_ARCHIVE.md} & the full record, including retractions \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Checks.} The repository's test suite pins the contracts against each other and
+against the on-disk graphs, including a test asserting that both datasets declare the same
+architecture. It runs with \texttt{OMP\_NUM\_THREADS=1 python -m pytest tests/ -q} and reports
+167 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
+\texttt{scripts/check\_report\_numbers.py} extracts every numeric token from the section
+sources and checks it against the contracts, the archive, the dataset statistics and an
+explicit allowlist, and \texttt{scripts/prose\_stats.py} measures the writing against the
+standard used in the final editing pass. Both run from \texttt{docs/research\_report/build.sh}.
+
+\paragraph{What is not reproducible from this repository.} The raw NF-ToN-IoT and NF-UNSW-NB15
+CSV sources are not committed, being 532\,MB and comparable in size. The graphs built from them
+are, so every result here can be re-derived without re-downloading the sources.

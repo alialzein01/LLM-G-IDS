@@ -175,27 +175,9 @@ actually added to the 39-wide encoded edge vector, whose features have unit vari
 Calibrating the temperature raised it to roughly 1.2 and 2.8 respectively, a factor of about 17
 and about 125. The canonical prototype loop was, in effect, injecting almost nothing.
 
-Table~\ref{tab:treatments} lists all five treatments and what each was worth.
-
-\begin{table}[htbp]
-\centering
-\caption{Five treatments applied to the embedding-only consultant. None was kept. Rows marked
-seed 42 carry no interval across seeds and are single-seed orderings only.}
-\label{tab:treatments}
-\footnotesize
-\begin{tabularx}{\textwidth}{@{}l X X c@{}}
-\toprule
-Treatment & What it changed & Result & Kept \\
-\midrule
-Selector-head supervision & the ranking head is trained as a classifier & 3 seeds: loop worse on both datasets & no \\
-Consultant temperature & per-fold calibration instead of a pinned $T$ & 3 seeds: loop worse, jointly with the above & no \\
-Reliability weighting & gate and magnitude scaled by per-class train precision & seed 42: $+0.0057$ / $+0.0094$, below the 0.02 rule & no \\
-Advice format & one-hot and softmax at the oracle's $\pm 4$ nats & seed 42: every arm below baseline on both & no \\
-Cross-fitted advice & train rows replaced by inner out-of-fold logits & seed 42: $-0.0246$ / $-0.0338$ against in-fold & no \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
+Table~\ref{tab:treatments} in Appendix~\ref{app:treatments} lists all five treatments and
+what each was worth, and Appendix~\ref{app:negative} gives the conditions behind the first
+two in full.
 The advice-format arm produced a counter-intuitive measurement worth stating on its own. Handing
 the consultant the oracle's saturated format made the input magnitude larger and the injected
 magnitude smaller, from 0.0767 to 0.0183 on NF-UNSW-NB15 and from 0.0234 to 0.0202 on
@@ -211,7 +193,7 @@ from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The model absorbs the change in
 rather than in the parameter that is supposed to represent trust.
 
 Finally, the consultants differ in how well they complement the graph encoder on the edges the
-loop actually consults. On the flagged set at seed 42 the graph encoder is 0.603 accurate on
+loop actually consults, which Appendix~\ref{app:complementarity} tabulates. On the flagged set at seed 42 the graph encoder is 0.603 accurate on
 NF-UNSW-NB15 and 0.359 on NF-ToN-IoT. The prototype scorer reaches 0.672 and 0.348 there, so on
 NF-ToN-IoT it is no better than the model it is meant to correct. The trained head reaches 0.770
 and 0.759, and the resulting loop reaches 0.750 and 0.724. On NF-ToN-IoT, among the flagged edges
@@ -286,10 +268,9 @@ share is 15.1\%.
 \subsection{Per-class behaviour}
 \label{sec:res-perclass}
 
-Macro-F1 averages over classes of very different sizes, so Table~\ref{tab:perclass} gives the
-per-class picture with the class sizes beside it.
+Macro-F1 averages over classes of very different sizes. Table~\ref{tab:perclass} in
+Appendix~\ref{app:perclass} gives the per-class picture with the class sizes beside it.
 
-\input{tables/tab_perclass}
 The loop is above AGAF on eight of ten NF-UNSW-NB15 classes. The two exceptions are
 Reconnaissance, 0.8731 against 0.8916, and Exploits, where the two are level to three decimals.
 On NF-ToN-IoT the loop is above AGAF on seven of eight, losing only \texttt{password} at 0.2100
@@ -318,10 +299,9 @@ flagged and 102 gated on NF-UNSW-NB15, and 532 of 2{,}127 flagged and 266 gated 
 Neither quantity is tuned, and the report does not describe them that way. Averaged over the
 three selection seeds, the 21 candidates for $k$ span 0.8238 to 0.8277 of validation macro-F1 on
 NF-UNSW-NB15 and 0.5170 to 0.5232 on NF-ToN-IoT. The six injection-scale candidates span 0.8252
-to 0.8277 and 0.5196 to 0.5232. Every one of those spans is smaller than the rungs' own
+to 0.8277 and 0.5196 to 0.5232. Table~\ref{tab:knobcurves} in Appendix~\ref{app:knobs} gives
+every curve. Every one of those spans is smaller than the rungs' own
 seed-to-seed spread, so the argmax is not distinguishable from its neighbours and the selection
 is picking noise. NF-ToN-IoT's scale selected on the upper boundary of the swept range at 20.0,
 which means the sweep cannot say whether an optimum lies outside it. The contract records that
 boundary condition explicitly.
-
-\input{tables/tab_knobcurves}
