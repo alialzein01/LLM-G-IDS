@@ -1,0 +1,9 @@
+Building per-fold LLM heads for ton_iot (2127 edges, 5 folds, seed 1)
+  fold 0: val_f1=0.5202 test_f1=0.5381
+  fold 1: val_f1=0.5083 test_f1=0.5145
+  fold 2: val_f1=0.5686 test_f1=0.4375
+  fold 3: val_f1=0.4638 test_f1=0.4569
+  fold 4: val_f1=0.5193 test_f1=0.5123
+
+Pooled OOF macro-F1 (8 classes): 0.5035
+Saved per-fold LLM head logits -> data/ton_iot/processed/step4_feedback/llm_head_logits_seed1.pt  [5, 2127, 10]

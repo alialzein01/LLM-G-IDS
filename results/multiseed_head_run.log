@@ -1,0 +1,7 @@
+done head unsw_nb15 seed 1 -> results/multiseed_v2/head/unsw_nb15_seed1
+done head unsw_nb15 seed 42 -> results/multiseed_v2/head/unsw_nb15_seed42
+done head unsw_nb15 seed 2 -> results/multiseed_v2/head/unsw_nb15_seed2
+done head ton_iot seed 42 -> results/multiseed_v2/head/ton_iot_seed42
+done head ton_iot seed 1 -> results/multiseed_v2/head/ton_iot_seed1
+done head ton_iot seed 2 -> results/multiseed_v2/head/ton_iot_seed2
+condition head complete -> results/multiseed_v2/head

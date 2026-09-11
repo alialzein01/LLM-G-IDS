@@ -1,0 +1,820 @@
+{
+  "dataset": "unsw_nb15",
+  "eval_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "dropped_classes": [],
+  "selection_metric": "mean_best_val_macro_f1",
+  "selection_uses_test_labels": false,
+  "semantic_consultant": "whitened_prototype_scorer",
+  "trained_llm_head": false,
+  "bias_confidence_fraction": 0.5,
+  "injection_mode": "edge",
+  "injection_scale": 5.0,
+  "gate_mode": "confidence",
+  "seed": 1,
+  "selected": {
+    "top_k_percent": 35,
+    "effective_feedback_percent": 17.5,
+    "mean_best_val_macro_f1": 0.8188767132671672,
+    "std_best_val_macro_f1": 0.026159869883135484,
+    "pooled_oof_test_macro_f1": 0.7741161343467835,
+    "folds": [
+      {
+        "fold": 0,
+        "best_val_macro_f1": 0.80597166402793,
+        "test_macro_f1": 0.6598256208153235,
+        "iterations": [
+          {
+            "iter": 1,
+            "churn": NaN,
+            "mean_entropy": 1.0783225297927856,
+            "mean_disagreement": 0.622185230255127,
+            "flagged_overlap": 0.38260868191719055,
+            "selected_count": 115,
+            "selection_jaccard_previous": NaN,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.6039688210340384,
+            "wrong_to_correct": 0,
+            "correct_to_wrong": 0,
+            "per_class_f1": [
+              0.9043478260869565,
+              0.3333333333333333,
+              0.5833333333333334,
+              0.45454545454545453,
+              0.8571428571428571,
+              0.43478260869565216,
+              0.18181818181818182,
+              0.875,
+              0.6153846153846154,
+              0.8
+            ]
+          },
+          {
+            "iter": 2,
+            "churn": 0.06859756261110306,
+            "mean_entropy": 0.7791555523872375,
+            "mean_disagreement": 0.5970363616943359,
+            "flagged_overlap": 0.20000000298023224,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.685090911503955,
+            "wrong_to_correct": 7,
+            "correct_to_wrong": 1,
+            "per_class_f1": [
+              0.9043478260869565,
+              0.3333333333333333,
+              0.6086956521739131,
+              0.5555555555555556,
+              0.8571428571428571,
+              0.43478260869565216,
+              0.7777777777777778,
+              0.875,
+              0.6153846153846154,
+              0.8888888888888888
+            ]
+          },
+          {
+            "iter": 3,
+            "churn": 0.10670731961727142,
+            "mean_entropy": 0.8015778660774231,
+            "mean_disagreement": 0.6337534785270691,
+            "flagged_overlap": 0.373913049697876,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.6598256208153235,
+            "wrong_to_correct": 12,
+            "correct_to_wrong": 5,
+            "per_class_f1": [
+              0.9043478260869565,
+              0.0,
+              0.7,
+              0.4,
+              0.9333333333333333,
+              0.5263157894736842,
+              0.5925925925925926,
+              0.7777777777777778,
+              0.875,
+              0.8888888888888888
+            ]
+          }
+        ]
+      },
+      {
+        "fold": 1,
+        "best_val_macro_f1": 0.8083455055436479,
+        "test_macro_f1": 0.7664588291846088,
+        "iterations": [
+          {
+            "iter": 1,
+            "churn": NaN,
+            "mean_entropy": 0.6697489619255066,
+            "mean_disagreement": 0.5134931206703186,
+            "flagged_overlap": 0.1304347813129425,
+            "selected_count": 115,
+            "selection_jaccard_previous": NaN,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.645371866695396,
+            "wrong_to_correct": 0,
+            "correct_to_wrong": 0,
+            "per_class_f1": [
+              0.95,
+              0.0,
+              0.46153846153846156,
+              0.625,
+              0.8235294117647058,
+              0.5714285714285714,
+              0.5555555555555556,
+              0.7777777777777778,
+              0.8,
+              0.8888888888888888
+            ]
+          },
+          {
+            "iter": 2,
+            "churn": 0.02286585420370102,
+            "mean_entropy": 0.46275594830513,
+            "mean_disagreement": 0.5837445855140686,
+            "flagged_overlap": 0.1826086938381195,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.008771929889917374,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.6626167133520073,
+            "wrong_to_correct": 1,
+            "correct_to_wrong": 1,
+            "per_class_f1": [
+              0.95,
+              0.2222222222222222,
+              0.3333333333333333,
+              0.625,
+              0.8235294117647058,
+              0.5714285714285714,
+              0.5882352941176471,
+              0.8235294117647058,
+              0.8,
+              0.8888888888888888
+            ]
+          },
+          {
+            "iter": 3,
+            "churn": 0.05945121869444847,
+            "mean_entropy": 0.5147289037704468,
+            "mean_disagreement": 0.5372008085250854,
+            "flagged_overlap": 0.14782609045505524,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.008771929889917374,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.7664588291846088,
+            "wrong_to_correct": 11,
+            "correct_to_wrong": 4,
+            "per_class_f1": [
+              0.959349593495935,
+              0.7272727272727273,
+              0.5454545454545454,
+              0.5714285714285714,
+              0.9333333333333333,
+              0.7058823529411765,
+              0.5714285714285714,
+              0.875,
+              0.9333333333333333,
+              0.8421052631578947
+            ]
+          }
+        ]
+      },
+      {
+        "fold": 2,
+        "best_val_macro_f1": 0.8405859010270775,
+        "test_macro_f1": 0.779872571454211,
+        "iterations": [
+          {
+            "iter": 1,
+            "churn": NaN,
+            "mean_entropy": 1.0024542808532715,
+            "mean_disagreement": 0.61529141664505,
+            "flagged_overlap": 0.3478260934352875,
+            "selected_count": 115,
+            "selection_jaccard_previous": NaN,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.5739307103908873,
+            "wrong_to_correct": 0,
+            "correct_to_wrong": 0,
+            "per_class_f1": [
+              0.9026548672566371,
+              0.0,
+              0.5555555555555556,
+              0.36363636363636365,
+              0.0,
+              0.6666666666666666,
+              0.6666666666666666,
+              0.9333333333333333,
+              0.7619047619047619,
+              0.8888888888888888
+            ]
+          },
+          {
+            "iter": 2,
+            "churn": 0.06554877758026123,
+            "mean_entropy": 0.7222732305526733,
+            "mean_disagreement": 0.707455575466156,
+            "flagged_overlap": 0.469565212726593,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.6975081767841431,
+            "wrong_to_correct": 7,
+            "correct_to_wrong": 2,
+            "per_class_f1": [
+              0.9026548672566371,
+              0.5714285714285714,
+              0.5263157894736842,
+              0.56,
+              0.4,
+              0.6666666666666666,
+              0.7777777777777778,
+              0.9333333333333333,
+              0.7619047619047619,
+              0.875
+            ]
+          },
+          {
+            "iter": 3,
+            "churn": 0.1463414579629898,
+            "mean_entropy": 0.7360832691192627,
+            "mean_disagreement": 0.6125999689102173,
+            "flagged_overlap": 0.33043476939201355,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.779872571454211,
+            "wrong_to_correct": 15,
+            "correct_to_wrong": 2,
+            "per_class_f1": [
+              0.9217391304347826,
+              0.5,
+              0.5,
+              0.6666666666666666,
+              0.9333333333333333,
+              0.7368421052631579,
+              0.8235294117647058,
+              0.9333333333333333,
+              0.8421052631578947,
+              0.9411764705882353
+            ]
+          }
+        ]
+      },
+      {
+        "fold": 3,
+        "best_val_macro_f1": 0.8562879366622683,
+        "test_macro_f1": 0.8352827309785702,
+        "iterations": [
+          {
+            "iter": 1,
+            "churn": NaN,
+            "mean_entropy": 0.6815570592880249,
+            "mean_disagreement": 0.444685697555542,
+            "flagged_overlap": 0.052173912525177,
+            "selected_count": 115,
+            "selection_jaccard_previous": NaN,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.787326085429097,
+            "wrong_to_correct": 0,
+            "correct_to_wrong": 0,
+            "per_class_f1": [
+              0.9421487603305785,
+              0.2222222222222222,
+              0.8,
+              0.7142857142857143,
+              1.0,
+              0.631578947368421,
+              0.7058823529411765,
+              0.8571428571428571,
+              1.0,
+              1.0
+            ]
+          },
+          {
+            "iter": 2,
+            "churn": 0.007621951401233673,
+            "mean_entropy": 0.46231916546821594,
+            "mean_disagreement": 0.618583619594574,
+            "flagged_overlap": 0.22608695924282074,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.8352827309785702,
+            "wrong_to_correct": 9,
+            "correct_to_wrong": 4,
+            "per_class_f1": [
+              0.975609756097561,
+              0.4444444444444444,
+              0.7619047619047619,
+              0.8,
+              0.9333333333333333,
+              0.8235294117647058,
+              0.8235294117647058,
+              0.8571428571428571,
+              1.0,
+              0.9333333333333333
+            ]
+          }
+        ]
+      },
+      {
+        "fold": 4,
+        "best_val_macro_f1": 0.783192559074912,
+        "test_macro_f1": 0.7920054087788642,
+        "iterations": [
+          {
+            "iter": 1,
+            "churn": NaN,
+            "mean_entropy": 0.8397746086120605,
+            "mean_disagreement": 0.5206955671310425,
+            "flagged_overlap": 0.208695650100708,
+            "selected_count": 115,
+            "selection_jaccard_previous": NaN,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.7298945947562855,
+            "wrong_to_correct": 0,
+            "correct_to_wrong": 0,
+            "per_class_f1": [
+              0.9122807017543859,
+              0.25,
+              0.3333333333333333,
+              0.7777777777777778,
+              0.9333333333333333,
+              0.6956521739130435,
+              0.5882352941176471,
+              1.0,
+              0.9333333333333333,
+              0.875
+            ]
+          },
+          {
+            "iter": 2,
+            "churn": 0.03658536449074745,
+            "mean_entropy": 0.5937082171440125,
+            "mean_disagreement": 0.5607081055641174,
+            "flagged_overlap": 0.11304347962141037,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.7356189546756917,
+            "wrong_to_correct": 3,
+            "correct_to_wrong": 2,
+            "per_class_f1": [
+              0.9122807017543859,
+              0.375,
+              0.3333333333333333,
+              0.7368421052631579,
+              1.0,
+              0.6956521739130435,
+              0.42857142857142855,
+              1.0,
+              0.9333333333333333,
+              0.9411764705882353
+            ]
+          },
+          {
+            "iter": 3,
+            "churn": 0.057926829904317856,
+            "mean_entropy": 0.6323372721672058,
+            "mean_disagreement": 0.5397741198539734,
+            "flagged_overlap": 0.20000000298023224,
+            "selected_count": 115,
+            "selection_jaccard_previous": 0.0,
+            "advice_recomputed": false,
+            "test_macro_f1": 0.7920054087788642,
+            "wrong_to_correct": 6,
+            "correct_to_wrong": 1,
+            "per_class_f1": [
+              0.9122807017543859,
+              0.5,
+              0.5454545454545454,
+              0.7619047619047619,
+              1.0,
+              0.6956521739130435,
+              0.5714285714285714,
+              1.0,
+              0.9333333333333333,
+              1.0
+            ]
+          }
+        ]
+      }
+    ],
+    "oof_logits_path": "results/knob_selection_v2/unsw_nb15/scale_5_seed1/n_35/oof_logits.pt",
+    "sweep_summary_path": "results/knob_selection_v2/unsw_nb15/scale_5_seed1/summary.json",
+    "test_f1_delta_vs_n30": null
+  },
+  "candidates": [
+    {
+      "top_k_percent": 35,
+      "effective_feedback_percent": 17.5,
+      "mean_best_val_macro_f1": 0.8188767132671672,
+      "std_best_val_macro_f1": 0.026159869883135484,
+      "pooled_oof_test_macro_f1": 0.7741161343467835,
+      "folds": [
+        {
+          "fold": 0,
+          "best_val_macro_f1": 0.80597166402793,
+          "test_macro_f1": 0.6598256208153235,
+          "iterations": [
+            {
+              "iter": 1,
+              "churn": NaN,
+              "mean_entropy": 1.0783225297927856,
+              "mean_disagreement": 0.622185230255127,
+              "flagged_overlap": 0.38260868191719055,
+              "selected_count": 115,
+              "selection_jaccard_previous": NaN,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.6039688210340384,
+              "wrong_to_correct": 0,
+              "correct_to_wrong": 0,
+              "per_class_f1": [
+                0.9043478260869565,
+                0.3333333333333333,
+                0.5833333333333334,
+                0.45454545454545453,
+                0.8571428571428571,
+                0.43478260869565216,
+                0.18181818181818182,
+                0.875,
+                0.6153846153846154,
+                0.8
+              ]
+            },
+            {
+              "iter": 2,
+              "churn": 0.06859756261110306,
+              "mean_entropy": 0.7791555523872375,
+              "mean_disagreement": 0.5970363616943359,
+              "flagged_overlap": 0.20000000298023224,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.685090911503955,
+              "wrong_to_correct": 7,
+              "correct_to_wrong": 1,
+              "per_class_f1": [
+                0.9043478260869565,
+                0.3333333333333333,
+                0.6086956521739131,
+                0.5555555555555556,
+                0.8571428571428571,
+                0.43478260869565216,
+                0.7777777777777778,
+                0.875,
+                0.6153846153846154,
+                0.8888888888888888
+              ]
+            },
+            {
+              "iter": 3,
+              "churn": 0.10670731961727142,
+              "mean_entropy": 0.8015778660774231,
+              "mean_disagreement": 0.6337534785270691,
+              "flagged_overlap": 0.373913049697876,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.6598256208153235,
+              "wrong_to_correct": 12,
+              "correct_to_wrong": 5,
+              "per_class_f1": [
+                0.9043478260869565,
+                0.0,
+                0.7,
+                0.4,
+                0.9333333333333333,
+                0.5263157894736842,
+                0.5925925925925926,
+                0.7777777777777778,
+                0.875,
+                0.8888888888888888
+              ]
+            }
+          ]
+        },
+        {
+          "fold": 1,
+          "best_val_macro_f1": 0.8083455055436479,
+          "test_macro_f1": 0.7664588291846088,
+          "iterations": [
+            {
+              "iter": 1,
+              "churn": NaN,
+              "mean_entropy": 0.6697489619255066,
+              "mean_disagreement": 0.5134931206703186,
+              "flagged_overlap": 0.1304347813129425,
+              "selected_count": 115,
+              "selection_jaccard_previous": NaN,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.645371866695396,
+              "wrong_to_correct": 0,
+              "correct_to_wrong": 0,
+              "per_class_f1": [
+                0.95,
+                0.0,
+                0.46153846153846156,
+                0.625,
+                0.8235294117647058,
+                0.5714285714285714,
+                0.5555555555555556,
+                0.7777777777777778,
+                0.8,
+                0.8888888888888888
+              ]
+            },
+            {
+              "iter": 2,
+              "churn": 0.02286585420370102,
+              "mean_entropy": 0.46275594830513,
+              "mean_disagreement": 0.5837445855140686,
+              "flagged_overlap": 0.1826086938381195,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.008771929889917374,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.6626167133520073,
+              "wrong_to_correct": 1,
+              "correct_to_wrong": 1,
+              "per_class_f1": [
+                0.95,
+                0.2222222222222222,
+                0.3333333333333333,
+                0.625,
+                0.8235294117647058,
+                0.5714285714285714,
+                0.5882352941176471,
+                0.8235294117647058,
+                0.8,
+                0.8888888888888888
+              ]
+            },
+            {
+              "iter": 3,
+              "churn": 0.05945121869444847,
+              "mean_entropy": 0.5147289037704468,
+              "mean_disagreement": 0.5372008085250854,
+              "flagged_overlap": 0.14782609045505524,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.008771929889917374,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.7664588291846088,
+              "wrong_to_correct": 11,
+              "correct_to_wrong": 4,
+              "per_class_f1": [
+                0.959349593495935,
+                0.7272727272727273,
+                0.5454545454545454,
+                0.5714285714285714,
+                0.9333333333333333,
+                0.7058823529411765,
+                0.5714285714285714,
+                0.875,
+                0.9333333333333333,
+                0.8421052631578947
+              ]
+            }
+          ]
+        },
+        {
+          "fold": 2,
+          "best_val_macro_f1": 0.8405859010270775,
+          "test_macro_f1": 0.779872571454211,
+          "iterations": [
+            {
+              "iter": 1,
+              "churn": NaN,
+              "mean_entropy": 1.0024542808532715,
+              "mean_disagreement": 0.61529141664505,
+              "flagged_overlap": 0.3478260934352875,
+              "selected_count": 115,
+              "selection_jaccard_previous": NaN,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.5739307103908873,
+              "wrong_to_correct": 0,
+              "correct_to_wrong": 0,
+              "per_class_f1": [
+                0.9026548672566371,
+                0.0,
+                0.5555555555555556,
+                0.36363636363636365,
+                0.0,
+                0.6666666666666666,
+                0.6666666666666666,
+                0.9333333333333333,
+                0.7619047619047619,
+                0.8888888888888888
+              ]
+            },
+            {
+              "iter": 2,
+              "churn": 0.06554877758026123,
+              "mean_entropy": 0.7222732305526733,
+              "mean_disagreement": 0.707455575466156,
+              "flagged_overlap": 0.469565212726593,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.6975081767841431,
+              "wrong_to_correct": 7,
+              "correct_to_wrong": 2,
+              "per_class_f1": [
+                0.9026548672566371,
+                0.5714285714285714,
+                0.5263157894736842,
+                0.56,
+                0.4,
+                0.6666666666666666,
+                0.7777777777777778,
+                0.9333333333333333,
+                0.7619047619047619,
+                0.875
+              ]
+            },
+            {
+              "iter": 3,
+              "churn": 0.1463414579629898,
+              "mean_entropy": 0.7360832691192627,
+              "mean_disagreement": 0.6125999689102173,
+              "flagged_overlap": 0.33043476939201355,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.779872571454211,
+              "wrong_to_correct": 15,
+              "correct_to_wrong": 2,
+              "per_class_f1": [
+                0.9217391304347826,
+                0.5,
+                0.5,
+                0.6666666666666666,
+                0.9333333333333333,
+                0.7368421052631579,
+                0.8235294117647058,
+                0.9333333333333333,
+                0.8421052631578947,
+                0.9411764705882353
+              ]
+            }
+          ]
+        },
+        {
+          "fold": 3,
+          "best_val_macro_f1": 0.8562879366622683,
+          "test_macro_f1": 0.8352827309785702,
+          "iterations": [
+            {
+              "iter": 1,
+              "churn": NaN,
+              "mean_entropy": 0.6815570592880249,
+              "mean_disagreement": 0.444685697555542,
+              "flagged_overlap": 0.052173912525177,
+              "selected_count": 115,
+              "selection_jaccard_previous": NaN,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.787326085429097,
+              "wrong_to_correct": 0,
+              "correct_to_wrong": 0,
+              "per_class_f1": [
+                0.9421487603305785,
+                0.2222222222222222,
+                0.8,
+                0.7142857142857143,
+                1.0,
+                0.631578947368421,
+                0.7058823529411765,
+                0.8571428571428571,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "iter": 2,
+              "churn": 0.007621951401233673,
+              "mean_entropy": 0.46231916546821594,
+              "mean_disagreement": 0.618583619594574,
+              "flagged_overlap": 0.22608695924282074,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.8352827309785702,
+              "wrong_to_correct": 9,
+              "correct_to_wrong": 4,
+              "per_class_f1": [
+                0.975609756097561,
+                0.4444444444444444,
+                0.7619047619047619,
+                0.8,
+                0.9333333333333333,
+                0.8235294117647058,
+                0.8235294117647058,
+                0.8571428571428571,
+                1.0,
+                0.9333333333333333
+              ]
+            }
+          ]
+        },
+        {
+          "fold": 4,
+          "best_val_macro_f1": 0.783192559074912,
+          "test_macro_f1": 0.7920054087788642,
+          "iterations": [
+            {
+              "iter": 1,
+              "churn": NaN,
+              "mean_entropy": 0.8397746086120605,
+              "mean_disagreement": 0.5206955671310425,
+              "flagged_overlap": 0.208695650100708,
+              "selected_count": 115,
+              "selection_jaccard_previous": NaN,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.7298945947562855,
+              "wrong_to_correct": 0,
+              "correct_to_wrong": 0,
+              "per_class_f1": [
+                0.9122807017543859,
+                0.25,
+                0.3333333333333333,
+                0.7777777777777778,
+                0.9333333333333333,
+                0.6956521739130435,
+                0.5882352941176471,
+                1.0,
+                0.9333333333333333,
+                0.875
+              ]
+            },
+            {
+              "iter": 2,
+              "churn": 0.03658536449074745,
+              "mean_entropy": 0.5937082171440125,
+              "mean_disagreement": 0.5607081055641174,
+              "flagged_overlap": 0.11304347962141037,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.7356189546756917,
+              "wrong_to_correct": 3,
+              "correct_to_wrong": 2,
+              "per_class_f1": [
+                0.9122807017543859,
+                0.375,
+                0.3333333333333333,
+                0.7368421052631579,
+                1.0,
+                0.6956521739130435,
+                0.42857142857142855,
+                1.0,
+                0.9333333333333333,
+                0.9411764705882353
+              ]
+            },
+            {
+              "iter": 3,
+              "churn": 0.057926829904317856,
+              "mean_entropy": 0.6323372721672058,
+              "mean_disagreement": 0.5397741198539734,
+              "flagged_overlap": 0.20000000298023224,
+              "selected_count": 115,
+              "selection_jaccard_previous": 0.0,
+              "advice_recomputed": false,
+              "test_macro_f1": 0.7920054087788642,
+              "wrong_to_correct": 6,
+              "correct_to_wrong": 1,
+              "per_class_f1": [
+                0.9122807017543859,
+                0.5,
+                0.5454545454545454,
+                0.7619047619047619,
+                1.0,
+                0.6956521739130435,
+                0.5714285714285714,
+                1.0,
+                0.9333333333333333,
+                1.0
+              ]
+            }
+          ]
+        }
+      ],
+      "oof_logits_path": "results/knob_selection_v2/unsw_nb15/scale_5_seed1/n_35/oof_logits.pt"
+    }
+  ],
+  "caveat": "Development-time validation selection on rotating folds; use nested CV or an untouched dataset for an unbiased publication estimate."
+}

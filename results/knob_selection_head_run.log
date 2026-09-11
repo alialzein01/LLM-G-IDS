@@ -1,0 +1,5 @@
+=== stage 1: top_k 15..35, 42 1 2 --use-llm-head ===
+=== stage 2: injection_scale at the selected k ===
+=== stage 3: finalize ===
+[unsw_nb15] CONSULTANT -> trained_llm_head | top_k 31.0 -> 29.0; injection_scale 2.0 -> 2.0  (data/unsw_nb15/processed/step4_feedback/selected_feedback_config.json)
+[ton_iot] CONSULTANT -> trained_llm_head | top_k 25.0 -> 16.0; injection_scale 20.0 -> 20.0  (data/ton_iot/processed/step4_feedback/selected_feedback_config.json)

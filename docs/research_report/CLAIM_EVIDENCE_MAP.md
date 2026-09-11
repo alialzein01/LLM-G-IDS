@@ -34,13 +34,16 @@ without independent artifact confirmation.
 | **FORBIDDEN** | The paper must not make this claim in any form. |
 | **OPEN** | Would be a legitimate claim but no artifact supports it. Do not write it. |
 
-Every interval in this map that involves one of our four rungs inherits the contracts'
-own caveat, recorded verbatim in both SOTA files and confirmed in this pass as
-`rung_seeds: 1`, `baseline_seeds: 3`:
+**Audited against the final manuscript, 2026-09-11 (W8).** Sections C, D and E were
+rewritten in that pass: they carried the prototype-consultant ladder and the seed-42-rung
+baseline intervals, both of which are superseded. `EVIDENCE_STATE.md` now exists and has
+been reconciled against this file. Rows unchanged since the original pass are still marked
+`[verified]` from that pass.
 
-> Our four rungs were run at seed 42 only, so no rung-side training stochasticity enters
-> these intervals. They are therefore NARROWER than a symmetric multi-seed comparison
-> would give.
+Both sides of every interval in this map are now measured at three training seeds. The
+earlier caveat that our rungs ran at seed 42 only, which made the intervals narrower than a
+symmetric comparison would give, no longer applies and its blocks are under `superseded` in
+both SOTA contracts.
 
 ---
 
@@ -83,37 +86,53 @@ Mean ± std over seeds 42/1/2. The LLM rung is deterministic given the folds (st
 
 ## C. Ladder significance — two-level bootstrap (edges AND training seed), `[verified]`
 
-| ID | Contrast | UNSW | ToN |
-|---|---|---|---|
-| C1 | AGAF − GNN | +0.0362 CI[−0.0096, +0.0822] P=0.946, sign-stable → **NOT-SEP** | −0.0238 CI[−0.0921, +0.0607] P=0.250, NOT sign-stable → **NOT-SEP** |
-| C3 | Loop − AGAF | −0.0156 CI[−0.0552, +0.0268] P=0.229, sign-stable (below at all 3 seeds) → **NOT-SEP** | +0.0428 CI[−0.0316, +0.1105] P=0.874, sign-stable → **NOT-SEP** |
-| C4 | Loop − GNN | +0.0206 CI[−0.0203, +0.0625] P=0.797, sign-stable → **NOT-SEP** | +0.0191 CI[−0.0180, +0.0596] P=0.839, sign-stable → **NOT-SEP** |
+The loop is measured under both consultants, and the two halves of this table are the
+report's central result. Intervals are `multi_seed.comparisons[*].two_level` in
+`multiseed_ladder_v2_head.json` and `multiseed_ladder_v2_legacy.json`.
 
-Comparisons against the LLM rung keep the schema-3/5 single-seed intervals (that rung has
-no seed variance); they are under `supersedes.schema_*_statistical_comparisons`.
+| ID | Contrast | Consultant | UNSW | ToN |
+|---|---|---|---|---|
+| C1 | AGAF − GNN | either | +0.0362 [−0.0096, +0.0822] → **NOT-SEP** | −0.0238 [−0.0921, +0.0607], not sign-stable → **NOT-SEP** |
+| C2 | Loop − AGAF | prototype | −0.0156 [−0.0552, +0.0268] → **NOT-SEP** | +0.0428 [−0.0316, +0.1105] → **NOT-SEP** |
+| C3 | Loop − AGAF | trained head | +0.0546 [+0.0228, +0.0880] → **SEP** | +0.0932 [+0.0180, +0.1667] → **SEP** |
+| C4 | Loop − GNN | prototype | +0.0206 [−0.0203, +0.0625] → **NOT-SEP** | +0.0191 [−0.0180, +0.0596] → **NOT-SEP** |
+| C5 | Loop − GNN | trained head | +0.0908 [+0.0412, +0.1407] → **SEP** | +0.0694 [+0.0129, +0.1288] → **SEP** |
+| C6 | Loop − LLM | trained head | +0.0989 [+0.0721, +0.1267] → **SEP** | +0.2231 [+0.1703, +0.2771] → **SEP** |
+| C7 | Loop − LLM | prototype | — | — | **OPEN** — the prototype aggregate carries no such comparison; marked `[GAP]` in the manuscript |
 
-**C6 — the only defensible ladder sentence, both datasets.** *No rung comparison is
-statistically separated once training-seed variance is included.* Orderings by mean may
-be stated as orderings. The schema-3 UNSW separations (Loop−GNN, Loop−LLM) and the
-schema-5 ToN separations (AGAF below GNN P=0.0005; Loop above AGAF P=1.0) do **not**
-survive and must not be cited as current. Status: **NOT-SEP** everywhere.
+**C8 — the defensible ladder sentences.** *With the trained-head consultant every loop
+comparison is separated on both datasets.* *With the prototype consultant nothing is
+separated on either.* *AGAF is not separated from the GNN rung under either consultant.*
+Status: **SEP** for C3, C5, C6; **NOT-SEP** for C1, C2, C4.
 
-**C7 — what the seed std is and is not.** It is training-seed variance at a fixed fold
+**C9 — the one procedure disagreement.** UNSW AGAF − GNN is separated seed-matched
+(+0.0356 [+0.0038, +0.0678]) and not separated two-level. The pre-registered rule makes the
+two-level result decide. Both are shown in the manuscript, because the disagreement is the
+clearest illustration of what admitting seed variance costs. **NOT-SEP.**
+
+**C10 — what the seed std is and is not.** It is training-seed variance at a fixed fold
 partition. Fold-partition variance is unmeasured, so ±std is a lower bound on total
 uncertainty. Say so wherever a ± appears.
 
+**C11 — the consultant change itself.** +0.0697 UNSW and +0.0523 ToN, three-seed means.
+**DERIV / PT** — no bootstrap was run between the two loop configurations, and the change is
+confounded with the re-selected entropy percentile (31→29, 25→16). Marked `[GAP]` in the
+manuscript. Never call it separated.
+
 ---
 
-## D. Multi-seed inversion — RESOLVED 2026-09-06
+## D. The consultant change — RESOLVED 2026-09-07, audited 2026-09-11
 
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
-| D1 | The conversation-recorded 3-seed caveat (AGAF 0.7757 / loop 0.7545) is replaced by an artifact: AGAF 0.7793±0.012 / loop 0.7644±0.004 on UNSW. Direction confirmed, values differ. | `multi_seed` block; `supersedes.multi_seed_caveat` | **PT** |
-| D2 | "The feedback loop is the strongest rung." | — | **FORBIDDEN** on UNSW (below AGAF at every seed); on ToN say "highest mean, not separated" |
-| D3 | Wording that is true on both datasets | — | *"highest mean; no comparison is separated once training-seed variance is included"* |
-| D4 | The 3-seed rung re-run is done. Fold-partition variance remains the open follow-up. | archive 2026-09-06 | **PT** — state as open work in Part 5 |
+| D1 | The loop's consultant is a design variable, not a rung. It is reported under both the whitened prototype scorer and the per-fold trained head. | `consultant_decision`, both `*_current.json` | **PT** |
+| D2 | "The feedback loop is the strongest rung." | C3, C5, C6 | **PERMITTED with the trained head, on both datasets**; **FORBIDDEN** for the prototype consultant, where nothing is separated |
+| D3 | Wording that is true on both datasets | — | *"with the trained-head consultant the loop is separated above every other rung; with the prototype consultant no comparison is separated"* |
+| D4 | The 3-seed rung re-run is done. Fold-partition variance remains the open follow-up. | archive 2026-09-06 | **PT** — stated as a limitation in Part 5 |
 | D5 | The schema-3/5 AGAF and loop values do not reproduce under current code at seed 42 (GNN and LLM do, bit-exactly). Cause not established. | `supersedes.reason`, both contracts | **PT** — a reproducibility finding; do not guess the cause |
-| D6 | The canonical loop's injected bias was ~0.02–0.08 on unit-variance features: the mechanism was effectively off, and the loop's edge over `head_only` is late fusion. Switching it on (selector-head loss + calibrated temperature) did not help at 3 seeds. | archive 2026-09-06 Findings 1–3; `results/multiseed_ladder_v2_{fixed,fixed_reselected}.json` | **PT** — the RQ3 answer is negative and verified |
+| D6 | Under the prototype consultant the injected bias was ~0.02–0.08 on unit-variance features, so that mechanism was effectively off and the loop's edge over `head_only` was late fusion. Under the trained head it is ~1.33. | archive 2026-09-06 Finding 3; archive 2026-09-07 head-echo table | **PT** — Appendix A |
+| D7 | Switching the two signals on (selector-head loss, calibrated temperature) made the loop worse at 3 seeds on both datasets. | `results/multiseed_ladder_v2_{fixed,fixed_reselected}.json` | **PT** — Appendix A, conditions A/B/C |
+| D8 | The head standing alone is NOT reported as a comparative rung. The author's scope decision, 2026-09-11. | — | **SCOPE** — the honest qualifier is carried instead by the isolation experiment (§H), which shows the injection path contributes nothing separated with either consultant |
 
 ---
 
@@ -140,39 +159,44 @@ uncertainty. Say so wherever a ± appears.
 Per-cell `macro_f1_std` is present in the contract for every entry and should be carried
 into the results table (e.g. UNSW TE-G-SAGE refit ±0.0224).
 
-### E.2 Our rungs vs the strongest baseline
+### E.2 Our rungs vs the baselines — three seeds on both sides, 2026-09-07
+
+Superseded: the seed-42-rung intervals that used to fill this block (UNSW loop +0.0535,
+ToN loop +0.0340 and the rest) are in `superseded.statistical_comparisons` and must not be
+quoted. The loop is now given under both consultants.
 
 | ID | Contrast | Value | Status |
 |---|---|---|---|
-| E5 | **UNSW: Loop vs TE-G-SAGE + our node features** | **+0.0535 CI[+0.0102, +0.0990] P=0.991** | **SEP** — the report's strongest baseline claim |
-| E6 | UNSW: GNN vs same | +0.0027 CI[−0.0372, +0.0452] P=0.532 | **NOT-SEP** |
-| E7 | UNSW: LLM vs same | +0.0160 CI[−0.0313, +0.0616] P=0.768 | **NOT-SEP** |
-| E8 | UNSW: AGAF vs same | +0.0400 CI[−0.0029, +0.0836] P=0.962 | **NOT-SEP** |
-| E9 | **UNSW headline**: the loop is the *only* rung separated from the strongest re-trained baseline. | E5–E8 | **SEP** for E5, **NOT-SEP** for the rest |
-| E10 | ToN: Loop vs E-GraphSAGE + node features | +0.0133 CI[−0.0597, +0.0853] P=0.616 | **NOT-SEP** |
-| E11 | ToN: Loop vs E-GraphSAGE as published | +0.0340 CI[−0.0121, +0.0809] P=0.925 | **NOT-SEP** |
-| E12 | ToN: GNN vs E-GraphSAGE as published | +0.0151 CI[−0.0276, +0.0564] P=0.761 | **NOT-SEP** |
-| E13 | **ToN: LLM vs E-GraphSAGE as published** | **−0.1338 CI[−0.1756, −0.0933] P=0.000** | **SEP-ADVERSE** |
-| E14 | **ToN: AGAF vs E-GraphSAGE as published** | **−0.0812 CI[−0.1362, −0.0227] P=0.003** | **SEP-ADVERSE** |
-| E15 | ToN: LLM vs E-GraphSAGE + node features | −0.1545 CI[−0.2274, −0.0879] | **SEP-ADVERSE** |
-| E16 | ToN: AGAF vs E-GraphSAGE + node features | −0.1019 CI[−0.1843, −0.0218] | **SEP-ADVERSE** |
-| E17 | ToN: LLM vs TE-G-SAGE + node features | −0.0729 CI[−0.1214, −0.0259] | **SEP-ADVERSE** |
-| E18 | **ToN headline**: nothing of ours is separated from E-GraphSAGE, and two of our rungs are significantly behind it. | E10–E16 | **SEP-ADVERSE** — lead with this, do not soften |
-| E19 | The intervals used are the **two-level bootstrap with BOTH sides at three seeds** (a rung seed and a baseline seed drawn independently, edges resampled). Paired seed-matched intervals are retained alongside. Updated 2026-09-07; the seed-42-rung blocks are superseded and must not be quoted. | `resampled: edges_and_both_seeds_independently`; `statistical_comparisons_3seed` / `seed_matched_comparisons_3seed`, schema 2 `[verified]` | **PT** |
+| E5 | UNSW: loop (trained head) vs TE-G-SAGE + our node features | +0.1155 [+0.0673, +0.1627] | **SEP** |
+| E6 | UNSW: loop (prototype) vs same | +0.0453 [+0.0033, +0.0847] | **SEP** |
+| E7 | UNSW: GNN vs same | +0.0249 [−0.0270, +0.0755] | **NOT-SEP** |
+| E8 | UNSW: LLM vs same | +0.0163 [−0.0291, +0.0607] | **NOT-SEP** |
+| E9 | UNSW: AGAF vs same | +0.0600 [+0.0096, +0.1093] | **SEP** |
+| E10 | **UNSW headline**: the loop is separated above every faithful baseline under either consultant; the GNN and LLM rungs are not separated from the strongest one. | E5–E9 | **SEP** / **NOT-SEP** as marked |
+| E11 | ToN: loop (trained head) vs E-GraphSAGE as published | +0.0890 [+0.0312, +0.1480] | **SEP** |
+| E12 | ToN: loop (prototype) vs same | +0.0378 [−0.0098, +0.0857] | **NOT-SEP** |
+| E13 | ToN: loop (trained head) vs E-GraphSAGE + node features | +0.0667 [−0.0181, +0.1505] | **NOT-SEP** two-level, **SEP** seed-matched (+0.0679 [+0.0189, +0.1156]); non-faithful variant |
+| E14 | ToN: GNN vs E-GraphSAGE as published | +0.0203 [−0.0230, +0.0633] | **NOT-SEP** |
+| E15 | ToN: AGAF vs E-GraphSAGE as published | −0.0061 [−0.0797, +0.0777] | **NOT-SEP** |
+| E16 | **ToN: LLM vs E-GraphSAGE as published** | **−0.1336 [−0.1773, −0.0939]** | **SEP-ADVERSE** |
+| E17 | ToN: LLM vs TE-G-SAGE + node features | −0.0724 [−0.1233, −0.0251] | **SEP-ADVERSE** |
+| E18 | **ToN headline**: the consultant change is what moves the loop across the line against E-GraphSAGE. Our structural rungs match that baseline rather than improving on it, and the prototype LLM rung is separated below it. | E11–E17 | must be reported, not softened |
+| E19 | The intervals are the **two-level bootstrap with BOTH sides at three seeds** (rung seed and baseline seed drawn independently, edges resampled). Seed-matched intervals are retained alongside. | `statistical_comparisons_3seed` / `seed_matched_comparisons_3seed`, schema 2 `[verified]` | **PT** |
+| E20 | The earlier claim "the loop is the *only* rung separated from the strongest UNSW baseline" is withdrawn: at three seeds AGAF is separated there too. | E9 | **RETRACTED** |
 
 ### E.3 The ~+0.60 UNSW margins
 
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
-| E20 | UNSW margins against E-GraphSAGE of ≈+0.60 are **ceiling-limited by the endpoint-only edge representation**, not architectural evidence. | `known_ceilings.e_graphsage_endpoint_only.reporting_rule` `[verified]`; archive §5.1, §5.5 | **PT** — do not lead with these numbers |
+| E21 | UNSW margins against E-GraphSAGE of ≈+0.60 are **ceiling-limited by the endpoint-only edge representation**, not architectural evidence. | `known_ceilings.e_graphsage_endpoint_only.reporting_rule` `[verified]`; archive §5.1, §5.5 | **PT** — do not lead with these numbers |
 
 ### E.4 Forced deviations D1–D5
 
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
-| E21 | Five deviations from the source papers were forced by our representation: no chronological split (D1); fanout/batch exceed the graph (D2); fixed epoch schedules replaced by 300 epochs / patience 25 (D3); `rare_min_freq=50` erases port categories at our scale (D4); E-GraphSAGE Eq. 4 vs released `W_msg([h_u ‖ e_uv])` (D5). | `deviations` list in both contracts; archive §5.4 `[verified]` | **PT** — reproduce the full table in Part 3 |
-| E22 | Baselines used the same rows, labels, folds and evaluation classes as our rungs. | `data_provenance` block with SHA-256 of `aggregated_edges.csv` and `folds.pt` `[verified]` | **PT** — the hashes are worth quoting |
-| E23 | Each paper's own categorical featurisation was preserved. | `preprocessing` block `[verified]` | **PT** |
+| E22 | Five deviations from the source papers were forced by our representation: no chronological split (D1); fanout/batch exceed the graph (D2); fixed epoch schedules replaced by 300 epochs / patience 25 (D3); `rare_min_freq=50` erases port categories at our scale (D4); E-GraphSAGE Eq. 4 vs released `W_msg([h_u ‖ e_uv])` (D5). | `deviations` list in both contracts; archive §5.4 `[verified]` | **PT** — reproduce the full table in Part 3 |
+| E23 | Baselines used the same rows, labels, folds and evaluation classes as our rungs. | `data_provenance` block with SHA-256 of `aggregated_edges.csv` and `folds.pt` `[verified]` | **PT** — the hashes are worth quoting |
+| E24 | Each paper's own categorical featurisation was preserved. | `preprocessing` block `[verified]` | **PT** |
 
 ---
 
@@ -350,7 +374,7 @@ still say "highest point estimate."
 |---|---|---|---|
 | B3 | The loop's semantic consultant is the per-fold trained head on CySecBERT embeddings; the LLM rung and AGAF keep the whitened prototype encoder. Parity rule: same encoder, graph, folds and seeds on every rung; the loop additionally trains a classification head. | `consultant_decision` and `architecture_parity_rule` in both contracts `[verified]` | **PT** |
 | B4 | The loop is separated above AGAF, the GNN and the prototype LLM rung on BOTH datasets. | `multi_seed.separated_comparisons_two_level` in both contracts `[verified]` | **SEP** |
-| B5 | The loop is NOT separated from the head alone it consults: −0.0030 [−0.024,+0.014] UNSW, −0.0028 [−0.039,+0.032] ToN, sign unstable across seeds; head alone has the higher mean on both. | `multi_seed.comparisons.feedback_vs_head_alone`, `loop_vs_head_alone_headline` `[verified]` | **PT** — must accompany B4 wherever B4 is stated |
+| B5 | The loop is NOT separated from the head alone it consults: −0.0030 [−0.024,+0.014] UNSW, −0.0028 [−0.039,+0.032] ToN, sign unstable across seeds; head alone has the higher mean on both. | `multi_seed.comparisons.feedback_vs_head_alone`, `loop_vs_head_alone_headline` `[verified]` | **NOT REPORTED** — author's scope decision 2026-09-11: the head is a component of the loop, not a comparative rung. The qualifier B4 needs is carried instead by the isolation experiment (§H), which is stronger because it holds for both consultants |
 | B6 | Five mechanism treatments on the prototype consultant were tried and none was kept (selector-head supervision, consultant temperature, reliability weighting, advice format, cross-fitting). | archive 2026-09-06 and 2026-09-07 sections `[verified]` | **PT** — this is the justification for B3 |
 | B7 | The head-consultant knobs are selected, not tuned: both curves flat within noise, ToN's injection_scale on the swept range's upper boundary. | `configuration.selection_curve_is_flat`, `scale_on_range_boundary` `[verified]` | **PT** — never write "tuned" |
 
@@ -366,18 +390,41 @@ still say "highest point estimate."
 | RQ4 — effect of topology, repeated endpoint pairs, imbalance, consultant strength | G3, I2, I3, J8, J9, H3 | Yes — repeated endpoint pairs and consultant strength are the strongest evidence; imbalance is v1-only |
 | RQ5 — vs published architectures re-trained on the same representation, and how much is representation/tuning vs architecture | E1–E19, F1–F5 | Yes — this is the best-evidenced RQ |
 
-RQ1, RQ2, RQ4 and the report-structure paragraph in `01_introduction.tex` are written
-single-dataset (NF-UNSW-NB15 only) and must be re-scoped to both datasets, per
-`WRITING_PLAN.md` Task 0. `REPORT_WORKFLOW.md` "Current scope" still restricts the report
-to NF-UNSW-NB15 and contradicts the accepted two-dataset scope.
+All five questions are answered in the manuscript, and the answers to RQ2 and RQ3 are
+negative. RQ2 was reworded in W6 to drop "outperform" and "robust" for the locked
+vocabulary. Both datasets are in scope throughout; the single-dataset wording that used to
+sit in RQ1, RQ2, RQ4 and the structure paragraph is gone.
 
 ---
 
-## Q. Open items carried into the next steps
+## Q. Open items — reviewed 2026-09-11 (W8)
 
-1. `EVIDENCE_STATE.md` is missing — reconcile if it exists elsewhere.
-2. Archive §1.3 calls the ToN random ablation "separated" against its own contract's CI (see §K).
-3. `REPORT_WORKFLOW.md` scope note contradicts the accepted two-dataset scope.
-4. L1 (trained-head baseline beats the full system) has no interval and no place in the current draft.
-5. `references.bib` holds 6 entries against roughly 30 needed.
-6. `figures/` and `tables/` are empty; two figures are load-bearing (the ceiling diagram, the decomposition staircase) and must be requested from the user per the diagram protocol.
+Closed since the original pass:
+
+1. `EVIDENCE_STATE.md` now exists and is reconciled against this file.
+2. `references.bib` holds 26 entries and every cited key resolves. No citation is missing.
+3. `tables/` is populated: nine fragments generated from the contracts by
+   `tables/make_tables.py`, with `--check` wired into `build.sh`.
+4. The two stale `limitations` entries in `results/{unsw_nb15,ton_iot}_current.json`
+   ("No rung comparison is statistically separated…" and the Finding-3 attribution sentence)
+   were corrected to the schema 5/7 facts, with the old text kept under `supersedes`.
+5. `REPORT_WORKFLOW.md` scope note and section-state table were brought into line with the
+   two-dataset report.
+
+Still open:
+
+6. `figures/` is empty. All nine figures are being drawn externally, one at a time, against
+   `figures/FIGURE_BRIEFS.md`. The manuscript compiles without them and each is wired in as
+   it lands.
+7. Three `[GAP]` markers stand in the manuscript: no interval between the two loop
+   configurations, no loop-versus-semantic comparison for the prototype consultant, and no
+   recorded consultant-versus-GNN disagreement split except for NF-ToN-IoT with the trained
+   head.
+8. Archive §1.3 calls the ToN random ablation "separated" against its own contract's CI.
+   That section is superseded and is not cited by the manuscript, but the archive text is
+   still wrong.
+9. `PROJECT_NOTES.md` still carries the rule "Report `head_alone` in every table", which the
+   manuscript no longer follows after the 2026-09-11 scope decision. `PROJECT_NOTES.md` is out of
+   git by design and was not edited; the divergence is recorded here and in `HANDOFF.md`.
+10. Fold-partition variance is still unmeasured. It is stated as a limitation rather than
+    resolved.

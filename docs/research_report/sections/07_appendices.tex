@@ -14,7 +14,8 @@ Three configurations of the loop were run at three seeds on both datasets, with 
 partition fixed. Condition A is the canonical prototype-consultant loop. Condition B trains
 the selector head whose entropy ranks edges and calibrates the consultant's temperature per
 fold instead of pinning it. Condition C re-selects the two knobs on top of B. The graph
-encoder and AGAF rungs are unaffected by any of the three and are shown for reference.
+encoder and AGAF rungs are unaffected by any of the three and are shown for reference in
+Table~\ref{tab:abc}.
 
 \begin{table}[htbp]
 \centering
@@ -60,8 +61,8 @@ uncertainty-ranked selector made the loop worse on both datasets.
 \subsection{What the canonical loop was actually injecting}
 \label{app:magnitudes}
 
-The quantity below is the mean absolute magnitude added to the 39-wide encoded edge vector on
-flagged edges, per seed. The encoded features have unit variance, so these numbers are
+Table~\ref{tab:magnitudes} gives the mean absolute magnitude added to the 39-wide encoded
+edge vector on flagged edges, per seed. The encoded features have unit variance, so these numbers are
 directly interpretable as a fraction of a standard deviation.
 
 \begin{table}[htbp]
@@ -93,7 +94,7 @@ from 20.0 to 10.0 while the end-to-end magnitude barely moved.
 The reliability-weighting treatment computes, for each class, the precision of the prototype
 consultant's argmax on the fold's training edges. The weights are a more useful result than
 the macro-F1 deltas they produced, because they quantify the consultant's weakness per class
-from training labels alone.
+from training labels alone. Table~\ref{tab:reliability} gives them.
 
 \begin{table}[htbp]
 \centering
@@ -205,7 +206,8 @@ regenerated with
 encoder changes. The fusion stage does not do it, and will otherwise train on stale
 embeddings.
 
-\paragraph{Result contracts.} Every number in this report traces to one of these files.
+\paragraph{Result contracts.} Every number in this report traces to one of the files in
+Table~\ref{tab:artifacts}.
 
 \begin{table}[htbp]
 \centering
