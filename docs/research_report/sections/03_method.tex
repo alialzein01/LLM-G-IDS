@@ -32,7 +32,7 @@ Each node carries ten centrality columns: betweenness, PageRank, degree, closene
 eigenvector, $k$-core, $k$-truss, global betweenness, global PageRank, and modularity
 vitality. These are computed on an unweighted IP-to-IP graph with self-loops removed.
 Betweenness (normalised), PageRank, closeness and eigenvector centrality are computed on the
-directed graph; degree is \emph{in-degree} centrality; $k$-core and $k$-truss are computed on
+directed graph. Degree is \emph{in-degree} centrality, and $k$-core and $k$-truss are computed on
 the undirected projection. Modularity vitality is the leave-one-node-out drop in modularity
 under a greedy modularity partition of the undirected projection. Eigenvector centrality and
 the truss decomposition fall back to constants when they fail to converge. A node's feature
@@ -42,7 +42,7 @@ source and destination roles.
 One property of this feature set should be stated rather than left for a reader to discover.
 On NF-UNSW-NB15 the ``global'' variants are populated from the same computation as their
 local counterparts, so \texttt{global\_betweenness} and \texttt{global\_pagerank} are exact
-duplicates of \texttt{betweenness} and \texttt{pagerank}; the ten columns span eight distinct
+duplicates of \texttt{betweenness} and \texttt{pagerank}. The ten columns span eight distinct
 measures. On NF-ToN-IoT, whose centralities were computed upstream, the global variants
 differ from the local ones. We report ten input channels because that is what the model
 receives, but the effective rank of the node features is lower on NF-UNSW-NB15.
@@ -81,12 +81,12 @@ scalers inside each training fold.
 \subsection{Structural Branch}
 
 Each structural encoder is a two-layer GATv2 network \citep{brody2022gatv2}. The first layer
-uses eight heads of width $64/8 = 8$, concatenated to 64; the second uses a single head of
+uses eight heads of width $64/8 = 8$, concatenated to 64. The second uses a single head of
 width 64. Both layers receive the 39-dimensional encoded edge vector as an attention input and
 add no self-loops. Each layer applies, in order, the GATv2 convolution, batch normalisation,
-an ELU nonlinearity, and a residual connection; dropout at $p = 0.2$ is applied before the
+an ELU nonlinearity, and a residual connection. Dropout at $p = 0.2$ is applied before the
 residual in the first layer only. The first layer's residual passes through a linear
-projection from the 10 input channels to 64; the second's is an identity. The final node
+projection from the 10 input channels to 64, and the second's is an identity. The final node
 embedding is 64-dimensional.
 
 We use GATv2 rather than GAT because of the static-attention limitation
@@ -96,7 +96,7 @@ GATv2 applies its attention MLP after the concatenation of both endpoints, which
 query-dependent ranking. On a graph with 49 nodes and heavy parallel-edge structure, that
 distinction is not cosmetic.
 
-Three encoders run in parallel --- \emph{temporal}, \emph{content}, and \emph{behavioural}.
+Three encoders run in parallel: \emph{temporal}, \emph{content} and \emph{behavioural}.
 They are architecturally identical and differ only in a fixed diagonal reweighting of the
 encoded edge vector, given in Table~\ref{tab:focus}. The protocol weight is broadcast across
 all 4 protocol-embedding dimensions and the port weight across all 32, so each variant keeps
@@ -107,7 +107,7 @@ follows, so a variant's emphasis shapes its message passing as well as its reado
 \begin{table}[t]
 \centering
 \caption{Per-variant edge focus weights. Applied as a fixed diagonal scaling of the encoded
-edge vector; the protocol and port weights are broadcast across their embedding blocks.}
+edge vector. The protocol and port weights are broadcast across their embedding blocks.}
 \label{tab:focus}
 \begin{tabular}{lccccc}
 \toprule
@@ -139,15 +139,15 @@ variant's reweighted edge vector $\tilde{\mathbf{x}}_{e}$:
 
 The product and absolute-difference terms matter here. Endpoint concatenation alone cannot
 separate parallel edges, and 58.7\% of NF-UNSW-NB15 edges share an IP pair with at least one
-other edge; the elementwise terms are symmetric functions of the endpoints and do not fix
+other edge. The elementwise terms are symmetric functions of the endpoints and do not fix
 this on their own, but $\tilde{\mathbf{x}}_{e}$ does, by carrying the edge's own features into
 the classifier.
 
 Each variant projects $\mathbf{z}_{e}$ to 64 dimensions through a linear layer and ReLU. The
 three projections are concatenated and passed through a linear layer to 64, ReLU, and dropout,
-yielding the fused 64-dimensional edge embedding consumed by every downstream stage; a final
+yielding the fused 64-dimensional edge embedding consumed by every downstream stage. A final
 linear layer emits class logits. Each variant additionally carries its own classification head
---- a two-layer MLP over $\mathbf{z}_{e}$ with a 64-unit hidden layer, ReLU and dropout ---
+, a two-layer MLP over $\mathbf{z}_{e}$ with a 64-unit hidden layer, ReLU and dropout,
 whose loss is added to the objective with weight $0.30$. The auxiliary term keeps each variant
 directly supervised rather than letting the fusion layer absorb all gradient.
 
@@ -163,7 +163,7 @@ from source \dots to destination \dots with \dots connection frequency, transfer
 \dots, \dots, over \dots, to a \dots port \dots''}
 
 Sentences are encoded by CySecBERT \citep{bayer2022cysecbert}, a BERT-class encoder
-domain-adapted to cybersecurity text. It is frozen throughout; no gradient reaches it. Inputs
+domain-adapted to cybersecurity text. It is frozen throughout. No gradient reaches it. Inputs
 are tokenised with padding and truncation at 128 tokens, and the final hidden states are
 mean-pooled with padding positions masked out, giving one 768-dimensional vector per edge.
 We use it strictly as a sentence encoder. It is not prompted, not asked to reason, and not
@@ -184,7 +184,7 @@ number. That head is the consultant the feedback loop uses, and, evaluated on it
 also the strongest single-modality baseline in this study. We report it in every table for
 that reason. A cross-fitted variant, in which training-edge logits come from an inner
 cross-validation so that the loop trains on advice no more reliable than the advice it is
-scored with, was implemented and measured; it scored lower on both datasets and is reported
+scored with, was implemented and measured. It scored lower on both datasets and is reported
 in Section~\ref{sec:results}, and the in-fold head is retained.
 
 Label freedom is enforced in code, not by convention. Before any sentence reaches the encoder,
@@ -196,7 +196,7 @@ of it.
 \subsection{Adaptive Gated Attention Fusion}
 
 AGAF projects each modality into a shared 128-dimensional space through a linear layer, batch
-normalisation and ReLU --- 64 to 128 for the structural embedding, 768 to 128 for the semantic
+normalisation and ReLU, so 64 to 128 for the structural embedding and 768 to 128 for the semantic
 one. A gate consumes the concatenated projections and emits two logits, softmaxed at
 temperature 1.0 into weights $(\alpha_{g}, \alpha_{l})$ that convexly combine them:
 
@@ -209,13 +209,13 @@ temperature 1.0 into weights $(\alpha_{g}, \alpha_{l})$ that convexly combine th
 The weights are per-edge, so the balance between structure and semantics is free to vary
 across the graph rather than being fixed at concatenation time. A two-layer MLP over
 $\mathbf{f}_{e}$ produces class logits. Both inputs are standardised before entering the
-module; the scalers are held in the trainer and persisted separately, so the module's
+module. The scalers are held in the trainer and persisted separately, so the module's
 \texttt{state\_dict} stays free of fitted statistics.
 
 One constraint on this stage is load-bearing. AGAF consumes \emph{per-fold out-of-fold}
 structural embeddings only. It never receives embeddings from a GNN fitted on all edges,
 because such a model has already seen the test edges' labels, and those labels would reach
-the fusion classifier through its own input features --- a leak that no split downstream of it
+the fusion classifier through its own input features. That is a leak no split downstream of it
 could detect. For each held-out fold, the structural embeddings supplied to AGAF come from a
 model that never saw that fold's labels. Earlier runs in this project violated this rule, and
 the reproduction entry point now enforces it.
@@ -235,7 +235,7 @@ curve rather than a tuned optimum, and we say so wherever they appear.
 
 \paragraph{Consultation.} The loop consults the per-fold trained head described in the
 semantic branch. For every flagged edge it reads that fold's stored head logits, a
-$C$-dimensional class judgement computed from the edge's sentence alone; the judgement does
+$C$-dimensional class judgement computed from the edge's sentence alone. The judgement does
 not depend on the graph model's current belief about the edge, so the coupling is
 bidirectional in routing but not in content.
 
@@ -249,12 +249,12 @@ is not incidental: an earlier L2-normalise-average-renormalise scheme collapsed 
 spread until random and real advice became indistinguishable.
 
 The rule that keeps the comparison fair is stated once here and applied everywhere: every
-rung uses the same encoder, the same graph, the same folds and the same training seeds; the
+rung uses the same encoder, the same graph, the same folds and the same training seeds. The
 loop additionally trains a classification head on the semantic embeddings, and that head is
 reported alone. The loop was first built with the prototype scorer as its consultant, on the
 argument that a consultant the loop already contains would only be echoed. That
 configuration, and five attempts to make its advice usable, are reported as negative results
-in Section~\ref{sec:results}; the trained head replaced it after those measurements.
+in Section~\ref{sec:results}. The trained head replaced it after those measurements.
 
 \paragraph{Gating.} Being uncertain in the structural view does not make an edge a good
 candidate for semantic advice. Among the flagged edges we keep only the most confident half by
@@ -301,11 +301,11 @@ code path, with no semantic input at all.
 
 \paragraph{An alternative that was implemented and measured.} We also built a variant that adds
 the projected semantic signal to GATv2's unnormalised attention logits, before the per-edge
-softmax --- injecting into the attention mechanism rather than the edge representation. It is
+softmax, injecting into the attention mechanism rather than the edge representation. It is
 zero-initialised, so an untrained bias reproduces stock GATv2 exactly. It is evaluated under
 the identical protocol and reported in Section~\ref{sec:results} as a negative result. We
 retain it in the paper because the two variants isolate \emph{where} in the network a semantic
-signal must land in order to have any effect at all, which is a question the positive result
+signal must land to have any effect at all, which is a question the positive result
 alone does not answer.
 
 \subsection{Baseline Protocol}
@@ -313,7 +313,7 @@ alone does not answer.
 We compare against re-implementations of two published graph-based intrusion detectors,
 E-GraphSAGE \citep{lo2022egraphsage} and TE-G-SAGE \citep{tegsage2025}, retrained on the same
 aggregated edges, the same labels and the same folds. Each baseline keeps its own published
-featurisation rather than ours --- E-GraphSAGE standard-scales all five NetFlow columns;
+featurisation rather than ours. E-GraphSAGE standard-scales all five NetFlow columns,
 TE-G-SAGE applies log1p, standard scaling, correlation pruning at 0.995, and one-hot
 categoricals with rare-category folding.
 
@@ -321,22 +321,22 @@ Each baseline is run in three configurations. \texttt{as\_published} reproduces 
 implementation. \texttt{refit} re-selects capacity and schedule on our validation folds only.
 \texttt{plus\_node\_features} is deliberately non-faithful: it hands the baseline our ten
 centrality node features, isolating how much of any gap is representation rather than
-architecture. We label it as non-faithful wherever it appears; it is not E-GraphSAGE and it is
+architecture. We label it as non-faithful wherever it appears. It is not E-GraphSAGE and it is
 not TE-G-SAGE.
 
 Five deviations from the published specifications were unavoidable at this graph scale, and we
 record them rather than absorb them. (D1) TE-G-SAGE's chronological 60/30/10 split cannot be
-reconstructed, because aggregation collapses per-flow timestamps; our stratified folds are used
+reconstructed, because aggregation collapses per-flow timestamps. Our stratified folds are used
 for all models. (D2) TE-G-SAGE's neighbour fanout of $(25, 15)$ and batch size of 4096 both
 exceed the entire graph, so training is full-neighbourhood and full-batch. (D3) Both released
 implementations train for a fixed epoch count with no validation split and no early stopping
---- 4999 epochs for E-GraphSAGE, 20 for TE-G-SAGE --- which is incompatible with a protocol
-that selects on validation folds; baselines are given 300 epochs with patience 25 on validation
+, 4999 epochs for E-GraphSAGE and 20 for TE-G-SAGE, which is incompatible with a protocol
+that selects on validation folds. Baselines are given 300 epochs with patience 25 on validation
 macro-F1 and the best state restored. (D4) TE-G-SAGE's \texttt{rare\_min\_freq} of 50 removes
-almost every port category at our scale; it is applied as published in \texttt{as\_published}
+almost every port category at our scale. It is applied as published in \texttt{as\_published}
 and swept in \texttt{refit}. (D5) E-GraphSAGE's published Eq.~4 aggregates edge features alone,
 but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}_u \Vert
-\mathbf{e}_{uv}])$; we follow the code, since the published numbers came from it.
+\mathbf{e}_{uv}])$. We follow the code, since the published numbers came from it.
 
 One design variable is internal to the loop rather than a rung of the ladder: the identity of
 the semantic consultant. The loop was first built around the whitened prototype scorer, which
@@ -349,7 +349,7 @@ Two asymmetries remain and should be weighed when reading the comparison. Our ru
 under a focal objective with patience 40, whereas the baselines use class-weighted
 cross-entropy with patience 25, each keeping its own published loss. And E-GraphSAGE
 classifies an edge from $[\mathbf{h}_u \Vert \mathbf{h}_v]$ alone, so parallel edges between
-one IP pair are mathematically indistinguishable to it --- 58.7\% of NF-UNSW-NB15 edges and
+one IP pair are mathematically indistinguishable to it. That covers 58.7\% of NF-UNSW-NB15 edges and
 7.9\% of NF-ToN-IoT edges fall in such groups. That is an interaction between its architecture
 and our aggregated representation, not evidence that E-GraphSAGE is a weak detector, and we do
 not read it as one.
@@ -365,7 +365,7 @@ The primary metric is pooled out-of-fold macro-F1: each edge is predicted only w
 and the five sets of out-of-fold predictions are pooled before a single macro-F1 is computed.
 Model selection uses validation folds exclusively. The uncertainty threshold $k$ and the
 injection scale were selected per dataset by a validation sweep ($k \in [15, 35]$; scale
-$\in \{0.5, 1, 2, 5, 10, 20\}$) averaged across three seeds (42, 1, 2); the remaining
+$\in \{0.5, 1, 2, 5, 10, 20\}$) averaged across three seeds (42, 1, 2). The remaining
 architectural hyperparameters were fixed a priori and not swept. We note this as a limitation:
 $k$ was selected on rotating validation folds rather than by nested cross-validation, so the
 final estimate is not fully unbiased with respect to that one choice.
@@ -373,7 +373,7 @@ final estimate is not fully unbiased with respect to that one choice.
 Every rung is trained at three training seeds (42, 1, 2) with the fold partition held fixed at
 the seed-42 split, so all seeds score the same held-out edges and differ only in
 initialisation, dropout and data order. We report the mean and standard deviation of pooled
-out-of-fold macro-F1 over the three seeds; the standard deviation therefore measures
+out-of-fold macro-F1 over the three seeds. The standard deviation therefore measures
 training-seed variance at a fixed partition, not total uncertainty, since fold-partition
 variance is not measured. Pairwise differences between rungs use a two-level bootstrap with
 2{,}000 iterations: each iteration draws a training seed independently for each side and
@@ -391,14 +391,14 @@ Training uses AdamW with learning rate $10^{-3}$ and weight decay $5\times10^{-4
 epochs, early stopping with patience 40 on validation macro-F1 with the best state restored,
 and gradient clipping at norm 1.0. The objective is focal loss with $\gamma = 2.0$ and $\alpha$
 set to inverse-frequency class weights computed on the training fold, normalised to sum to the
-class count; classes absent from a training fold receive weight zero. Focal loss down-weights
+class count, and classes absent from a training fold receive weight zero. Focal loss down-weights
 already-correct examples, which matters when rare attack classes hold 12--35 edges against a
 benign majority. We do not additionally oversample: combining oversampling with these weights
 double-corrects the imbalance and collapses the fusion stage.
 
 Every run exports \texttt{OMP\_NUM\_THREADS=1}. Graph-attention message passing sums neighbour
 contributions in thread-completion order, and floating-point addition is not associative, so
-thread count alone moves pooled macro-F1 by roughly 0.012 at a fixed seed --- larger than
+thread count alone moves pooled macro-F1 by roughly 0.012 at a fixed seed, larger than
 several of the effects this paper reports. Semantic encoding is likewise pinned to a single
 device, because MPS and CPU produce slightly different embeddings and every downstream number
 inherits the difference.
