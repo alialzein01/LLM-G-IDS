@@ -10,6 +10,16 @@ if [ "${1:-}" = "watch" ]; then
     exec tectonic -X watch
 fi
 
+# Regenerate the figures and tables from the contracts, so a stale fragment
+# cannot survive a build. Both scripts read results/*.json only.
+PYGEN=../../.venv/bin/python
+[ -x "$PYGEN" ] || PYGEN=$(command -v python3)
+if [ -n "$PYGEN" ]; then
+    echo "--- figures and tables ---"
+    OMP_NUM_THREADS=1 "$PYGEN" figures/make_figures.py
+    OMP_NUM_THREADS=1 "$PYGEN" tables/make_tables.py
+fi
+
 # Number and vocabulary audit. A warning step: it reports, it does not block the
 # compile. Run scripts/check_report_numbers.py directly for the exit code.
 PYTHON=../../.venv/bin/python
