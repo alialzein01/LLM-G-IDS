@@ -39,3 +39,7 @@
 30        # TE-G-SAGE published chronological split, validation share
 11000     # port-vs-feature scale ratio under the v1 encoding bug; archive 4
 443       # example port number in the encoding discussion
+
+# --- test suite ---------------------------------------------------------------
+167       # passing tests; OMP_NUM_THREADS=1 python -m pytest tests/ -q, 2026-09-11
+359       # passing subtests in the same run
