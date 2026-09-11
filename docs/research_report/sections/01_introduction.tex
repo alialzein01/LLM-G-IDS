@@ -175,9 +175,9 @@ stage under one consistent protocol. The work makes five contributions.
     \item It implements and compares two multimodal stages: AGAF for parallel structural--
     semantic fusion, and uncertainty-guided semantic feedback that reintroduces semantic
     evidence into the edge representations of uncertain edges. The feedback loop consults
-    a classification head trained on the semantic embeddings; that head, evaluated alone,
-    is reported beside the loop as the strongest single-modality baseline, so the reader
-    can see whether the loop adds to its own consultant or only repeats it.
+    a classification head trained on the semantic embeddings. The loop is reported under that
+    consultant and under the weaker embedding-only scorer it was first built with, so the
+    reader can see how much of the result is the mechanism and how much is the consultant.
 
     \item It provides a controlled evaluation on NF-UNSW-NB15 and NF-ToN-IoT, including
     unimodal baselines, fusion comparisons, uncertainty-selection ablations, trained-head
@@ -196,12 +196,14 @@ stage under one consistent protocol. The work makes five contributions.
 The contribution is therefore not presented as a universal improvement over existing
 intrusion detectors. It is an implementation and controlled evaluation of a particular
 form of structural--semantic cooperation, together with evidence about its limits. The
-headline of that evidence is stated here so it is not mistaken for a footnote later: the
-feedback loop is the strongest system measured on both datasets, separated from the graph
-model, the fusion model and every re-trained baseline, and it is statistically
-indistinguishable from the semantic head it consults. The feedback channel is live and
-measurable; what it adds in accuracy beyond its consultant is, on these graphs, nothing we
-could separate from zero.
+headline of that evidence is stated here so it is not mistaken for a footnote later. With a
+trained semantic consultant the feedback loop is the highest rung on both datasets, separated
+from the graph model, from the fusion model and from every faithful re-trained baseline. With
+the weaker consultant it was first built with, none of those comparisons is separated at all.
+And when final-output fusion is removed, so that semantic evidence can reach the classifier
+only by re-entering the graph, neither consultant produces a gain we could separate from zero.
+The channel is live and measurable, and what the re-entry itself adds is, on these graphs,
+nothing we could distinguish from nothing.
 Deployment-valid evaluation remains open and requires graph construction in which edge
 identity can be determined without access to the target class.
 
