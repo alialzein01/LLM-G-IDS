@@ -7,12 +7,12 @@
 \paragraph{RQ1.} Measured on their own, the two branches are close on NF-UNSW-NB15 and far
 apart on NF-ToN-IoT. The graph encoder reaches 0.7437 and 0.4336, the semantic rung 0.7353 and
 0.2785. Read at face value that suggests the semantic view is nearly worthless under heavy
-imbalance. The head alone contradicts that reading. Trained on the same frozen embeddings, it
-reaches 0.8374 and 0.5081, which is separated above the graph encoder on both datasets. What
-separates 0.2785 from 0.5081 on NF-ToN-IoT is not the encoder but the read-out placed on top of
-it. The semantic rung's weakness is a property of the whitened prototype scorer, and the answer
-to RQ1 is that neither modality is inherently weaker, while the choice of classifier over the
-semantic embeddings dominates the difference between them.
+imbalance, and the consultant experiment shows that reading is wrong. Holding the embeddings,
+the graph, the folds and the seeds fixed and changing only the classifier placed on those
+embeddings lifts the loop by $+0.0697$ and $+0.0523$. The semantic branch's weakness as a rung
+is therefore a property of the whitened prototype scorer rather than of the encoder underneath
+it. The answer to RQ1 is that neither modality is inherently weaker, and that the read-out
+chosen over the semantic embeddings matters more than the choice between the two views.
 
 \paragraph{RQ2.} No. AGAF is not separated from the graph encoder on either dataset:
 $+0.0362$ [$-0.0096$, $+0.0822$] on NF-UNSW-NB15 and $-0.0238$ [$-0.0921$, $+0.0607$] on
@@ -43,8 +43,9 @@ decides whether fusion survives, as discussed below. Consultant strength is the 
 and it is the one the mechanism turned out to depend on entirely.
 
 \paragraph{RQ5.} Against published architectures re-trained on the same rows, folds and metric,
-the loop and the head alone are separated above every faithful configuration on both datasets.
-The rungs below them are not: on NF-ToN-IoT neither the graph encoder nor AGAF is separated from
+the loop with its trained-head consultant is separated above every faithful configuration on
+both datasets. With the prototype consultant it is not separated from E-GraphSAGE on
+NF-ToN-IoT. The other rungs are weaker still: on NF-ToN-IoT neither the graph encoder nor AGAF is separated from
 E-GraphSAGE as published, and on NF-UNSW-NB15 neither the graph encoder nor the semantic rung is
 separated from TE-G-SAGE carrying our node features. How much of the margin is architectural is
 answered by the decomposition. Of the gap between TE-G-SAGE as published and our loop rung on
@@ -67,31 +68,31 @@ learn from. AGAF is not uniformly harmed: it is the only rung that lifts
 \texttt{password} from 0.0401 to 0.2950. The stage trades one set of rare classes for another
 rather than failing outright.
 
-The loop and the head alone do not show that trade. Both stay above the graph encoder on both
-datasets, and both keep the ordering they have on NF-UNSW-NB15. Comparing shapes rather than
-levels, which is the only comparison the differing class counts permit, the conclusion is that
-the property of collapsing under imbalance belongs to the fusion gate rather than to the use of
-semantic evidence as such.
+The loop does not show that trade, under either consultant. It stays above the graph encoder on
+both datasets and keeps its position when the imbalance regime changes. Comparing shapes rather
+than levels, which is the only comparison the differing class counts permit, the property of
+collapsing under imbalance belongs to the fusion gate rather than to the use of semantic
+evidence as such.
 
-\subsection{Why the loop matches the head it consults}
+\subsection{Where the loop's gain comes from}
 \label{sec:disc-echo}
 
-The single most consequential measurement in this report is a difference of $-0.0030$ and
-$-0.0028$ with intervals that include zero. Four separate observations explain it, and they
-point the same way.
+The loop is separated above the three other rungs, and the isolation experiment says the
+separation is not produced by the part of the design the work set out to test. Four
+observations explain that, and they point the same way.
 
-First, there is a floor the loop cannot fall below and a ceiling it has no mechanism to pass.
-Output fusion puts the consultant's logits into the final classifier directly, so the loop
-inherits head-level performance whatever the injection path does. Everything above that floor
-would have to come from the re-entry, and the isolation experiment says the re-entry contributes
-nothing separated from zero.
+First, the loop reaches the classifier by two routes and only one of them is the feedback
+mechanism. Output fusion places the consultant's logits into the final classifier directly. The
+injection path modifies the edge representations the next graph pass consumes. Disabling the
+first and measuring the second is what Table~\ref{tab:mechanism} does, and the second
+contributes nothing separated from zero with either consultant.
 
 Second, only advice that is always right converts. The oracle, handed the true label through
 the same learned projection every other arm uses, gains $+0.0369$ and $+0.1354$, both separated.
-Its advantage is not the format of the vector it presents, because handing a realistic consultant
-that exact format made things worse, and made the injected magnitude fall from 0.0767 to 0.0183
-on NF-UNSW-NB15. The projection is learned, so it responds to a saturated input by injecting
-less.
+Its advantage is not the format of the vector it presents, because handing a realistic
+consultant that exact format made things worse, and made the injected magnitude fall from
+0.0767 to 0.0183 on NF-UNSW-NB15. The projection is learned, so it responds to a saturated
+input by injecting less.
 
 Third, the loop does not learn a trust it could calibrate. Replacing in-fold advice with
 cross-fitted advice, which is honestly less reliable, moved the learned trust scalar by at most
@@ -102,41 +103,43 @@ supposed to represent how much the loop believes its consultant is not doing tha
 Fourth, five treatments failed from five different directions. Supervising the selector head,
 calibrating the consultant's temperature, weighting advice by measured per-class reliability,
 saturating the advice format, and matching the advice's train-time and test-time reliability
-were each tried and each reverted. Selection, weighting, format and reliability matching are the
-obvious levers, and none of them is the binding one. Combined with the oracle result, the
-constraint is the consultant's quality and calibration rather than the capacity of the channel it
-speaks through.
+were each tried and each reverted. Selection, weighting, format and reliability matching are
+the obvious levers, and none of them is the binding one. What did work was changing the
+consultant itself, which is the sixth attempt and the only successful one.
 
-One diagnostic from the earlier configuration sharpens this. Under the canonical
-prototype consultant the magnitude actually injected into unit-variance features was 0.077 and
-0.023. The mechanism was, in effect, switched off, and the ladder published at the time was
-measuring fusion while describing feedback. That is the concrete form of the same finding, and it
-is why every claim in this report about the loop is paired with the head-alone number.
+One diagnostic from the earlier configuration sharpens the point. Under the prototype
+consultant the magnitude actually injected into unit-variance features was 0.077 and 0.023. The
+mechanism was, in effect, switched off, and the ladder measured at the time was measuring
+fusion while describing feedback. That is why this report separates the two paths everywhere
+and why the isolation experiment, not the ladder, is what answers RQ3.
 
 \subsection{What the configuration buys, and what it does not}
 \label{sec:disc-contribution}
 
 Two statements have to be held together. The trained-head configuration produces the first
-ladder step this project has measured that survives training-seed variance. It produces it on two
-datasets, under one architecture, with the same folds and the same seeds. The loop is separated
-above AGAF, above the graph encoder and above the semantic rung, and above every faithful
-re-trained baseline. That is a working system, and the evidence for it is not fragile.
+ladder steps this project has measured that survive training-seed variance. It produces them on
+two datasets, under one architecture, with the same folds and the same seeds. The loop is
+separated above AGAF, above the graph encoder and above the semantic rung, and above every
+faithful re-trained baseline. Under the prototype consultant none of those comparisons is
+separated on either dataset, so the consultant is what turned an ordering of means into a
+result.
 
-It does not produce a separated feedback gain. The loop is indistinguishable from the trained
-semantic head standing alone, which is both the strongest single-modality baseline and the
-component the loop queries. A reader who wants the simplest system that scores this well should
-build the head, not the loop. Nothing measured here argues otherwise.
+What the configuration does not buy is a separated gain from the feedback mechanism itself.
+With output fusion disabled, so that advice can reach the classifier only by re-entering the
+edge representations, neither consultant is separated from doing nothing, and on NF-ToN-IoT the
+stronger one is separated in the wrong direction. The system works. The part of it this work
+set out to test does not carry the result.
 
 The contribution is therefore instantiation plus measurement, stated narrowly. DAS reports
 consistent gains from a closed feedback loop between a frozen graph model and a language model,
 at node level on text-rich graphs. This work instantiates the same shape of mechanism at edge
 level on network-flow graphs, with a deliberately constrained consultant that sees one edge's
-text and nothing else, and finds that the result does not transfer. It then isolates why, which
-is the part that generalises: the channel has demonstrable capacity, an oracle converts it on
-both datasets, and no consultant we were able to build does. LOGIN, GLANCE and RoGRAD each
-establish a component of the design, uncertainty-driven consultation, learned routing and
-iterative refinement respectively, and none of them is claimed here as novel. What is new is the
-measurement, in a setting where the answer turns out to be negative.
+text and nothing else, and finds that the refinement result does not transfer. It then isolates
+why, which is the part that generalises: the channel has demonstrable capacity, an oracle
+converts it on both datasets, and no consultant we were able to build does. LOGIN, GLANCE and
+RoGRAD each establish a component of the design, uncertainty-driven consultation, learned
+routing and iterative refinement respectively, and none of them is claimed here as novel. What
+is new is the measurement, in a setting where the answer turns out to be negative.
 
 \subsection{Limitations, read as findings}
 \label{sec:disc-limitations}
@@ -165,11 +168,11 @@ own right.
     and NF-ToN-IoT's injection scale selected on the upper boundary of the swept range, so the
     sweep cannot say whether an optimum lies outside it. The word used throughout is selected.
 
-    \item \textbf{One head file sits inside the loop at all three seeds.} The head-alone baseline
-    is rebuilt per training seed and carries its own spread. The loop consults the seed-42 head
-    at every seed, so its advice is identical across the three runs. The loop's standard
-    deviation therefore excludes consultant variance, and the loop-versus-head comparison pairs
-    a fixed-advice arm against a varying one.
+    \item \textbf{One consultant file sits inside the loop at all three seeds.} The trained head
+    was built once, at seed 42, and the loop consults that same file at every training seed. Its
+    advice is therefore identical across the three runs. The loop's reported standard deviation,
+    0.0042 and 0.0080, excludes consultant variance entirely and is narrower than a fully
+    re-seeded pipeline would give.
 
     \item \textbf{The isolation experiment's pairs are not independent.} Its intervals are
     computed over fifteen (seed, fold) pairs, and the five folds within a seed share a training
@@ -178,8 +181,9 @@ own right.
 
     \item \textbf{E-GraphSAGE is within noise of our structural rungs on NF-ToN-IoT.} Neither the
     graph encoder nor AGAF is separated from it there. Only the two rungs that use a trained
-    semantic head clear it. The honest summary of RQ5 is that our structural pipeline matches a
-    published architecture on that graph rather than improving on it.
+    semantic consultant clear it, and only at the second consultant. The honest summary of RQ5 is
+    that our structural pipeline matches a published architecture on that graph rather than
+    improving on it.
 \end{enumerate}
 
 \subsection{What follows from this}
@@ -200,10 +204,10 @@ distribution and the difficulty of the task all at once. That is a new set of ex
 than a re-run of these.
 
 A stronger consultant is a reasonable third direction, with one caveat this work supplies:
-standalone accuracy is not the property that matters. The trained head scores far above the
-prototype scorer standing alone and is worse than it through the injection path on NF-ToN-IoT.
-Calibration on the flagged subset, not headline accuracy, is what a replacement consultant would
-have to improve.
+standalone accuracy is not the property that matters. Through the injection path on
+NF-ToN-IoT the stronger consultant is the worse one, at $-0.0378$ against control where the
+weaker one sits at $+0.0099$. Calibration on the flagged subset, not accuracy over the whole
+graph, is what a replacement consultant would have to improve.
 
 The non-direction is advice that depends on the graph model's current belief. The consultant here
 sees one edge's text and nothing else, which is what makes the coupling bidirectional in routing

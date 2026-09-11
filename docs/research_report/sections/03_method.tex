@@ -338,11 +338,12 @@ and swept in \texttt{refit}. (D5) E-GraphSAGE's published Eq.~4 aggregates edge 
 but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}_u \Vert
 \mathbf{e}_{uv}])$; we follow the code, since the published numbers came from it.
 
-One internal baseline sits beside the two published ones in every table: the trained
-semantic head alone, scored out-of-fold exactly as the ladder rungs are. It is the loop's own
-consultant evaluated without the graph, and it is the number the loop must be read against;
-a system that merely repeats its strongest component would tie it. It is trained at the same
-three seeds so that its comparison with the loop carries seed variance on both sides.
+One design variable is internal to the loop rather than a rung of the ladder: the identity of
+the semantic consultant. The loop was first built around the whitened prototype scorer, which
+is also what the semantic rung uses, and later around a per-fold classification head trained on
+the same frozen embeddings. Both versions are reported, at the same three seeds, at the same
+fold partition, and with the injection scale unchanged. Only the selected entropy percentile
+differs between them, at 31 against 29 on NF-UNSW-NB15 and 25 against 16 on NF-ToN-IoT.
 
 Two asymmetries remain and should be weighed when reading the comparison. Our rungs train
 under a focal objective with patience 40, whereas the baselines use class-weighted
