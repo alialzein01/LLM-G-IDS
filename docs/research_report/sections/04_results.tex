@@ -16,15 +16,6 @@ classes on NF-UNSW-NB15 and eight of ten on NF-ToN-IoT, where \texttt{dos} (4 ed
 \texttt{ransomware} (3 edges) remain in the graph for message passing but cannot survive a
 five-way split. Because the class counts differ, the two datasets' absolute levels are not
 comparable. Only the shape of the ladder is.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{fig_imbalance}
-\caption{Class sizes on a logarithmic axis. The two graphs differ by roughly a factor of 47 in most-to-least-frequent class ratio, which is the axis the cross-dataset comparison turns on.}
-\label{fig:imbalance}
-\end{figure}
-
-
 Each rung was trained at three seeds, 42, 1 and 2, with the fold partition held fixed at the
 seed-42 stratified split. Only training stochasticity varies, so the pooled out-of-fold edge
 set is identical across seeds, which is what makes the seed-matched bootstrap a paired
@@ -65,15 +56,6 @@ frozen semantic embeddings. Both versions are reported throughout, since the cha
 them is the largest single effect measured in this work.
 
 \input{tables/tab_ladder}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{fig_ladder}
-\caption{The four rungs on both datasets, with the loop shown under both consultants. Error bars are training-seed variance at a fixed fold partition and open circles are the three seeds. The panels have independent axes because the datasets score different numbers of classes.}
-\label{fig:ladder}
-\end{figure}
-
-
 The three fixed rungs behave differently on the two graphs. On NF-UNSW-NB15 they run AGAF,
 graph encoder, semantic rung. On NF-ToN-IoT they run graph encoder, AGAF, semantic rung, so AGAF
 falls below the rung it is meant to improve on. The semantic rung is the weakest on both, and by
@@ -93,15 +75,6 @@ dataset.]}
 Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into intervals.
 
 \input{tables/tab_comparisons}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{fig_comparisons}
-\caption{Rung comparisons as intervals. Filled markers mark intervals that exclude zero. Every loop comparison clears zero under the trained-head consultant and none does under the prototype.}
-\label{fig:comparisons}
-\end{figure}
-
-
 The table divides cleanly by consultant. Under the prototype scorer, \emph{nothing is separated
 on either dataset}. Every interval crosses zero, including the two where the loop carries the
 higher mean, and the answer to RQ3 in that configuration is that the ladder is an ordering of
@@ -152,15 +125,6 @@ only reach the classifier through the injection path under test. Table~\ref{tab:
 gives the result.
 
 \input{tables/tab_mechanism}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{fig_mechanism}
-\caption{The mechanism in isolation, output fusion disabled in every arm. Only the oracle converts the channel. The shaded band is the run-to-run drift measured without thread pinning.}
-\label{fig:mechanism}
-\end{figure}
-
-
 The oracle receives the true label at $\pm 4$ nats through the same projection every other arm
 uses. It is a deliberate leak and is a diagnostic only, never a performance figure. It gains
 $+0.0369$ [$+0.0097$, $+0.0618$] on NF-UNSW-NB15 and $+0.1354$ [$+0.0919$, $+0.1797$] on
@@ -315,15 +279,6 @@ Table~\ref{tab:decomposition} walks from the strongest published configuration t
 Every level is a three-seed mean, no step carries an interval, and no step is a separation claim.
 
 \input{tables/tab_decomposition}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{fig_decomposition}
-\caption{Decomposition of the NF-UNSW-NB15 gap against TE-G-SAGE. Point estimates only: no step carries an interval or a separation claim.}
-\label{fig:decomposition}
-\end{figure}
-
-
 Roughly 45\% of the naive gap is our choice of how to tune, roughly 30\% is our node features,
 and roughly 25\% is the architecture. Measured to AGAF instead of the loop, the architecture
 share is 15.1\%.
@@ -335,15 +290,6 @@ Macro-F1 averages over classes of very different sizes, so Table~\ref{tab:percla
 per-class picture with the class sizes beside it.
 
 \input{tables/tab_perclass}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{fig_perclass}
-\caption{Per-class differences against AGAF and against the graph encoder, three-seed means. Cells outlined in black are losses. No per-class difference carries an interval.}
-\label{fig:perclass}
-\end{figure}
-
-
 The loop is above AGAF on eight of ten NF-UNSW-NB15 classes. The two exceptions are
 Reconnaissance, 0.8731 against 0.8916, and Exploits, where the two are level to three decimals.
 On NF-ToN-IoT the loop is above AGAF on seven of eight, losing only \texttt{password} at 0.2100
