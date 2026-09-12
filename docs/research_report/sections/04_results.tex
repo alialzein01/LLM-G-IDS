@@ -56,7 +56,16 @@ frozen semantic embeddings. Both versions are reported throughout, since the cha
 them is the largest single effect measured in this work.
 
 \input{tables/tab_ladder}
-The three fixed rungs behave differently on the two graphs. On NF-UNSW-NB15 they run AGAF,
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_ladder}
+\caption{The four rungs on both datasets, with the loop drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic rung is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant loop, for which per-seed values are reported but no interval was measured. The two panels have independent y-axes and their absolute heights are not comparable.}
+\label{fig:ladder}
+\end{figure}
+
+Figure~\ref{fig:ladder} draws the same numbers. The three fixed rungs behave differently on
+the two graphs. On NF-UNSW-NB15 they run AGAF,
 graph encoder, semantic rung. On NF-ToN-IoT they run graph encoder, AGAF, semantic rung, so AGAF
 falls below the rung it is meant to improve on. The semantic rung is the weakest on both, and by
 a much wider margin under NF-ToN-IoT's imbalance, where the prototype scorer reaches 0.2785
@@ -75,7 +84,15 @@ dataset.]}
 Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into intervals.
 
 \input{tables/tab_comparisons}
-The table divides cleanly by consultant. Under the prototype scorer, \emph{nothing is separated
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_comparisons}
+\caption{Every ladder comparison as an interval, under each consultant. A difference counts as separated only when the interval excludes zero, shown by a filled marker. The primary two-level procedure resamples edges and training seed; the seed-matched procedure resamples edges alone. Under the trained head every loop comparison clears zero on both datasets; under the prototype consultant none does. Colours follow the rung the comparison is about, with the prototype group in a lighter tint.}
+\label{fig:comparisons}
+\end{figure}
+
+Figure~\ref{fig:comparisons} draws the same intervals. The table divides cleanly by consultant. Under the prototype scorer, \emph{nothing is separated
 on either dataset}. Every interval crosses zero, including the two where the loop carries the
 higher mean, and the answer to RQ3 in that configuration is that the ladder is an ordering of
 means and no more.
@@ -125,6 +142,15 @@ only reach the classifier through the injection path under test. Table~\ref{tab:
 gives the result.
 
 \input{tables/tab_mechanism}
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_mechanism}
+\caption{The injection path measured with output fusion disabled in every arm, so advice can reach the classifier only through the path under test. Filled markers mark intervals that exclude zero. The shaded band is the documented run-to-run drift without thread pinning, $\pm 0.012$ macro-F1. Only the oracle converts the channel on both datasets; on NF-ToN-IoT the trained-head consultant is separated in the wrong direction.}
+\label{fig:mechanism}
+\end{figure}
+
+Figure~\ref{fig:mechanism} draws the four arms.
 The oracle receives the true label at $\pm 4$ nats through the same projection every other arm
 uses. It is a deliberate leak and is a diagnostic only, never a performance figure. It gains
 $+0.0369$ [$+0.0097$, $+0.0618$] on NF-UNSW-NB15 and $+0.1354$ [$+0.0919$, $+0.1797$] on
@@ -228,6 +254,14 @@ per-flow graphs roughly 300 times larger. Table~\ref{tab:baselines} gives the po
 
 \input{tables/tab_baselines}
 
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_ceiling}
+\caption{Why E-GraphSAGE collapses on one dataset and not the other. Its edge classifier reads only the concatenated endpoint embeddings, so parallel edges between one address pair are identical to it. The share of edges that are indistinguishable in this sense differs by roughly a factor of seven between the two graphs, and the scores invert with it. Both bars are grey because neither is one of our rungs.}
+\label{fig:ceiling}
+\end{figure}
+
+
 The collapse of E-GraphSAGE on NF-UNSW-NB15 is a representation effect with a testable
 prediction attached, not evidence that the architecture is weak. Its edge classifier reads only the
 concatenation $[h_u \Vert h_v]$ of the two endpoint embeddings. An edge's own attributes never
@@ -236,7 +270,8 @@ collapse
 proportional to how common parallel edges are. On NF-UNSW-NB15, 385 of 656 edges are
 indistinguishable by endpoints, that is 58.7\%, and the architecture scores 0.1194. On
 NF-ToN-IoT only 167 of 2{,}127 edges are, that is 7.9\%, and the same architecture scores
-0.4141. The prediction and the inversion agree.
+0.4141. The prediction and the inversion agree, and Figure~\ref{fig:ceiling} shows the mechanism
+beside the confirmation.
 The ceiling is also not a training-schedule artifact: trained to the authors' full 4{,}999
 epochs on fold 0, validation macro-F1 plateaus near 0.11 and peaks at 0.1384 at epoch 1{,}400.
 
@@ -261,7 +296,16 @@ Table~\ref{tab:decomposition} walks from the strongest published configuration t
 Every level is a three-seed mean, no step carries an interval, and no step is a separation claim.
 
 \input{tables/tab_decomposition}
-Roughly 45\% of the naive gap is our choice of how to tune, roughly 30\% is our node features,
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_decomposition}
+\caption{The NF-UNSW-NB15 margin against TE-G-SAGE as published, decomposed. Roughly 45\% of the gap is our choice of how to tune, 30\% is our ten node centralities, and 25\% is the architecture. The tick on the final increment marks where AGAF lands on the same scale. Every level is a three-seed mean; no step carries an interval and no step is a separation claim.}
+\label{fig:decomposition}
+\end{figure}
+
+Figure~\ref{fig:decomposition} draws the walk. Roughly 45\% of the naive gap is our choice of
+how to tune, roughly 30\% is our node features,
 and roughly 25\% is the architecture. Measured to AGAF instead of the loop, the architecture
 share is 15.1\%.
 
@@ -270,6 +314,15 @@ share is 15.1\%.
 
 Macro-F1 averages over classes of very different sizes. Table~\ref{tab:perclass} in
 Appendix~\ref{app:perclass} gives the per-class picture with the class sizes beside it.
+Figure~\ref{fig:perclass} gives the differences the Discussion argues about.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_perclass}
+\caption{Per-class differences between the loop and the two rungs below it, three-seed means, with class sizes in brackets. The scale is centred at zero and a black outline marks a loss. No per-class difference carries an interval, and on classes of 12 to 40 edges a single edge moves F1 substantially.}
+\label{fig:perclass}
+\end{figure}
+
 
 The loop is above AGAF on eight of ten NF-UNSW-NB15 classes. The two exceptions are
 Reconnaissance, 0.8731 against 0.8916, and Exploits, where the two are level to three decimals.

@@ -15,6 +15,16 @@ The pipeline converts flow records into a graph, derives node and edge attribute
 edge-level structural model, builds label-free semantic representations for the same edges,
 and combines the two modalities through adaptive fusion. Every classification decision is
 edge-level: a flow, or an aggregate of flows sharing a grouping key, is an edge, never a node.
+Figure~\ref{fig:architecture} shows the whole pipeline and the four points at which it is
+scored.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_architecture}
+\caption{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback loop. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
+\label{fig:architecture}
+\end{figure}
+
 
 \subsection{Directed Multigraph Construction}
 
@@ -58,6 +68,15 @@ same IP pair that differ only in their label become two distinct edges, and a de
 observing unlabelled traffic could not perform this separation. The scores reported in this
 work therefore compare representations and mechanisms under a controlled protocol. They are
 not deployment-valid detection estimates, and we do not present them as such.
+Figure~\ref{fig:imbalance} gives the resulting class sizes on both graphs.
+
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_imbalance}
+\caption{Class sizes on a logarithmic axis, largest first. NF-UNSW-NB15 has one class at or below 35 edges; NF-ToN-IoT has seven. The two smallest NF-ToN-IoT classes stay in the graph for message passing and are excluded from the metric. The two graphs differ by roughly a factor of 47 in the ratio of the largest class to the smallest scored class.}
+\label{fig:imbalance}
+\end{figure}
 
 \subsection{Edge Feature Encoding}
 
@@ -224,6 +243,15 @@ the reproduction entry point now enforces it.
 
 The feedback stage routes semantic information to the edges the structural model is least sure
 about, and only there.
+Figure~\ref{fig:loopflow} gives the stage as it runs.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_loop_flow}
+\caption{One pass of the feedback loop. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce.}
+\label{fig:loopflow}
+\end{figure}
+
 
 \paragraph{Selection.} For each edge we compute the Shannon entropy, in nats, of the GNN's
 predictive distribution, and flag the edges above the $(1 - k/100)$ quantile. The threshold is

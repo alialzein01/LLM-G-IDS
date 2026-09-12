@@ -1,0 +1,32 @@
+% Shared preamble for every TikZ figure in the report.
+% Colours are Okabe-Ito, with roles fixed across all nine figures.
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric,shapes.misc,decorations.pathreplacing,patterns}
+
+\definecolor{cGraph}{HTML}{0072B2}
+\definecolor{cSem}{HTML}{E69F00}
+\definecolor{cFuse}{HTML}{009E73}
+\definecolor{cLoop}{HTML}{D55E00}
+\definecolor{cOracle}{HTML}{CC79A7}
+\definecolor{cNeutral}{HTML}{999999}
+\definecolor{cInk}{HTML}{222222}
+
+\tikzset{
+  every picture/.style={line width=0.5pt},
+  box/.style={draw=cNeutral!90!black, fill=cNeutral!8, rounded corners=1.6pt,
+              align=center, inner sep=3.2pt, font=\small, text=cInk},
+  gbox/.style={box, draw=cGraph, fill=cGraph!7},
+  sbox/.style={box, draw=cSem!80!black, fill=cSem!12},
+  fbox/.style={box, draw=cFuse, fill=cFuse!8},
+  lbox/.style={box, draw=cLoop, fill=cLoop!8},
+  ann/.style={font=\scriptsize, text=cInk, align=center, inner sep=1.5pt},
+  flow/.style={-{Stealth[length=4pt,width=3.2pt]}, draw=cNeutral!85!black},
+  gflow/.style={flow, draw=cGraph},
+  sflow/.style={flow, draw=cSem!85!black},
+}
+
+% Figure labels are short; never hyphenate them.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
