@@ -11,12 +11,24 @@ if [ "${1:-}" = "watch" ]; then
 fi
 
 # Regenerate the table fragments from the contracts, so a stale fragment cannot
-# survive a build. Figures are drawn externally and are not generated here.
+# survive a build.
 PYGEN=../../.venv/bin/python
 [ -x "$PYGEN" ] || PYGEN=$(command -v python3)
 if [ -n "$PYGEN" ]; then
     echo "--- tables ---"
     OMP_NUM_THREADS=1 "$PYGEN" tables/make_tables.py
+fi
+
+# Figures. The six data plots come from one script; the three diagrams are
+# standalone TikZ documents. Pass "figures" to redraw them, which needs tectonic
+# and takes a few seconds; otherwise the committed PDFs are used as they are.
+if [ "${1:-}" = "figures" ]; then
+    echo "--- figures ---"
+    OMP_NUM_THREADS=1 "$PYGEN" figures/src/make_plots.py
+    for f in fig_architecture fig_loop_flow fig_ceiling; do
+        (cd figures/src && tectonic -c minimal "$f.tex" --outdir .. >/dev/null)
+        echo "  $f.pdf"
+    done
 fi
 
 # Number and vocabulary audit. A warning step: it reports, it does not block the

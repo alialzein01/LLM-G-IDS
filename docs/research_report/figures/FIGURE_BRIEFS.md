@@ -4,28 +4,24 @@ Nine figures. Each entry has a **description** (what it is for and what it must 
 **prompt** that can be handed to a generating agent on its own. Every number needed is inside
 the prompt, so no prompt requires access to this repository.
 
-Status: **approved. All nine are drawn externally, one at a time.**
+Status: **all nine are drawn and wired into the manuscript.**
 
-## How to use this file
+## How the figures are built
 
-Each figure is generated on its own. Hand the generating agent the **Prompt** block for one
-figure plus the **Conventions** section below, and nothing else. The prompts are
-self-contained: every number a figure needs is written into its prompt, so the agent does not
-need to open a contract or any other file in this repository.
+Nothing here is drawn by hand any more. The sources live in `figures/src/`:
 
-**Where the output goes.** Save the result into `docs/research_report/figures/` under exactly
-the filename in that figure's heading, for example `fig_ladder.pdf`. Nothing else needs to
-move, and the file does not need to be sent anywhere: it is read from that directory when the
-figure is wired into the manuscript. A figure that is not yet drawn is simply absent, and the
-report compiles without it.
+- `make_plots.py` draws the six data figures (3, 4, 6, 7, 8, 9) with matplotlib, writing
+  `fig_*.pdf` one directory up. The values it plots are transcribed from the prompts below.
+- `fig_architecture.tex`, `fig_loop_flow.tex` and `fig_ceiling.tex` are standalone TikZ
+  documents for the three explanatory diagrams (1, 2, 5), compiled with tectonic. They share
+  `_preamble.tex`, which fixes the palette and the box and arrow styles.
 
-**After a figure lands**, it gets checked against the contracts and given a caption, a label
-and a position in the text. That is a separate step from drawing it, and it is where a wrong
-number or a mislabelled axis is caught.
+Redraw everything with `./build.sh figures`. A plain `./build.sh` uses the committed PDFs,
+which is what a normal compile wants.
 
-**Suggested order.** Figures 1, 2 and 5 are the explanatory diagrams and carry the most weight
-per unit of effort, so draw those first. Then 3, 6 and 7, which are the results the report
-turns on. Then 4, 8 and 9.
+The **Prompt** blocks below are kept as the specification each figure was drawn against: they
+record what the figure must show and every number it may contain. They are no longer handed to
+anything; they are what a reviewer checks a figure against.
 
 ---
 
