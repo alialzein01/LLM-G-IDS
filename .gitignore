@@ -41,3 +41,5 @@ results/dev/**/*.npy
 results/dev/**/run.log
 results/dev/**/*.log
 results/knob_selection_head/**/metrics.json
+docs/research_report/build/*.log
+docs/research_report/build/*.blg
