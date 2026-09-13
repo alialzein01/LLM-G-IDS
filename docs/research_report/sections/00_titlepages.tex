@@ -1,0 +1,132 @@
+% Cover pages, English then French, following the faculty template
+% "PAGE de garde AN-FR.doc" supplied by the supervisor.
+% Fields still to be filled print as the template's dotted rules.
+
+\newcommand{\tbd}[1]{\leavevmode\hbox to #1{\dotfill}}
+
+% The body runs at one-and-a-half spacing with a paragraph skip; both are
+% switched off here, or each cover spills onto a second page.
+\newcommand{\coversetup}{%
+  \singlespacing
+  \setlength{\parskip}{0pt}%
+  \setlength{\parindent}{0pt}%
+  \thispagestyle{empty}%
+}
+
+%% ------------------------------------------------------------------ English
+\begin{titlepage}
+\centering
+\coversetup
+
+\noindent
+\begin{minipage}{0.25\textwidth}\raggedright
+  \includegraphics[height=1.9cm]{logos/ul_seal.png}
+\end{minipage}%
+\hfill
+\begin{minipage}{0.25\textwidth}\raggedleft
+  \includegraphics[height=1.9cm]{logos/fs_doyen_en.png}
+\end{minipage}
+
+\vspace{1.0cm}
+{\Large\bfseries MASTER THESIS\par}
+
+\vspace{0.55cm}
+{\large In Order to Obtain the\par}  % numcheck: allow -- verbatim from the faculty template
+
+\vspace{0.55cm}
+{\Large\bfseries RESEARCH MASTER\par}
+\vspace{0.25cm}
+{\large in\par}
+\vspace{0.25cm}
+{\Large\bfseries Data Science\par}
+
+\vspace{0.9cm}
+{\large Presented and defended by:\par}
+\vspace{0.35cm}
+{\large\bfseries \reportauthor\par}
+
+\vspace{0.55cm}
+{\large On \tbd{2.2cm}, \tbd{2.6cm} \tbd{1.2cm}, 2026\par}
+
+\vspace{0.9cm}
+{\large\bfseries Title\par}
+\vspace{0.4cm}
+{\large\itshape \reporttitle\par}
+\vspace{0.2cm}
+{\large\itshape \reportsubtitle\par}
+
+\vspace{0.9cm}
+{\large\bfseries Supervisor\par}
+\vspace{0.2cm}
+{\large \supervisortitleen~\reportsupervisor\par}
+
+\vspace{0.6cm}
+{\large\bfseries Reviewers\par}
+\vspace{0.2cm}
+{\large Dr.~\tbd{4.6cm}\par}
+\vspace{0.12cm}
+{\large Dr.~\tbd{4.6cm}\par}
+
+\vfill
+{\large Lebanese University -- Faculty of Sciences\par}
+
+\end{titlepage}
+
+%% ------------------------------------------------------------------- French
+\begin{titlepage}
+\centering
+\coversetup
+
+\noindent
+\begin{minipage}{0.25\textwidth}\raggedright
+  \includegraphics[height=1.9cm]{logos/ul_seal.png}
+\end{minipage}%
+\hfill
+\begin{minipage}{0.25\textwidth}\raggedleft
+  \includegraphics[height=1.9cm]{logos/fs_doyen_fr.png}
+\end{minipage}
+
+\vspace{1.0cm}
+{\Large\bfseries M\'EMOIRE\par}
+
+\vspace{0.55cm}
+{\large En vue de l'obtention du\par}
+
+\vspace{0.55cm}
+{\Large\bfseries MASTER RECHERCHE\par}
+\vspace{0.25cm}
+{\large En\par}
+\vspace{0.25cm}
+{\Large\bfseries Data Science\par}
+
+\vspace{0.9cm}
+{\large Pr\'esent\'e et soutenu par :\par}
+\vspace{0.35cm}
+{\large\bfseries \reportauthor\par}
+
+\vspace{0.55cm}
+{\large Le \tbd{2.2cm}, \tbd{2.6cm} \tbd{1.2cm} 2026\par}
+
+\vspace{0.9cm}
+{\large\bfseries Titre\par}
+\vspace{0.4cm}
+{\large\itshape \reporttitlefr\par}
+\vspace{0.2cm}
+{\large\itshape \reportsubtitlefr\par}
+
+\vspace{0.9cm}
+{\large\bfseries Encadrant\par}
+\vspace{0.2cm}
+{\large \supervisortitlefr~\reportsupervisor\par}
+
+\vspace{0.6cm}
+{\large\bfseries Lecteurs\par}
+\vspace{0.2cm}
+{\large Dr.~\tbd{4.6cm}\par}
+\vspace{0.12cm}
+{\large Dr.~\tbd{4.6cm}\par}
+
+\vfill
+{\large Universit\'e Libanaise -- Facult\'e des Sciences\par}
+
+\end{titlepage}
