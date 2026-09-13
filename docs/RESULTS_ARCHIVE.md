@@ -10,6 +10,25 @@ is a duplicate; `CLAUDE.md` carries the *rules and traps*, this carries the *rec
 **Authoritative numbers always live in `results/*.json`.** If this file and a contract
 disagree, the contract wins and this file is stale.
 
+### The trail: what was tried, what it cost, what it bought
+
+If you are here to see whether the work was investigated rather than guessed, read these
+six entries in order. Together they are the record of one mechanism being pushed until it
+either worked or was shown not to.
+
+| # | Entry | What was attempted | Outcome |
+|---|---|---|---|
+| 1 | §2.1 | Inject advice through the attention bias | Inert. Churn exactly 0.0000 in every configuration, even handed the true label. Structural, confirmed three times |
+| 2 | §2.2 | Show the edge-injection channel beats no advice at all | **Retracted.** Sensitive to advice *content*, but real advice does not measurably beat none |
+| 3 | §2.4 | Ask whether the channel itself has capacity, using an oracle consultant | It does, on both datasets, and both separated. So the limit is not the mechanism |
+| 4 | 2026-09-06 | Fix the two broken signals the loop depended on: train the selector head, calibrate the consultant's temperature | Both defects genuinely removed, and the loop got **worse** on both datasets |
+| 5 | 2026-09-07 | Five further treatments on the same consultant: selector supervision, temperature, reliability weighting, advice format, cross-fitting | All five negative, each from a different angle. The table below is the case for what came next |
+| 6 | 2026-09-07 | Change the consultant itself, from the embedding-only prototype to a per-fold trained head | +0.0697 UNSW and +0.0523 ToN, and every ladder comparison becomes separated |
+
+The improvement in step 6 is only meaningful because steps 1 to 5 are on the record. A
+report that showed only step 6 would be claiming a lucky configuration; the archive is what
+turns it into a diagnosis.
+
 ---
 
 ## 2026-09-07 — Canonical loop redefined: trained-head consultant
@@ -243,13 +262,27 @@ a cause without checking. Candidates: the fusion-dim fix changed AGAF's effectiv
 v2's port/protocol embeddings interact badly with ToN's much sparser graph (1501 nodes vs
 UNSW's 49).
 
-### 1.3 ToN loop reads the advice (ladder-level ablation)
+### 1.3 ToN loop reads the advice (ladder-level ablation) — SUPERSEDED, corrected 2026-09-13
 
-Real feedback loop 0.4478 vs `random`-advice ablation 0.4046, mean_diff +0.0428, P=0.972 —
-separated, unlike the v1-encoding run where real and random were statistically
-indistinguishable. See `feedback_ablations` in `results/ton_iot_current.json`. Note this is the
-*ladder-level* ablation (fusion on), which is a different experiment from the mechanism-only
-test in §2.
+**The numbers first written here (real 0.4478, random 0.4046, mean_diff +0.0428, "P=0.972")
+were from a single pre-multiseed run and are not in any contract. Do not quote them.** Two
+further problems with the original entry: it pointed at a key called `feedback_ablations`,
+which does not exist, and it wrote a bootstrap `prob_positive` as "P", which reads as a
+p-value and is not one.
+
+The live figures are under `feedback_ablations_per_seed` in `results/ton_iot_current.json`,
+three seeds, pooled OOF macro-F1:
+
+| consultant | real (42 / 1 / 2) | random (42 / 1 / 2) |
+|---|---|---|
+| trained head (canonical) | 0.4985 / 0.5012 / 0.5135 | 0.4002 / 0.3790 / 0.4067 |
+| prototype (superseded, under `supersedes`) | 0.4414 / 0.4509 / 0.4641 | 0.3966 / 0.3626 / 0.4065 |
+
+The finding the heading claims survives the correction and is stronger than the original
+entry stated: real advice beats random advice at every seed under both consultants. What the
+entry must not be read as is evidence that the loop beats *no* advice through the injection
+path -- that is §2.2, and it is retracted. This is the *ladder-level* ablation with output
+fusion on, a different experiment from the mechanism-only test in §2.
 
 ---
 
