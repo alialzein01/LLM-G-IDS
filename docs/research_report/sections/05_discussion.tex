@@ -5,20 +5,20 @@
 \label{sec:disc-rqs}
 
 \paragraph{RQ1.} Measured on their own, the two branches are close on NF-UNSW-NB15 and far
-apart on NF-ToN-IoT. The graph encoder reaches 0.7437 and 0.4336, the semantic rung 0.7353 and
+apart on NF-ToN-IoT. The GNN model reaches 0.7437 and 0.4336, the semantic model 0.7353 and
 0.2785. At face value that suggests the semantic view is nearly worthless under heavy imbalance.
 The consultant experiment shows the reading is wrong: holding the embeddings, the graph, the folds
-and the seeds fixed, and changing only the classifier placed on those embeddings, lifts the loop by
+and the seeds fixed, and changing only the classifier placed on those embeddings, lifts the feedback model by
 $+0.0697$ and $+0.0523$. The semantic branch's weakness as a rung therefore traces to the whitened
 prototype scorer, not to the encoder underneath it. Neither modality is inherently weaker, and the
 read-out chosen over the semantic embeddings matters more than the choice between the two views.
 
-\paragraph{RQ2.} No. AGAF is not separated from the graph encoder on either dataset:
+\paragraph{RQ2.} No. The fusion model is not separated from the GNN model on either dataset:
 $+0.0362$ [$-0.0096$, $+0.0822$] on NF-UNSW-NB15 and $-0.0238$ [$-0.0921$, $+0.0607$] on
 NF-ToN-IoT. The point estimates even disagree in sign. Under the seed-matched procedure the
 NF-UNSW-NB15 difference is separated, and stating that is more useful than hiding it, because it
 locates the uncertainty precisely. At a fixed pair of training seeds the fusion stage looks like an
-improvement; admit training-seed variance and it stops looking like one. Under the rule fixed
+improvement. Admit training-seed variance and it stops looking like one. Under the rule fixed
 before the runs, gated attention fusion does not deliver a separated gain over the structural
 branch it fuses.
 
@@ -28,8 +28,8 @@ with every interval excluding zero. With the mechanism isolated, by disabling ou
 advice can only arrive through the injection path, it adds nothing that survives a bootstrap. The
 embedding-only consultant is at $-0.0046$ and $+0.0099$ against control, and the trained head is
 at $+0.0007$ and $-0.0378$, the last of those a separated regression. The ladder-level ablation
-measures fusion and injection together; the isolation experiment shows which of the two carries
-it. The loop's advantage over feedback-off is consistent with semantic evidence being available at
+measures fusion and injection together. The isolation experiment shows which of the two carries
+it. The feedback model's advantage over feedback-off is consistent with semantic evidence being available at
 the classifier at all, not with the re-entry path being what converts it.
 
 \paragraph{RQ4.} Three of the four factors measured bind. Topology decides whether the
@@ -42,14 +42,14 @@ decides whether fusion survives, as discussed below. The fourth factor is consul
 and the mechanism turned out to depend on it entirely.
 
 \paragraph{RQ5.} Against published architectures re-trained on the same rows, folds and metric,
-the loop with its trained-head consultant is separated above every faithful configuration on
+the feedback model with its trained-head consultant is separated above every faithful configuration on
 both datasets. With the prototype consultant it is not separated from E-GraphSAGE on
-NF-ToN-IoT. The other rungs are weaker still. On NF-ToN-IoT neither the graph encoder nor AGAF is
-separated from E-GraphSAGE as published; on NF-UNSW-NB15 neither the graph encoder nor the
-semantic rung is separated from TE-G-SAGE carrying our node features. The decomposition says how
-much of the margin is architectural. Of the gap between TE-G-SAGE as published and our loop rung on
+NF-ToN-IoT. The other rungs are weaker still. On NF-ToN-IoT neither the GNN model nor the fusion model is
+separated from E-GraphSAGE as published. On NF-UNSW-NB15 neither the GNN model nor the
+semantic model is separated from TE-G-SAGE carrying our node features. The decomposition says how
+much of the margin is architectural. Of the gap between TE-G-SAGE as published and our feedback model rung on
 NF-UNSW-NB15, roughly 45\% is attributable to tuning the graph scale and schedule, roughly 30\%
-to our node features, and roughly 25\% to the architecture. Measured to AGAF instead the
+to our node features, and roughly 25\% to the architecture. Measured to the fusion model instead the
 architectural share is 15.1\%. A large headline margin against a published number is mostly a
 statement about the representation both models were given.
 
@@ -58,30 +58,30 @@ statement about the representation both models were given.
 
 The two graphs were chosen to differ by roughly a factor of 47 in most-to-least-frequent class
 ratio, drawn in Figure~\ref{fig:imbalance}, and that difference is where the ladder changes
-shape. AGAF is the stage that does not survive it, sitting above the graph encoder on
+shape. The fusion model is the stage that does not survive it, sitting above the GNN model on
 NF-UNSW-NB15 and below it on NF-ToN-IoT. The per-class table
-shows the damage concentrated in classes the graph encoder already handles well:
+shows the damage concentrated in classes the GNN model already handles well:
 \texttt{mitm} falls from 0.8838 to 0.7082 and \texttt{xss} from 0.3728 to 0.0844. A gate that
 learns per-edge modality weights has to learn them from the same scarce rare-class edges it is
 meant to help, and on a graph where seven attack classes hold 35 edges or fewer there is little
-to learn from. The harm is not uniform: AGAF is the only rung that lifts
-\texttt{password} from 0.0401 to 0.2950. The stage trades one set of rare classes for another;
-it does not fail outright.
+to learn from. The harm is not uniform: the fusion model is the only rung that lifts
+\texttt{password} from 0.0401 to 0.2950. The stage trades one set of rare classes for another.
+It does not fail outright.
 
-The loop does not show that trade, under either consultant. It stays above the graph encoder on
+The feedback model does not show that trade, under either consultant. It stays above the GNN model on
 both datasets and keeps its position when the imbalance regime changes. Differing class counts
 permit a comparison of shapes and not of levels, and on that comparison the property of
 collapsing under imbalance belongs to the fusion gate, not to the use of semantic evidence as
 such.
 
-\subsection{Where the loop's gain comes from}
+\subsection{Where the feedback model's gain comes from}
 \label{sec:disc-echo}
 
-The loop is separated above the three other rungs, and the isolation experiment says the
+The feedback model is separated above the three other rungs, and the isolation experiment says the
 separation is not produced by the part of the design the work set out to test. Four
 observations bear on that, and they point the same way.
 
-First, the loop reaches the classifier by two routes and only one of them is the feedback
+First, the feedback model reaches the classifier by two routes and only one of them is the feedback
 mechanism. Output fusion places the consultant's logits into the final classifier directly. The
 injection path modifies the edge representations the next graph pass consumes.
 Table~\ref{tab:mechanism} disables the first and measures the second, and with either consultant
@@ -94,11 +94,11 @@ exact format made things worse, and drove the injected magnitude down from
 0.0767 to 0.0183 on NF-UNSW-NB15. The projection is learned, so it responds to a saturated
 input by injecting less.
 
-Third, the loop does not learn a trust it could calibrate. Cross-fitted advice is honestly less
+Third, the feedback model does not learn a trust it could calibrate. Cross-fitted advice is honestly less
 reliable than in-fold advice, and substituting it moved the learned trust scalar by at most
 0.0205 across four settings, the wrong way in one of them. What moved instead was the
 injected magnitude, from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The parameter that is
-supposed to represent how much the loop believes its consultant is not doing that job.
+supposed to represent how much the feedback model believes its consultant is not doing that job.
 
 Fourth, five treatments failed from five different directions. Supervising the selector head,
 calibrating the consultant's temperature, weighting advice by measured per-class reliability,
@@ -118,8 +118,8 @@ and why the isolation experiment, not the ladder, answers RQ3.
 
 Two statements have to be held together. The trained-head configuration produces the first
 ladder steps this project has measured that survive training-seed variance. It produces them on
-two datasets, under one architecture, with the same folds and the same seeds. The loop is
-separated above AGAF, above the graph encoder and above the semantic rung, and above every
+two datasets, under one architecture, with the same folds and the same seeds. The feedback model is
+separated above the fusion model, above the GNN model and above the semantic model, and above every
 faithful re-trained baseline. Under the prototype consultant none of those comparisons is
 separated on either dataset, so the consultant is what turned an ordering of means into a
 result.
@@ -159,18 +159,18 @@ the numbers should be read.
     total uncertainty. The two comparisons this report calls not separated are already
     close to zero, and measuring partition variance could only widen them.
 
-    \item \textbf{The loop trains on advice more reliable than the advice it is scored on.} Each
+    \item \textbf{The feedback model trains on advice more reliable than the advice it is scored on.} Each
     fold's head has fitted that fold's training labels, so on training edges its logits are
-    in-fold. Cross-fitting removes the asymmetry and makes the loop worse on both datasets, so
+    in-fold. Cross-fitting removes the asymmetry and makes the feedback model worse on both datasets, so
     the effect is not a simple optimism bias that honest advice would fix.
 
     \item \textbf{Neither knob is tuned.} Both selection curves lie inside their own noise band,
     and NF-ToN-IoT's injection scale selected on the upper boundary of the swept range, so the
     sweep cannot say whether an optimum lies outside it. The word used throughout is selected.
 
-    \item \textbf{One consultant file sits inside the loop at all three seeds.} The trained head
-    was built once, at seed 42, and the loop consults that same file at every training seed. Its
-    advice is identical across the three runs. The loop's reported standard deviation,
+    \item \textbf{One consultant file sits inside the feedback model at all three seeds.} The trained head
+    was built once, at seed 42, and the feedback model consults that same file at every training seed. Its
+    advice is identical across the three runs. The feedback model's reported standard deviation,
     0.0042 and 0.0080, excludes consultant variance entirely and is narrower than a fully
     re-seeded pipeline would give.
 
@@ -180,7 +180,7 @@ the numbers should be read.
     the same direction for every arm.
 
     \item \textbf{E-GraphSAGE is within noise of our structural rungs on NF-ToN-IoT.} Neither the
-    graph encoder nor AGAF is separated from it there. Only the two rungs that use a trained
+    GNN model nor the fusion model is separated from it there. Only the two rungs that use a trained
     semantic consultant clear it, and only at the second consultant. The honest summary of RQ5 is
     that our structural pipeline matches a published architecture on that graph rather than
     improving on it.
@@ -191,7 +191,7 @@ the numbers should be read.
 
 Three directions follow directly from this, along with one non-direction worth recording.
 
-Trust is the parameter to work on next. The loop has a scalar meant to represent how much to
+Trust is the parameter to work on next. The feedback model has a scalar meant to represent how much to
 believe the consultant, and it does not respond to a large, deliberate change in the
 consultant's reliability. Constraining that scalar, supervising it against measured per-edge
 reliability, or replacing it with a per-edge quantity are all reachable experiments. The
