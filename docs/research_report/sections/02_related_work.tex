@@ -4,7 +4,7 @@
 \subsection{Graph-based network intrusion detection}
 
 Intrusion detection is conventionally divided into signature-based and anomaly-based
-approaches \citep{scarfone2007idps}, but either can be posed over a flow graph, and a flow
+approaches \citep{scarfone2007idps}, but either can be posed over a flow graph. A flow
 graph makes the edge the natural prediction unit when the object to be classified is a
 communication event between two endpoints. Nodes represent communicating entities such as
 IP addresses, and edges represent flows or aggregated flows. This formulation preserves the
@@ -53,8 +53,8 @@ be converted into a controlled token sequence and processed by a BERT-class enco
 
 These two lines solve different problems. Domain adaptation addresses the vocabulary and
 semantics of cybersecurity text. Traffic serialisation creates text-like input from network
-measurements. Together they support a semantic branch in which a flow description is
-encoded as text rather than treating every field as a scalar magnitude. They do not, by
+measurements. Together they support a semantic branch that encodes
+a flow description as text rather than treating every field as a scalar magnitude. They do not, by
 themselves, determine how that semantic representation should interact with graph structure.
 
 That interaction is the central fusion problem. Once a system holds one representation
@@ -83,7 +83,7 @@ A second family introduces input-dependent gates. The Gated Multimodal Unit uses
 multiplicative gates to determine how each modality contributes to the fused activation
 \citep{arevalo2017gmu}. This is the canonical primitive for sample-adaptive modality
 weighting. A graph-and-text instance appears in the Dual-Stream Graph-Augmented Transformer
-for fake-news detection, where BERT runs in parallel with a GAT and Graph Transformer branch
+for fake-news detection, where BERT runs in parallel with a GAT and Graph Transformer branch,
 and a trainable scoring function emits a scalar weight for each modality for each input
 \citep{moorthy2025dualstream}. Mechanically this is the closest analogue in the literature
 surveyed here to a fusion stage whose balance changes per sample.
@@ -107,7 +107,7 @@ encoder'' and ``semantic encoder'' and argues against late fusion of separate en
 preferring interleaved interaction \citep{guo2024det}. GL-Fusion sits at the opposite end of
 the coupling spectrum from independent towers: message passing is folded into every
 transformer layer, leaving no separate fusion module \citep{yang2024glfusion}. These designs
-mix the modalities repeatedly rather than preserving two independent representations until
+mix the modalities repeatedly instead of preserving two independent representations until
 classification.
 
 The taxonomy separates two questions that are often collapsed. One is where graph and text
@@ -164,7 +164,7 @@ betweenness, closeness, clustering coefficient and square clustering coefficient
 gives a Majorization--Minimization argument under which its refinement loop monotonically
 decreases a task-adaptive surrogate objective. Its setting is node-level, over general
 text-rich graphs. Closed graph--language feedback, and the conversion of structural
-statistics into natural-language descriptions, therefore already exist in the literature.
+statistics into natural-language descriptions, already exist in the literature.
 
 LOGIN already couples uncertainty selection to language-model consultation. It uses
 MC-dropout variance to identify uncertain nodes, prompts the LLM with node text and one-hop
@@ -173,7 +173,7 @@ topology, and receives a predicted label together with a free-text explanation
 ground-truth label, the explanation is appended to the node text and the augmented text is
 re-embedded. If the label is wrong, edges in the node's one-hop neighbourhood are pruned.
 The LLM remains outside autograd and edits the learning inputs between training rounds.
-Selecting uncertain graph elements for semantic consultation is therefore also established.
+Selecting uncertain graph elements for semantic consultation is also established.
 
 GLANCE makes the decision to consult the language model itself learnable. A lightweight
 router decides per node whether querying is worthwhile from inexpensive node features, and
@@ -186,9 +186,9 @@ place of a fixed uncertainty rule.
 
 RoGRAD places iterative refinement, rather than static one-shot signal injection, at the
 centre of its formulation \citep{wang2025rograd}. It studies that refinement under graph
-deficiencies including noise, sparsity, and label scarcity, and its abstract claims priority
+deficiencies including noise, sparsity, and label scarcity. Its abstract claims priority
 for moving language-model augmentation of graphs from static injection to an iterative
-refinement paradigm. Iterative semantic refinement is therefore already an explicit
+refinement paradigm. Iterative semantic refinement is already an explicit
 contribution claim in the prior literature.
 
 These four anchors settle the component question plainly. Closed GNN--language feedback
@@ -200,8 +200,8 @@ component by component, the feedback mechanism is not the contribution of this r
 \subsection{Positioning}
 
 The contribution is an edge-level intrusion-detection instantiation, and a measurement
-question about how such a feedback channel is used. The comparison therefore has to be made
-at the level of configuration rather than of individual mechanisms.
+question about how such a feedback channel is used. The comparison has to be made
+at the level of configuration, not of individual mechanisms.
 
 The four feedback anchors operate at node level, whereas the present setting treats a
 network flow as an edge and makes the classification decision there. Their semantic
@@ -212,8 +212,8 @@ representations consumed by the next graph update. These are differences of inst
 not claims that the underlying ideas originated here
 \citep{qiao2024login,thapaliya2025das,loveland2025glance,wang2025rograd}.
 
-Two signals travel in opposite directions in the resulting loop, and it is worth stating
-precisely which. The graph model's per-edge uncertainty determines \emph{which} edges are
+Two signals travel in opposite directions in the resulting loop. The graph model's
+per-edge uncertainty determines \emph{which} edges are
 routed to the semantic branch, and that selection is recomputed as predictions shift. The
 semantic branch returns a per-edge judgement that re-enters the graph model's edge
 representations. The coupling is bidirectional in this routing sense. It is not bidirectional
