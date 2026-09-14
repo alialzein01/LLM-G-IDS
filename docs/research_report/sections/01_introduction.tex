@@ -7,23 +7,23 @@ analyst attention and make genuine incidents harder to prioritise. Practical gui
 therefore treats alert validation, false-positive identification, and threat
 prioritisation as central parts of intrusion monitoring~\citep{scarfone2007idps}.
 
-Modern networks also produce a continuous stream of connections whose meaning is rarely
+Networks produce a continuous stream of connections whose meaning is rarely
 contained in a single record. A destination port, a packet count, or a flow duration can
 be informative, but the surrounding communication pattern often matters just as much.
 A distributed denial-of-service attack may appear as many sources converging on one
 destination, whereas a scan may appear as one source contacting many hosts or services.
 This relational character makes network traffic a natural candidate for graph-based
-analysis. At the same time, network events also carry semantic cues: protocol and port
+analysis. Network events also carry semantic cues: protocol and port
 combinations, traffic magnitudes, and recurring behavioural descriptions can suggest
 what an interaction represents. An intrusion detection system that sees only one of
-these views is therefore working with an incomplete account of the traffic.
+these views is working with an incomplete account of the traffic.
 
 This report investigates whether structural and semantic evidence can be combined in a
 single edge-level intrusion detection framework using NF-UNSW-NB15 and NF-ToN-IoT. One
 experimental boundary must be stated from the outset: the current graph construction
 aggregates flows by source IP, destination IP, and attack class. Ground-truth labels
 therefore participate in defining edge identity, even though the attack name is excluded
-from the model's input features and generated text. The consequence is explicit: the
+from the model's input features and generated text. The
 resulting scores compare representations and interaction mechanisms under a controlled
 protocol, but they are not deployment-valid estimates of detection performance on unseen,
 unlabelled traffic.
@@ -42,8 +42,7 @@ benign, and has a most-to-least-frequent class ratio of $12.4{:}1$. Eight of its
 attack classes contain 40 edges and the ninth contains 25, so just one falls at or below
 that threshold. NF-ToN-IoT contains 2{,}127 edges, is 82.1\% benign, and has a most-to-least-frequent
 class ratio of $582{:}1$. Seven of its nine attack classes contain 35 edges or fewer. Its
-distribution is far more skewed, with benign traffic dominant and most attack classes
-represented by a few dozen edges or fewer. By the most-to-least class ratio, the two
+distribution is far more skewed. By the most-to-least class ratio, the two
 graphs differ by roughly a factor of 47 in imbalance severity.
 
 That difference is the methodological reason for using two datasets. A single dataset
@@ -82,8 +81,8 @@ frozen and used purely as a sentence encoder. Throughout this report, this compo
 called the \emph{semantic branch}. That terminology distinguishes its representational
 role from that of a generative large language model.
 
-Neither representation is assumed to win in every case. The central idea is
-instead to let them challenge and complement one another. The parallel fusion stage runs
+Neither representation is assumed to win in every case; the design instead lets them
+challenge and complement one another. The parallel fusion stage runs
 the graph and semantic encoders side by side and combines their edge embeddings through
 Adaptive Gated Attention Fusion (AGAF). The feedback stage adds uncertainty-guided
 semantic feedback: edges with high-entropy GNN predictions are selected for semantic
@@ -123,11 +122,11 @@ The research problem is not simply whether adding a language embedding raises a 
 If one branch is already a strong classifier, a fusion module can appear successful while
 doing little more than copying that branch. Likewise, a feedback loop can improve the
 final output because semantic features are fused at the classifier, even when the claimed
-attention re-entry mechanism contributes nothing. The evaluation must therefore separate
+attention re-entry mechanism contributes nothing. The evaluation must separate
 the value of the two modalities, the fusion mechanism, the uncertainty-selection policy,
 and the iterative update itself.
 
-The study is organised around five research questions:
+Five research questions frame the study:
 
 \begin{description}
     \item[RQ1.] How do the structural GNN branch and the semantic branch perform
@@ -151,10 +150,10 @@ The study is organised around five research questions:
     difference is attributable to representation and tuning rather than to architecture?
 \end{description}
 
-These questions deliberately allow a negative answer. The purpose of the experiments is
-to determine when the proposed interaction works, when it does not, and why. This matters
-because a model ladder of GNN, semantic encoder, fusion and then feedback is only meaningful
-if each higher rung is compared fairly with the strongest relevant lower rung.
+These questions deliberately allow a negative answer. The experiments are meant to determine
+when the proposed interaction works, when it does not, and why. A model ladder of GNN, semantic
+encoder, fusion and then feedback is only meaningful if each higher rung is compared fairly
+with the strongest relevant lower rung.
 
 \subsection{Objectives and contributions}
 
@@ -193,12 +192,12 @@ stage under one consistent protocol. The work makes five contributions.
     faces.
 \end{enumerate}
 
-The contribution is therefore not presented as a universal improvement over existing
+The contribution is not presented as a universal improvement over existing
 intrusion detectors. It is an implementation and controlled evaluation of a particular
 form of structural--semantic cooperation, together with evidence about its limits. The
 headline of that evidence is stated here so it is not mistaken for a footnote later. With a
 trained semantic consultant the feedback loop is the highest rung on both datasets, separated
-from the graph model, from the fusion model and from every faithful re-trained baseline. With
+from the graph encoder, from AGAF and from every faithful re-trained baseline. With
 the weaker consultant it was first built with, none of those comparisons is separated at all.
 And when final-output fusion is removed, so that semantic evidence can reach the classifier
 only by re-entering the graph, neither consultant produces a gain we could separate from zero.
