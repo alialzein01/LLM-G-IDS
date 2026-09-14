@@ -13,10 +13,9 @@ turned out to be the largest effect measured.
 
 Everything was measured at three training seeds with the fold partition fixed, scored by pooled
 five-fold out-of-fold macro-F1, and compared with a bootstrap that resamples edges and training
-seed. A difference counts as separated only when its interval excludes zero. Two sentences carry
-the result.
+seed. A difference counts as separated only when its interval excludes zero.
 
-With the trained-head consultant the loop is separated above the fusion stage, above the graph
+With the trained-head consultant the loop is separated above AGAF, above the graph
 encoder, above the semantic rung and above every faithful re-trained baseline, on both
 datasets. With the prototype consultant, none of those comparisons is separated on either
 dataset. Changing the consultant, and nothing else about the architecture, moved the loop by
@@ -30,7 +29,7 @@ is changed deliberately, and with output fusion disabled neither realistic consu
 separated from doing nothing. The binding constraint is the consultant, not the mechanism around
 it.
 
-Two findings stand on their own. Gated attention fusion is not separated from the graph encoder
+Two findings stand on their own. AGAF is not separated from the graph encoder
 on either dataset and falls below it under heavy imbalance. The alternative injection design,
 which biases graph attention instead of the edge representation, changes no prediction at all,
 for two independent structural reasons on the two graphs.
@@ -39,5 +38,5 @@ What none of this establishes is deployment performance. Edges are aggregated wi
 label in the grouping key, so these numbers compare representations and mechanisms under a
 controlled protocol. Removing that dependency is the prerequisite for any operational claim, and
 it changes the task rather than the code. Beyond it, what would matter is not a larger consultant
-but a better calibrated one, with a trust parameter that responds when reliability changes. The
+but a better-calibrated one, with a trust parameter that responds when reliability changes. The
 oracle says the headroom is there. Nothing measured here has reached it.
