@@ -3,8 +3,8 @@
 *Written 2026-09-13, after the figures landed. This is the document to read before auditing
 the report, and the document to hand to anyone who has to defend a sentence in it.*
 
-The report is `docs/research_report/main.tex`, compiled to `build/main.pdf`. Sixty pages,
-16,371 words of body prose, nine sections, nine tables, nine figures, 26 references.
+The report is `docs/research_report/main.tex`, compiled to `build/main.pdf`. Sixty-one pages,
+16,627 words of body prose, nine sections, ten tables, nine figures, 26 references.
 
 ---
 
@@ -176,18 +176,21 @@ report only as a retraction.
 
 Measured by `scripts/prose_stats.py`. No em dashes anywhere, by editorial rule.
 
-| Section | Words | Sentences | Paragraphs | Mean length | Std | Short <8 | Long >35 | Semicolons |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| abstract | 246 | 13 | 3 | 18.9 | 11.3 | 15.4% | 7.7% | 0 |
-| introduction | 2,078 | 107 | 29 | 19.4 | 8.6 | 5.6% | 5.6% | 0 |
-| related work | 2,393 | 132 | 31 | 18.1 | 9.6 | 10.6% | 5.3% | 0 |
-| method | 4,160 | 214 | 56 | 19.4 | 10.1 | 11.2% | 6.5% | 3 |
-| results | 3,515 | 199 | 47 | 17.7 | 9.3 | 13.1% | 4.0% | 5 |
-| discussion | 2,220 | 115 | 29 | 19.3 | 8.8 | 6.1% | 7.0% | 0 |
-| conclusion | 449 | 24 | 6 | 18.7 | 10.1 | 25.0% | 0.0% | 0 |
-| appendices | 1,120 | 62 | 24 | 18.1 | 12.1 | 19.4% | 9.7% | 0 |
-| statements | 190 | 10 | 5 | 19.0 | 10.3 | 20.0% | 0.0% | 0 |
-| **total** | **16,371** | **876** | **230** | | | | | **8** |
+| Section | Words | Sentences | Paragraphs | Em dashes | Semicolons |
+|---|---:|---:|---:|---:|---:|
+| abstract | 246 | 13 | 3 | 0 | 0 |
+| cover | 52 | 14 | 14 | 0 | 0 |
+| introduction | 2,078 | 107 | 29 | 0 | 0 |
+| related work | 2,393 | 132 | 31 | 0 | 0 |
+| method | 4,160 | 214 | 56 | 0 | 3 |
+| results | 3,610 | 205 | 49 | 0 | 6 |
+| discussion | 2,220 | 115 | 29 | 0 | 0 |
+| conclusion | 449 | 24 | 6 | 0 | 0 |
+| appendices | 1,210 | 70 | 29 | 0 | 1 |
+| statements | 209 | 11 | 5 | 0 | 0 |
+| **total** | **16,627** | **905** | **251** | **0** | **10** |
+
+Run `scripts/prose_stats.py` for the full per-section distributions.
 
 ---
 
