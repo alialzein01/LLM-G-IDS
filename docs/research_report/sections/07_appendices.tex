@@ -39,7 +39,7 @@ Dataset & Rung & A (canonical) & B (signals fixed) & C (B, re-selected) \\
 \end{tabular}
 \end{table}
 
-The decision rule was fixed before the runs, and it returns the same verdict in all three
+The decision rule was fixed before the runs. It returns the same verdict in all three
 conditions: the loop is not separated from AGAF on either dataset. On NF-UNSW-NB15 the
 two-level interval for loop minus AGAF is $-0.0156$ [$-0.0552$, $+0.0268$] in A, $-0.0192$
 [$-0.0594$, $+0.0197$] in B and $+0.0008$ [$-0.0464$, $+0.0447$] in C. On NF-ToN-IoT it is
@@ -48,14 +48,14 @@ $+0.1194$]. Condition C carries the highest point estimate on both datasets. Tha
 separation, and its selection curves are flat, with NF-UNSW-NB15's argmax landing on the
 boundary of the swept range at $k = 35$.
 
-Both defects were genuinely removed in B, which is what makes the negative result
+Both defects were genuinely removed in B. That is what makes the negative result
 informative rather than a failed implementation. On NF-UNSW-NB15 the selector head's macro-F1
 moved from the range 0.019 to 0.036 up to the range 0.646 to 0.684, mean disagreement fell
 from 0.8975 to between 0.524 and 0.548, the consultant's maximum softmax probability rose
 from 0.102 to 0.487, and the temperature fell from about 9.4 to 0.105. On NF-ToN-IoT the
 selector head moved from 0.029 to 0.065 up to 0.293 to 0.333, disagreement fell from 0.8988
 to between 0.580 and 0.638, maximum probability rose from 0.101 to 0.500, and temperature
-fell from about 9.5 to 0.030. A better calibrated consultant and a genuinely
+fell from about 9.5 to 0.030. A better-calibrated consultant and a genuinely
 uncertainty-ranked selector made the loop worse on both datasets.
 
 \subsection{What the canonical loop was actually injecting}
@@ -84,7 +84,7 @@ C (B, re-selected)   & 1.103 / 1.100 / 1.158 & 2.845 / 2.893 / 2.992 & \\
 Under the canonical prototype configuration the mechanism was injecting between 0.02 and 0.08
 of a standard deviation. Calibrating the temperature raised that by a factor of roughly 17 on
 NF-UNSW-NB15 and roughly 125 on NF-ToN-IoT. Two things follow. The prototype loop's advantage
-over feedback-off was late fusion rather than feedback, and the injection scale is close to
+over feedback-off was late fusion rather than feedback. The injection scale is also close to
 redundant with the learned bias strength, since condition C moved the scale from 2.0 to 5.0 and
 from 20.0 to 10.0 while the end-to-end magnitude barely moved.
 
@@ -168,7 +168,7 @@ Dataset & Consultant & graph encoder & consultant & resulting loop \\
 The NF-ToN-IoT prototype row is the clearest statement of the problem. On the edges the loop
 selects, that consultant is less accurate than the model it is supposed to correct.
 
-Table~\ref{tab:disagreement} gives what happens where the two disagree, which is the only
+Table~\ref{tab:disagreement} gives what happens where the two disagree, the only
 place a consultant can change an answer.
 
 \begin{table}[htbp]
@@ -213,8 +213,8 @@ writes its own artifact:
 
 \paragraph{Environment.} Python 3.14.3 in a virtual environment built from
 \texttt{requirements.txt}. All runs export \texttt{OMP\_NUM\_THREADS=1}. Without that pin,
-pooled macro-F1 drifts by roughly 0.012 at a fixed seed, which is larger than several of the
-differences this report measures, and one earlier finding in the project was retracted because
+pooled macro-F1 drifts by roughly 0.012 at a fixed seed, larger than several of the
+differences this report measures. One earlier finding in the project was retracted because
 of it.
 
 \paragraph{Seeds and folds.} Three training seeds, 42, 1 and 2. The stratified five-fold
@@ -235,7 +235,7 @@ stages run through one entry point:
 with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. The loop consults
 the trained head when \texttt{train\_feedback} is given \texttt{--use-llm-head}. Without
 that flag it reproduces the superseded prototype-consultant ladder, at the knobs kept under
-\texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold semantic embeddings must be
+\texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold structural embeddings must be
 regenerated with
 \texttt{step3.build\_oof\_gnn\_embeddings} before the fusion stage whenever the graph
 encoder changes. The fusion stage does not do it, and will otherwise train on stale
@@ -275,7 +275,7 @@ architecture. It runs with \texttt{OMP\_NUM\_THREADS=1 python -m pytest tests/ -
 167 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
 \texttt{scripts/check\_report\_numbers.py} extracts every numeric token from the section
 sources and checks it against the contracts, the archive, the dataset statistics and an
-explicit allowlist, and \texttt{scripts/prose\_stats.py} measures the writing against the
+explicit allowlist. \texttt{scripts/prose\_stats.py} measures the writing against the
 standard used in the final editing pass. Both run from \texttt{docs/research\_report/build.sh}.
 
 \paragraph{What is not reproducible from this repository.} The raw NF-ToN-IoT and NF-UNSW-NB15
