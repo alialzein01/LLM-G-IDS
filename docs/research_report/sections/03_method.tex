@@ -49,7 +49,7 @@ the truss decomposition fall back to constants when they fail to converge. A nod
 vector is the mean of these values over all incident edges, taking the node in both its
 source and destination roles.
 
-One property of this feature set should be stated rather than left for a reader to discover.
+One property of this feature set should be stated outright.
 On NF-UNSW-NB15 the ``global'' variants are populated from the same computation as their
 local counterparts, so \texttt{global\_betweenness} and \texttt{global\_pagerank} are exact
 duplicates of \texttt{betweenness} and \texttt{pagerank}. The ten columns span eight distinct
@@ -165,8 +165,8 @@ the classifier.
 Each variant projects $\mathbf{z}_{e}$ to 64 dimensions through a linear layer and ReLU. The
 three projections are concatenated and passed through a linear layer to 64, ReLU, and dropout,
 yielding the fused 64-dimensional edge embedding consumed by every downstream stage. A final
-linear layer emits class logits. Each variant additionally carries its own classification head
-, a two-layer MLP over $\mathbf{z}_{e}$ with a 64-unit hidden layer, ReLU and dropout,
+linear layer emits class logits. Each variant additionally carries its own classification
+head, a two-layer MLP over $\mathbf{z}_{e}$ with a 64-unit hidden layer, ReLU and dropout,
 whose loss is added to the objective with weight $0.30$. The auxiliary term keeps each variant
 directly supervised rather than letting the fusion layer absorb all gradient.
 
@@ -186,7 +186,7 @@ domain-adapted to cybersecurity text. It is frozen throughout. No gradient reach
 are tokenised with padding and truncation at 128 tokens, and the final hidden states are
 mean-pooled with padding positions masked out, giving one 768-dimensional vector per edge.
 We use it strictly as a sentence encoder. It is not prompted, not asked to reason, and not
-generative, and we avoid describing it as an LLM for that reason.
+generative. We avoid describing it as an LLM for that reason.
 
 The embedding is consumed in two ways, and the distinction matters for everything that
 follows. The \emph{embedding-only} route fits no classifier on it: a whitened prototype
@@ -199,12 +199,12 @@ dropout $0.2$, trained with the same class-weighted focal loss, optimiser and ea
 rule as the structural branch. Each fold's head is applied to every edge and its logits are
 stored: on that fold's training and validation edges the logits are in-fold, on its test
 edges they are out-of-fold, so the pooled test score of the head is a legitimate out-of-fold
-number. That head is the consultant the feedback loop uses, and, evaluated on its own, it is
+number. That head is the consultant the feedback loop uses. Evaluated on its own, it is
 also the strongest single-modality baseline in this study. We report it in every table for
 that reason. A cross-fitted variant, in which training-edge logits come from an inner
 cross-validation so that the loop trains on advice no more reliable than the advice it is
 scored with, was implemented and measured. It scored lower on both datasets and is reported
-in Section~\ref{sec:results}, and the in-fold head is retained.
+in Section~\ref{sec:results}. The in-fold head is retained.
 
 Label freedom is enforced in code, not by convention. Before any sentence reaches the encoder,
 an assertion scans every generated sentence for every attack term present in the dataset and
@@ -276,7 +276,7 @@ same fold-local transform and scored by cosine similarity against the prototypes
 is not incidental: an earlier L2-normalise-average-renormalise scheme collapsed per-class
 spread until random and real advice became indistinguishable.
 
-The rule that keeps the comparison fair is stated once here and applied everywhere: every
+The rule that keeps the comparison fair applies everywhere: every
 rung uses the same encoder, the same graph, the same folds and the same training seeds. The
 loop additionally trains a classification head on the semantic embeddings, and that head is
 reported alone. The loop was first built with the prototype scorer as its consultant, on the
@@ -303,7 +303,7 @@ that is exactly zero on unflagged edges, and added to the reweighted edge vector
 with injection scale $s = 2.0$ on NF-UNSW-NB15 and $s = 20.0$ on NF-ToN-IoT, both selected on
 validation folds from $\{0.5, 1, 2, 5, 10, 20\}$ at three seeds. As with $k$, the curves are
 flat, and on NF-ToN-IoT the selected value sits on the upper boundary of the swept range,
-which we record rather than hide. Because $\tilde{\mathbf{x}}_{e}$ enters both attention and readout, the
+which we record. Because $\tilde{\mathbf{x}}_{e}$ enters both attention and readout, the
 injected signal propagates structurally rather than only shifting a final logit. The scale is
 re-selected whenever the edge encoding or the injection path changes, since it is expressed in
 the units of that encoding.
@@ -320,7 +320,7 @@ maximum probability of both the graph head and the consultant, so it can route t
 whichever view is confident on that edge. A two-layer classifier over the gated concatenation
 produces a correction, and the final logits are that correction plus the gated residual
 $(1-g_e)\,\mathbf{z}^{\text{gnn}}_e + g_e\,\mathbf{z}^{\text{head}}_e$. The consultant's
-own judgement is therefore a floor the loop can fall back to on edges where the graph view is
+own judgement is a floor the loop can fall back to on edges where the graph view is
 unsure. This stage has the same projection width as AGAF, so the loop and AGAF differ in
 where semantics enter (inside the graph update, or only at the output) and not in fusion
 capacity. Switching the stage off, together with the injection, yields the \texttt{head\_only}
@@ -333,7 +333,7 @@ softmax, injecting into the attention mechanism rather than the edge representat
 zero-initialised, so an untrained bias reproduces stock GATv2 exactly. It is evaluated under
 the identical protocol and reported in Section~\ref{sec:results} as a negative result. We
 retain it in the paper because the two variants isolate \emph{where} in the network a semantic
-signal must land to have any effect at all, which is a question the positive result
+signal must land to have any effect at all, a question the positive result
 alone does not answer.
 
 \subsection{Baseline Protocol}
@@ -353,12 +353,12 @@ architecture. We label it as non-faithful wherever it appears. It is not E-Graph
 not TE-G-SAGE.
 
 Five deviations from the published specifications were unavoidable at this graph scale, and we
-record them rather than absorb them. (D1) TE-G-SAGE's chronological 60/30/10 split cannot be
+record each one. (D1) TE-G-SAGE's chronological 60/30/10 split cannot be
 reconstructed, because aggregation collapses per-flow timestamps. Our stratified folds are used
 for all models. (D2) TE-G-SAGE's neighbour fanout of $(25, 15)$ and batch size of 4096 both
 exceed the entire graph, so training is full-neighbourhood and full-batch. (D3) Both released
-implementations train for a fixed epoch count with no validation split and no early stopping
-, 4999 epochs for E-GraphSAGE and 20 for TE-G-SAGE, which is incompatible with a protocol
+implementations train for a fixed epoch count with no validation split and no early
+stopping, 4{,}999 epochs for E-GraphSAGE and 20 for TE-G-SAGE, incompatible with a protocol
 that selects on validation folds. Baselines are given 300 epochs with patience 25 on validation
 macro-F1 and the best state restored. (D4) TE-G-SAGE's \texttt{rare\_min\_freq} of 50 removes
 almost every port category at our scale. It is applied as published in \texttt{as\_published}
@@ -367,8 +367,8 @@ but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}
 \mathbf{e}_{uv}])$. We follow the code, since the published numbers came from it.
 
 One design variable is internal to the loop rather than a rung of the ladder: the identity of
-the semantic consultant. The loop was first built around the whitened prototype scorer, which
-is also what the semantic rung uses, and later around a per-fold classification head trained on
+the semantic consultant. The loop was first built around the whitened prototype scorer, the same
+one the semantic rung uses, and later around a per-fold classification head trained on
 the same frozen embeddings. Both versions are reported, at the same three seeds, at the same
 fold partition, and with the injection scale unchanged. Only the selected entropy percentile
 differs between them, at 31 against 29 on NF-UNSW-NB15 and 25 against 16 on NF-ToN-IoT.
@@ -378,7 +378,7 @@ under a focal objective with patience 40, whereas the baselines use class-weight
 cross-entropy with patience 25, each keeping its own published loss. And E-GraphSAGE
 classifies an edge from $[\mathbf{h}_u \Vert \mathbf{h}_v]$ alone, so parallel edges between
 one IP pair are mathematically indistinguishable to it. That covers 58.7\% of NF-UNSW-NB15 edges and
-7.9\% of NF-ToN-IoT edges fall in such groups. That is an interaction between its architecture
+7.9\% of NF-ToN-IoT edges. That is an interaction between its architecture
 and our aggregated representation, not evidence that E-GraphSAGE is a weak detector, and we do
 not read it as one.
 
@@ -434,5 +434,5 @@ inherits the difference.
 Two NF-ToN-IoT classes are smaller than the five-fold minimum: \texttt{dos} with 4 edges and
 \texttt{ransomware} with 3. They remain in the graph and continue to participate in message
 passing, but are excluded from the reported metric, so NF-ToN-IoT macro-F1 is computed over 8
-classes and NF-UNSW-NB15 over 10. The two are therefore not comparable in absolute level, and
+classes and NF-UNSW-NB15 over 10. The two are not comparable in absolute level, and
 we compare only the shape of the ladder across datasets, never the values.
