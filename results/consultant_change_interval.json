@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "metric": "pooled_oof_macro_f1",
+  "comparison": "loop_trained_head minus loop_prototype",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "bootstrap_iters": 2000,
+  "bootstrap_seed": 42,
+  "protocol": "Fold partition held fixed at the seed-42 stratified split; only training seeds vary. Primary interval resamples edges AND the training seed; the seed-matched interval resamples edges only, paired within a seed. A difference counts as separated only when the primary interval excludes zero.",
+  "source_artifacts": {
+    "loop_trained_head": "results/multiseed_v2/head/<dataset>_seed<S>/feedback_oof_real.pt",
+    "loop_prototype": "results/multiseed_v2/legacy/<dataset>_seed<S>/feedback_oof_real.pt"
+  },
+  "closes": "report [GAP] in sections/04_results.tex, the consultant-change interval",
+  "unsw_nb15": {
+    "dataset_key": "unsw_nb15",
+    "dataset": "UNSW-NB15",
+    "n_eval_classes": 10,
+    "n_edges": 656,
+    "per_seed_macro_f1": {
+      "loop_trained_head": {
+        "42": 0.8332390262699155,
+        "1": 0.8386597337285349,
+        "2": 0.8304426745571662
+      },
+      "loop_prototype": {
+        "42": 0.7641720503342035,
+        "1": 0.7690283488137343,
+        "2": 0.7600820859876934
+      }
+    },
+    "mean_macro_f1": {
+      "loop_trained_head": 0.8341138115185389,
+      "loop_prototype": 0.7644274950452105
+    },
+    "point_difference": 0.06968631647332846,
+    "per_seed_difference": {
+      "42": 0.06906697593571198,
+      "1": 0.06963138491480059,
+      "2": 0.0703605885694728
+    },
+    "sign_stable_across_seeds": true,
+    "two_level": {
+      "mean_diff": 0.07022302310889218,
+      "ci_low": 0.03593076404264908,
+      "ci_high": 0.10345317307323806,
+      "prob_positive": 1.0,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "seed_matched": {
+      "mean_diff": 0.07008606735347217,
+      "ci_low": 0.04008334046205567,
+      "ci_high": 0.09940567669207362,
+      "prob_positive": 1.0,
+      "resampled": "edges_only_seed_matched",
+      "n_seeds": 3
+    },
+    "separated_two_level": true,
+    "knobs": {
+      "loop_trained_head": {
+        "top_k_percent": 29.0,
+        "injection_scale": 2.0
+      },
+      "loop_prototype": {
+        "top_k_percent": 31.0,
+        "injection_scale": 2.0
+      }
+    },
+    "confounded": "The two configurations differ in the consultant AND in the selected entropy percentile (top_k_percent). The injection scale is identical. The interval measures the change as a whole and does not attribute it to the consultant alone."
+  },
+  "ton_iot": {
+    "dataset_key": "ton_iot",
+    "dataset": "NF-ToN-IoT",
+    "n_eval_classes": 8,
+    "n_edges": 2127,
+    "per_seed_macro_f1": {
+      "loop_trained_head": {
+        "42": 0.49854816237783617,
+        "1": 0.501235158160148,
+        "2": 0.5135160122363981
+      },
+      "loop_prototype": {
+        "42": 0.44137003531708785,
+        "1": 0.4508903759473526,
+        "2": 0.4640986953896861
+      }
+    },
+    "mean_macro_f1": {
+      "loop_trained_head": 0.504433110924794,
+      "loop_prototype": 0.45211970221804215
+    },
+    "point_difference": 0.052313408706751885,
+    "per_seed_difference": {
+      "42": 0.05717812706074832,
+      "1": 0.05034478221279537,
+      "2": 0.04941731684671197
+    },
+    "sign_stable_across_seeds": true,
+    "two_level": {
+      "mean_diff": 0.050354442913127115,
+      "ci_low": -0.009079396718712133,
+      "ci_high": 0.10905911092085191,
+      "prob_positive": 0.9555,
+      "resampled": "edges_and_training_seed",
+      "n_seeds": 3
+    },
+    "seed_matched": {
+      "mean_diff": 0.0508772628998732,
+      "ci_low": 0.0021752135822428243,
+      "ci_high": 0.10131152900431782,
+      "prob_positive": 0.98,
+      "resampled": "edges_only_seed_matched",
+      "n_seeds": 3
+    },
+    "separated_two_level": false,
+    "knobs": {
+      "loop_trained_head": {
+        "top_k_percent": 16.0,
+        "injection_scale": 20.0
+      },
+      "loop_prototype": {
+        "top_k_percent": 25.0,
+        "injection_scale": 20.0
+      }
+    },
+    "confounded": "The two configurations differ in the consultant AND in the selected entropy percentile (top_k_percent). The injection scale is identical. The interval measures the change as a whole and does not attribute it to the consultant alone."
+  }
+}
