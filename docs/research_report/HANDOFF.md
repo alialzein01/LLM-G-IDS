@@ -107,27 +107,50 @@ so nobody has to discover them.
 
 ---
 
-## 4. Open gaps
+## 4. Gaps, closed 2026-09-13
 
-Two `[GAP]` markers, three occurrences. Both deferred by decision on 2026-09-13, to be
-measured after the report is otherwise final.
+Both `[GAP]` markers are gone. **There are no open gaps in the report.** Closing them turned
+up two errors in figures that were already printed, so the record matters.
 
-**Gap A — the consultant change has no interval.** §4.2. The report's largest single effect,
-+0.0697 on UNSW and +0.0523 on ToN, is a point estimate. Every other difference in the report
-carries a bootstrap interval.
-*Cost to close: low.* The pooled out-of-fold predictions for both loop configurations are on
-disk at `results/multiseed_v2/{head,legacy}/<dataset>_seed{42,1,2}/feedback_oof_real.pt`,
-shape `[E, C]`. No retraining is needed; it is a bootstrap over an existing tensor pair.
-The confound in objection 2 above must be restated wherever the new interval appears.
+**Gap A — the consultant change now carries an interval.** Both loop configurations had stored
+their pooled out-of-fold predictions at all three seeds, so no retraining was needed.
+`scripts/close_consultant_interval.py` reuses the report's own two bootstrap procedures and
+writes `results/consultant_change_interval.json`. The point estimates reproduce exactly, which
+is what validates the method.
 
-**Gap B — one diagnostic table is missing.** §4.7 and Appendix B.3. The
-consultant-versus-graph-encoder disagreement split on the flagged set was recorded only for
-NF-ToN-IoT with the trained head (right 245, wrong 32; inside the confidence gate 145 to 4).
-Never recorded for NF-UNSW-NB15, and never for the prototype consultant.
-*Cost to close: higher.* The per-edge flags were not saved, so this needs the loop re-run with
-extra instrumentation. Nothing in the report depends on it.
+| Dataset | point | two-level | seed-matched | separated |
+|---|---:|---|---|---|
+| NF-UNSW-NB15 | +0.0697 | +0.0702 [+0.0359, +0.1035] | +0.0701 [+0.0401, +0.0994] | yes |
+| NF-ToN-IoT | +0.0523 | +0.0504 [−0.0091, +0.1091] | +0.0509 [+0.0022, +0.1013] | **no** |
 
----
+This is not the flattering result. The report's largest single effect is separated on one
+dataset and not on the other, and NF-ToN-IoT behaves exactly like AGAF against the graph
+encoder: separated under the seed-matched procedure, not once training-seed variance is
+admitted. §4.2 says so. The comparison also stays confounded with the entropy percentile,
+and every statement of it repeats that.
+
+**Gap B — the disagreement split is now complete, and the old figures were wrong.**
+`scripts/close_complementarity_split.py` computes, for both datasets and both consultants at
+the canonical knobs, the flagged and gated counts, the flagged-set accuracies and the
+disagreement split, all from committed tensors. It writes
+`results/consultant_complementarity.json`. Two corrections came out of it:
+
+1. **Wrong knobs.** The counts printed as the realisation of the 14.5% and 8.0% consultation
+   rates, "204 of 656 flagged and 102 gated" and "532 of 2,127 flagged and 266 gated", are the
+   counts at k = 31 and k = 25, the percentiles in force *before* the knobs were re-selected.
+   At the canonical k = 29 and k = 16 they are 190 of 656 with 95 gated, and 341 of 2,127 with
+   170 gated. Corrected in §4.8.
+2. **Not reproducible.** The flagged-set accuracies (0.603 / 0.770 / 0.750 and
+   0.359 / 0.759 / 0.724) and the NF-ToN-IoT split (245 right against 32, and 145 against 4
+   inside the gate) came from those same pre-reselection runs, computed inside training from
+   live per-fold probabilities. That intermediate was never saved, and no reconstruction from
+   committed artifacts reproduces them. They are replaced throughout by the recomputed values,
+   which anyone can re-derive.
+
+The replacement strengthens the report's argument rather than weakening it. On NF-ToN-IoT the
+prototype consultant is right 45 times and wrong 178 where its answer would change something,
+and the confidence gate does not rescue it: inside its own most confident half the split is 28
+against 63. That is the binding-constraint claim, stated in counts.
 
 ## 5. Scope decisions a reader might mistake for omissions
 

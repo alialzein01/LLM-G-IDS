@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "definition": "Flagged is the top k% of edges by Shannon entropy of the graph encoder's pooled out-of-fold softmax at the canonical k. Gated is the top half of that set by the consultant's maximum softmax probability. All quantities are computed from committed pooled out-of-fold tensors, not from live training state.",
+  "supersedes": "The flagged-set accuracies and the NF-ToN-IoT disagreement split previously quoted (0.603 / 0.770 / 0.750, 0.359 / 0.759 / 0.724, and 245 right against 32 wrong with 145 against 4 inside the gate) came from trained-head runs at the pre-reselection knobs k = 31 and k = 25, computed inside training from per-fold live probabilities; that intermediate was never saved and the figures are not reproducible from any committed artifact.",
+  "closes": "report [GAP] in sections/04_results.tex and sections/07_appendices.tex, the consultant-versus-graph-encoder disagreement split",
+  "unsw_nb15": {
+    "dataset_key": "unsw_nb15",
+    "n_edges": 656,
+    "top_k_percent": 29.0,
+    "gate_fraction": 0.5,
+    "n_flagged": 190,
+    "flagged_share": 0.2896341463414634,
+    "graph_encoder_accuracy_on_flagged": 0.5473684072494507,
+    "consultants": {
+      "trained_head": {
+        "n_gated": 95,
+        "gated_share": 0.1448170731707317,
+        "accuracy_on_flagged": {
+          "graph_encoder": 0.5473684072494507,
+          "consultant": 0.7947368621826172,
+          "loop": 0.7789473533630371
+        },
+        "disagreement_split_flagged": {
+          "n_disagreements": 77,
+          "consultant_right": 55,
+          "consultant_wrong": 22
+        },
+        "disagreement_split_gated": {
+          "n_disagreements": 21,
+          "consultant_right": 17,
+          "consultant_wrong": 4
+        }
+      },
+      "prototype": {
+        "n_gated": 95,
+        "gated_share": 0.1448170731707317,
+        "accuracy_on_flagged": {
+          "graph_encoder": 0.5473684072494507,
+          "consultant": 0.6473684310913086,
+          "loop": 0.6578947305679321
+        },
+        "disagreement_split_flagged": {
+          "n_disagreements": 83,
+          "consultant_right": 38,
+          "consultant_wrong": 45
+        },
+        "disagreement_split_gated": {
+          "n_disagreements": 18,
+          "consultant_right": 13,
+          "consultant_wrong": 5
+        }
+      }
+    }
+  },
+  "ton_iot": {
+    "dataset_key": "ton_iot",
+    "n_edges": 2127,
+    "top_k_percent": 16.0,
+    "gate_fraction": 0.5,
+    "n_flagged": 341,
+    "flagged_share": 0.16031969910672308,
+    "graph_encoder_accuracy_on_flagged": 0.34310850501060486,
+    "consultants": {
+      "trained_head": {
+        "n_gated": 170,
+        "gated_share": 0.07992477668077104,
+        "accuracy_on_flagged": {
+          "graph_encoder": 0.34310850501060486,
+          "consultant": 0.6480938196182251,
+          "loop": 0.6275659799575806
+        },
+        "disagreement_split_flagged": {
+          "n_disagreements": 204,
+          "consultant_right": 129,
+          "consultant_wrong": 75
+        },
+        "disagreement_split_gated": {
+          "n_disagreements": 92,
+          "consultant_right": 79,
+          "consultant_wrong": 13
+        }
+      },
+      "prototype": {
+        "n_gated": 170,
+        "gated_share": 0.07992477668077104,
+        "accuracy_on_flagged": {
+          "graph_encoder": 0.34310850501060486,
+          "consultant": 0.2844574749469757,
+          "loop": 0.36070382595062256
+        },
+        "disagreement_split_flagged": {
+          "n_disagreements": 223,
+          "consultant_right": 45,
+          "consultant_wrong": 178
+        },
+        "disagreement_split_gated": {
+          "n_disagreements": 91,
+          "consultant_right": 28,
+          "consultant_wrong": 63
+        }
+      }
+    }
+  }
+}

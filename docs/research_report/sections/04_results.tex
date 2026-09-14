@@ -60,7 +60,7 @@ them is the largest single effect measured in this work.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_ladder}
-\caption{The four rungs on both datasets, with the loop drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic rung is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant loop, for which per-seed values are reported but no interval was measured. The two panels have independent y-axes and their absolute heights are not comparable.}
+\caption{The four rungs on both datasets, with the loop drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic rung is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant loop; the arrow between the two loop bars carries an interval, given in the text. The two panels have independent y-axes and their absolute heights are not comparable.}
 \label{fig:ladder}
 \end{figure}
 
@@ -76,10 +76,17 @@ encoder and the semantic rung on both datasets, below AGAF on NF-UNSW-NB15 by 0.
 AGAF on NF-ToN-IoT by 0.0419. With the trained head it is the highest rung on both. The change
 is $+0.0697$ on NF-UNSW-NB15 and $+0.0523$ on NF-ToN-IoT. Two things changed together and the
 report does not separate them: the consultant, and the selected entropy percentile, which moved
-from 31 to 29 and from 25 to 16. The injection scale is the same in both, at 2.0 and 20.0. No
-bootstrap was run between the two loop configurations, so the two changes are point estimates.
-\emph{[GAP: no interval was measured for the loop-versus-loop consultant change on either
-dataset.]}
+from 31 to 29 and from 25 to 16.
+
+Both configurations stored their pooled out-of-fold predictions at all three seeds, so the
+change carries an interval computed the same way as every other difference here. It is
+$+0.0702$ [$+0.0359$, $+0.1035$] on NF-UNSW-NB15, separated, and $+0.0504$ [$-0.0091$,
+$+0.1091$] on NF-ToN-IoT, which is not. The seed-matched interval on NF-ToN-IoT does exclude
+zero, at $+0.0509$ [$+0.0022$, $+0.1013$], which is the same pattern AGAF against the graph
+encoder shows below: a difference that survives resampling edges and stops surviving once
+training-seed variance is admitted. The
+interval measures the change as a whole. It does not attribute it to the consultant, because
+the entropy percentile moved with it.
 
 Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into intervals.
 
@@ -219,14 +226,18 @@ from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The model absorbs the change in
 rather than in the parameter that is supposed to represent trust.
 
 Finally, the consultants differ in how well they complement the graph encoder on the edges the
-loop actually consults, which Appendix~\ref{app:complementarity} tabulates. On the flagged set at seed 42 the graph encoder is 0.603 accurate on
-NF-UNSW-NB15 and 0.359 on NF-ToN-IoT. The prototype scorer reaches 0.672 and 0.348 there, so on
-NF-ToN-IoT it is no better than the model it is meant to correct. The trained head reaches 0.770
-and 0.759, and the resulting loop reaches 0.750 and 0.724. On NF-ToN-IoT, among the flagged edges
-where the head and the graph encoder disagree, the head is right 245 times and wrong 32, and
-inside the confidence-gated half the split is 145 to 4.
-\emph{[GAP: the same disagreement split for NF-UNSW-NB15, and the equivalent for the prototype
-consultant on either dataset, was never recorded as an artifact.]}
+loop actually consults, which Appendix~\ref{app:complementarity} tabulates. On the flagged set at
+seed 42 the graph encoder is 0.547 accurate on NF-UNSW-NB15 and 0.343 on NF-ToN-IoT. The
+prototype scorer reaches 0.647 and 0.284 there, so on NF-ToN-IoT it is worse than the model it
+is meant to correct. The trained head reaches 0.795 and 0.648.
+
+The disagreements are where a consultant either earns its place or does not. Among flagged
+edges where the consultant and the graph encoder disagree, the trained head is right 55 times
+against 22 on NF-UNSW-NB15 and 129 against 75 on NF-ToN-IoT, and inside the confidence-gated
+half those become 17 against 4 and 79 against 13. The prototype scorer is right 38 against 45
+on NF-UNSW-NB15 and 45 against 178 on NF-ToN-IoT. On the edges it is asked about, and in the
+cases where its answer would change something, that consultant is wrong roughly four times in
+five.
 
 \subsection{Attention injection}
 \label{sec:res-attention}
@@ -346,8 +357,8 @@ consultant the selected values are $k = 29$ and scale 2.0 on NF-UNSW-NB15 and $k
 20.0 on NF-ToN-IoT. The prototype consultant's ladder ran at $k = 31$ and $k = 25$ at the same
 two scales. With the
 confidence gate keeping the top half of the flagged set, the effective consultation rate is
-14.5\% of edges on NF-UNSW-NB15 and 8.0\% on NF-ToN-IoT. At seed 42 that is 204 of 656 edges
-flagged and 102 gated on NF-UNSW-NB15, and 532 of 2{,}127 flagged and 266 gated on NF-ToN-IoT.
+14.5\% of edges on NF-UNSW-NB15 and 8.0\% on NF-ToN-IoT. In edges that is 190 of 656 flagged
+and 95 gated on NF-UNSW-NB15, and 341 of 2{,}127 flagged and 170 gated on NF-ToN-IoT.
 
 Neither quantity is tuned, and the report does not describe them that way. Averaged over the
 three selection seeds, the 21 candidates for $k$ span 0.8238 to 0.8277 of validation macro-F1 on

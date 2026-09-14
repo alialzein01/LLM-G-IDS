@@ -126,9 +126,9 @@ def fig_ladder():
     fig.text(0.5, 0.012,
              "Error bars are training-seed variance at a fixed fold partition; "
              "fold-partition variance is not measured.\n"
-             "Open circles are the three individual seeds. The consultant change is a point "
-             "estimate: the two loop versions also differ\nin their selected top-k (31 to 29, "
-             "and 25 to 16). The two panels have independent y-axes and are not comparable.",
+             "Open circles are the three individual seeds. The consultant change is separated on "
+             "NF-UNSW-NB15 and not on NF-ToN-IoT;\nthe two loop versions also differ in their "
+             "selected top-k (31 to 29, and 25 to 16). The two panels have independent y-axes.",
              ha="center", va="bottom", fontsize=6.5, color="#444444")
     save(fig, "fig_ladder")
 

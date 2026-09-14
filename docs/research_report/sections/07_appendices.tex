@@ -155,23 +155,58 @@ consultant, and the resulting loop.}
 Dataset & Consultant & graph encoder & consultant & resulting loop \\
 \midrule
 \multirow{2}{*}{NF-UNSW-NB15}
- & prototype    & 0.603 & 0.672 & 0.652 \\
- & trained head & 0.603 & 0.770 & 0.750 \\
+ & prototype    & 0.547 & 0.647 & 0.658 \\
+ & trained head & 0.547 & 0.795 & 0.779 \\
 \midrule
 \multirow{2}{*}{NF-ToN-IoT}
- & prototype    & 0.359 & 0.348 & 0.573 \\
- & trained head & 0.359 & 0.759 & 0.724 \\
+ & prototype    & 0.343 & 0.284 & 0.361 \\
+ & trained head & 0.343 & 0.648 & 0.628 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The NF-ToN-IoT prototype row is the clearest statement of the problem. On the edges the loop
-selects, that consultant is no more accurate than the model it is supposed to correct. On
-NF-ToN-IoT with the trained head, among flagged edges where the consultant and the graph
-encoder disagree, the consultant is right 245 times and wrong 32, and inside the
-confidence-gated half the split is 145 to 4.
-\emph{[GAP: the same disagreement split for NF-UNSW-NB15, and the equivalent for the prototype
-consultant on either dataset, was never recorded as an artifact.]}
+selects, that consultant is less accurate than the model it is supposed to correct.
+
+Table~\ref{tab:disagreement} gives what happens where the two disagree, which is the only
+place a consultant can change an answer.
+
+\begin{table}[htbp]
+\centering
+\caption{Among entropy-flagged edges where the consultant and the graph encoder disagree, how
+often the consultant is right. Seed 42, at the canonical entropy percentile for each dataset.}
+\label{tab:disagreement}
+\small
+\begin{tabular}{llcccc}
+\toprule
+ & & \multicolumn{2}{c}{flagged set} & \multicolumn{2}{c}{confidence-gated half} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Dataset & Consultant & right & wrong & right & wrong \\
+\midrule
+\multirow{2}{*}{NF-UNSW-NB15}
+ & prototype    & 38 & 45 & 13 & 5 \\
+ & trained head & 55 & 22 & 17 & 4 \\
+\midrule
+\multirow{2}{*}{NF-ToN-IoT}
+ & prototype    & 45 & 178 & 28 & 63 \\
+ & trained head & 129 & 75 & 79 & 13 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The gate is doing its job for the trained head and not for the prototype. Restricting to the
+consultant's own most confident half lifts the trained head from 55 against 22 to 17 against 4
+on NF-UNSW-NB15 and from 129 against 75 to 79 against 13 on NF-ToN-IoT. It does not rescue the
+prototype on NF-ToN-IoT, where confident disagreements are wrong more than twice as often as
+they are right. A gate can only concentrate a consultant's competence; it cannot manufacture it.
+
+Both tables are recomputed from the committed pooled out-of-fold tensors, by a script that
+writes its own artifact:
+
+\begin{quote}
+\texttt{scripts/close\_complementarity\_split.py} \\
+\texttt{results/consultant\_complementarity.json}
+\end{quote}
 
 \section{Reproducibility}
 \label{app:repro}
@@ -227,6 +262,8 @@ Artifact & What it carries \\
 \texttt{results/*\_sota\_baselines.json} & re-trained baselines and intervals \\
 \texttt{results/*\_oracle\_ceiling\_v2\_trained\_head.json} & the isolation test \\
 \texttt{results/knob\_selection\_head/} & the selection curves \\
+\texttt{results/consultant\_change\_interval.json} & the interval on the consultant change \\
+\texttt{results/consultant\_complementarity.json} & the flagged-set and disagreement figures \\
 \texttt{docs/RESULTS\_ARCHIVE.md} & the full record, including retractions \\
 \bottomrule
 \end{tabular}

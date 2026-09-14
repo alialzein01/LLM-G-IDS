@@ -24,6 +24,7 @@ either worked or was shown not to.
 | 4 | 2026-09-06 | Fix the two broken signals the loop depended on: train the selector head, calibrate the consultant's temperature | Both defects genuinely removed, and the loop got **worse** on both datasets |
 | 5 | 2026-09-07 | Five further treatments on the same consultant: selector supervision, temperature, reliability weighting, advice format, cross-fitting | All five negative, each from a different angle. The table below is the case for what came next |
 | 6 | 2026-09-07 | Change the consultant itself, from the embedding-only prototype to a per-fold trained head | +0.0697 UNSW and +0.0523 ToN, and every ladder comparison becomes separated |
+| 7 | 2026-09-13 | Put an interval on step 6, and complete the flagged-set disagreement split | Separated on UNSW, **not** on ToN. Two earlier figures found to be at the wrong knobs and not reproducible; both replaced. See `results/consultant_change_interval.json` and `results/consultant_complementarity.json` |
 
 The improvement in step 6 is only meaningful because steps 1 to 5 are on the record. A
 report that showed only step 6 would be claiming a lucky configuration; the archive is what
@@ -982,6 +983,19 @@ a separate, stronger baseline and never the ladder's LLM rung (PROJECT_NOTES.md,
 ---
 
 ## 2026-09-07 — Advice format: the bias path does not want saturated advice
+
+
+> **Correction, 2026-09-13.** The 245/32 and 145/4 counts in the question below, and the
+> flagged-set accuracies in the mechanism table above (0.603 / 0.770 / 0.750 and
+> 0.359 / 0.759 / 0.724), come from trained-head runs at the PRE-RESELECTION knobs,
+> `top_k` 31 and 25, and were computed inside training from live per-fold probabilities. That
+> intermediate was never saved and no reconstruction from committed artifacts reproduces them.
+> They are superseded by `results/consultant_complementarity.json`, which recomputes the same
+> quantities at the canonical `top_k` 29 and 16 from the committed pooled OOF tensors, for both
+> datasets and both consultants. The flagged/gated COUNTS in the table above (204/102 and
+> 532/266) are correct for k = 31 and k = 25; at the canonical knobs they are 190/95 and
+> 341/170. The question's reasoning is unaffected: the trained head's advice is still right far
+> more often than it is wrong on the flagged disagreements, and Gate 0.5 still measures a loss.
 
 **Question.** On ToN the trained head's advice on the flagged edges is right on 245
 disagreements and wrong on 32 (145 vs 4 inside the confidence-gated half), yet Gate 0.5
