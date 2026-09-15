@@ -231,13 +231,15 @@ stages run through one entry point:
 \texttt{\ \ --only fusion oof prototypes top\_k\_sweep feedback ladder}
 \end{quote}
 
+\begin{sloppypar}
 with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. The feedback model consults
 the trained head when \texttt{train\_feedback} is given \texttt{--use-llm-head}. Without
 that flag it reproduces the superseded prototype-consultant ladder, at the knobs kept under
-\texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold structural embeddings must be
-regenerated with
-\texttt{step3.build\_oof\_gnn\_embeddings} before the fusion stage whenever the GNN model changes. The fusion stage does not do it, and will otherwise train on stale
-embeddings.
+\texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold
+structural embeddings must be regenerated with \texttt{step3.build\_oof\_gnn\_embeddings}
+before the fusion stage whenever the GNN model changes. The fusion stage does not do it, and
+will otherwise train on stale embeddings.
+\end{sloppypar}
 
 \paragraph{Result contracts.} Every number in this report traces to one of the files in
 Table~\ref{tab:artifacts}.
