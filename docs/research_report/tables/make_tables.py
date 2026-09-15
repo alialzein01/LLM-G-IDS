@@ -145,7 +145,7 @@ def table_comparisons() -> str:
         "Rung comparisons, both bootstrap procedures, 2{,}000 iterations. \\emph{Sep} marks an "
         "interval that excludes zero. \\emph{Stable} reports whether the sign of the per-seed "
         "difference is the same at all three seeds. \\emph{[GAP: the prototype-consultant "
-        "aggregate carries no loop versus semantic-rung comparison.]}",
+        "aggregate carries no feedback-model versus semantic-model comparison.]}",
         "tab:comparisons",
         body,
         size="footnotesize",

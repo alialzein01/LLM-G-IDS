@@ -9,8 +9,8 @@ seed 42 carry no interval across seeds and are single-seed orderings only.}
 \toprule
 Treatment & What it changed & Result & Kept \\
 \midrule
-Selector-head supervision & the ranking head is trained as a classifier & 3 seeds: loop worse on both datasets & no \\
-Consultant temperature & per-fold calibration instead of a pinned $T$ & 3 seeds: loop worse, jointly with the above & no \\
+Selector-head supervision & the ranking head is trained as a classifier & 3 seeds: feedback model worse on both datasets & no \\
+Consultant temperature & per-fold calibration instead of a pinned $T$ & 3 seeds: feedback model worse, jointly with the above & no \\
 Reliability weighting & gate and magnitude scaled by per-class train precision & seed 42: $+0.0057$ / $+0.0094$, below the 0.02 rule & no \\
 Advice format & one-hot and softmax at the oracle's $\pm 4$ nats & seed 42: every arm below baseline on both & no \\
 Cross-fitted advice & train rows replaced by inner out-of-fold logits & seed 42: $-0.0246$ / $-0.0338$ against in-fold & no \\
