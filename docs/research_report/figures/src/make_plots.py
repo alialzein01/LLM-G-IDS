@@ -108,12 +108,12 @@ def fig_ladder():
         ax.set_ylabel("pooled out-of-fold macro-F1")
         tidy(ax)
 
-        # the semantic rung is deterministic, so it gets a note, not a zero bar
+        # the semantic model is deterministic, so it gets a note, not a zero bar
         ax.annotate("deterministic,\nstd 0.0000", xy=(1, vals[1]),
                     xytext=(1, vals[1] + (ylim[1] - ylim[0]) * 0.035),
                     ha="center", va="bottom", fontsize=6.5, color="#555555")
 
-        # the consultant change, drawn between the two loop bars
+        # the consultant change, drawn between the two feedback model bars
         span = ylim[1] - ylim[0]
         top = min(max(vals[3], vals[4]) + span * 0.075, ylim[1] - span * 0.085)
         ax.annotate("", xy=(4, top), xytext=(3, top),
