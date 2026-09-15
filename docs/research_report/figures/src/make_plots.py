@@ -79,8 +79,8 @@ def fig_ladder():
           4: (0.4985, 0.5012, 0.5135)},
          "+0.0523"),
     ]
-    labels = ["graph encoder", "semantic rung", "AGAF",
-              "loop, prototype", "loop, trained head"]
+    labels = ["GNN model", "semantic model", "fusion model",
+              "feedback model, prototype", "feedback model, trained head"]
     colours = [C_GRAPH, C_SEM, C_FUSE, C_LOOP, C_LOOP]
 
     fig, axes = plt.subplots(1, 2, figsize=(6.1, 3.0))
@@ -127,7 +127,7 @@ def fig_ladder():
              "Error bars are training-seed variance at a fixed fold partition; "
              "fold-partition variance is not measured.\n"
              "Open circles are the three individual seeds. The consultant change is separated on "
-             "NF-UNSW-NB15 and not on NF-ToN-IoT;\nthe two loop versions also differ in their "
+             "NF-UNSW-NB15 and not on NF-ToN-IoT;\nthe two feedback model versions also differ in their "
              "selected top-k (31 to 29, and 25 to 16). The two panels have independent y-axes.",
              ha="center", va="bottom", fontsize=6.5, color="#444444")
     save(fig, "fig_ladder")
@@ -276,12 +276,12 @@ def fig_decomposition():
     ax.bar(4, run, width=0.62, color=C_LOOP, zorder=3)
     ax.text(4, run + 0.012, f"{run:.4f}", ha="center", va="bottom", fontsize=7.5)
     ax.plot([3.69, 4.31], [0.7793, 0.7793], color="#222222", lw=1.0, zorder=6)
-    ax.text(4.36, 0.7793, "AGAF rung\n0.7793", va="center", ha="left", fontsize=7)
+    ax.text(4.36, 0.7793, "fusion model rung\n0.7793", va="center", ha="left", fontsize=7)
 
     ax.set_xticks(xs)
     ax.set_xticklabels(["TE-G-SAGE\nas published", "fair tuning:\nscale and schedule",
                         "our ten node\ncentralities", "architecture",
-                        "our loop\nrung"], fontsize=7)
+                        "our feedback\nmodel rung"], fontsize=7)
     ax.set_ylim(0.30, 0.92)
     ax.set_xlim(-0.6, 5.35)
     ax.set_ylabel("pooled out-of-fold macro-F1")
@@ -317,7 +317,7 @@ def fig_perclass():
     fig, ax = plt.subplots(figsize=(6.1, 4.3))
     im = ax.imshow(M, cmap="RdBu_r", vmin=-0.22, vmax=0.22, aspect="auto")
     ax.set_xticks([0, 1])
-    ax.set_xticklabels([f"loop {MINUS} AGAF", f"loop {MINUS} graph encoder"])
+    ax.set_xticklabels([f"feedback {MINUS} fusion", f"feedback {MINUS} GNN"])
     ax.xaxis.set_ticks_position("top")
     ax.set_yticks(range(len(labels)))
     ax.set_yticklabels(labels)
@@ -357,20 +357,20 @@ def fig_perclass():
 def fig_comparisons():
     # (label, two-level est/lo/hi, seed-matched est/lo/hi)
     unsw = [
-        ("head", f"loop {MINUS} semantic rung", (0.0989, 0.0721, 0.1267), (0.0991, 0.0743, 0.1253)),
-        ("head", f"loop {MINUS} graph encoder", (0.0908, 0.0412, 0.1407), (0.0907, 0.0571, 0.1250)),
-        ("head", f"loop {MINUS} AGAF", (0.0546, 0.0228, 0.0880), (0.0551, 0.0331, 0.0779)),
-        ("proto", f"loop {MINUS} graph encoder", (0.0206, -0.0203, 0.0625), (0.0207, -0.0001, 0.0421)),
-        ("proto", f"loop {MINUS} AGAF", (-0.0156, -0.0552, 0.0268), (-0.0150, -0.0425, 0.0126)),
-        ("indep", f"AGAF {MINUS} graph encoder", (0.0362, -0.0096, 0.0822), (0.0356, 0.0038, 0.0678)),
+        ("head", f"feedback {MINUS} semantic", (0.0989, 0.0721, 0.1267), (0.0991, 0.0743, 0.1253)),
+        ("head", f"feedback {MINUS} GNN", (0.0908, 0.0412, 0.1407), (0.0907, 0.0571, 0.1250)),
+        ("head", f"feedback {MINUS} fusion", (0.0546, 0.0228, 0.0880), (0.0551, 0.0331, 0.0779)),
+        ("proto", f"feedback {MINUS} GNN", (0.0206, -0.0203, 0.0625), (0.0207, -0.0001, 0.0421)),
+        ("proto", f"feedback {MINUS} fusion", (-0.0156, -0.0552, 0.0268), (-0.0150, -0.0425, 0.0126)),
+        ("indep", f"fusion {MINUS} GNN", (0.0362, -0.0096, 0.0822), (0.0356, 0.0038, 0.0678)),
     ]
     ton = [
-        ("head", f"loop {MINUS} semantic rung", (0.2231, 0.1703, 0.2771), (0.2228, 0.1732, 0.2713)),
-        ("head", f"loop {MINUS} graph encoder", (0.0694, 0.0129, 0.1288), (0.0691, 0.0171, 0.1200)),
-        ("head", f"loop {MINUS} AGAF", (0.0932, 0.0180, 0.1667), (0.0940, 0.0406, 0.1480)),
-        ("proto", f"loop {MINUS} graph encoder", (0.0191, -0.0180, 0.0596), (0.0182, -0.0050, 0.0418)),
-        ("proto", f"loop {MINUS} AGAF", (0.0428, -0.0316, 0.1105), (0.0431, -0.0059, 0.0936)),
-        ("indep", f"AGAF {MINUS} graph encoder", (-0.0238, -0.0921, 0.0607), (-0.0249, -0.0697, 0.0226)),
+        ("head", f"feedback {MINUS} semantic", (0.2231, 0.1703, 0.2771), (0.2228, 0.1732, 0.2713)),
+        ("head", f"feedback {MINUS} GNN", (0.0694, 0.0129, 0.1288), (0.0691, 0.0171, 0.1200)),
+        ("head", f"feedback {MINUS} fusion", (0.0932, 0.0180, 0.1667), (0.0940, 0.0406, 0.1480)),
+        ("proto", f"feedback {MINUS} GNN", (0.0191, -0.0180, 0.0596), (0.0182, -0.0050, 0.0418)),
+        ("proto", f"feedback {MINUS} fusion", (0.0428, -0.0316, 0.1105), (0.0431, -0.0059, 0.0936)),
+        ("indep", f"fusion {MINUS} GNN", (-0.0238, -0.0921, 0.0607), (-0.0249, -0.0697, 0.0226)),
     ]
     tone = {"head": {"loop": C_LOOP, "AGAF": C_FUSE},
             "proto": {"loop": "#F0A882", "AGAF": "#8ED9C1"},
@@ -428,9 +428,9 @@ def fig_comparisons():
                bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=(0, 0.175, 1, 1))
     fig.text(0.5, 0.075,
-             "* On NF-UNSW-NB15, AGAF minus graph encoder is separated under the "
+             "* On NF-UNSW-NB15, the fusion model minus the GNN model is separated under the "
              "seed-matched procedure and not once training-seed\nvariance is admitted; the "
-             "two-level result decides. There is no loop-versus-semantic-rung comparison "
+             "two-level result decides. There is no feedback-versus-semantic-model comparison "
              "for the prototype consultant.",
              ha="center", va="bottom", fontsize=6.5, color="#444444")
     save(fig, "fig_comparisons")

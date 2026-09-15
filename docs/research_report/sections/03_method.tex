@@ -21,7 +21,7 @@ scored.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_architecture}
-\caption{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback loop. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
+\caption{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback model. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
 \label{fig:architecture}
 \end{figure}
 
@@ -191,18 +191,18 @@ generative. We avoid describing it as an LLM for that reason.
 The embedding is consumed in two ways, and the distinction matters for everything that
 follows. The \emph{embedding-only} route fits no classifier on it: a whitened prototype
 scorer (described under the feedback stage below) assigns each edge to the nearest class
-mean in a fold-local whitened space. This is the semantic rung of the ladder and the
-semantic input to AGAF, and it measures what the encoder alone knows. The \emph{trained
+mean in a fold-local whitened space. This is the ladder's semantic model and the
+semantic input to the fusion model, and it measures what the encoder alone knows. The \emph{trained
 head} route fits, within each fold, a small classifier on the training-fold embeddings: a
 per-fold standard scaler, then a 768--128--128--$C$ multilayer perceptron with ReLU and
 dropout $0.2$, trained with the same class-weighted focal loss, optimiser and early-stopping
 rule as the structural branch. Each fold's head is applied to every edge and its logits are
 stored: on that fold's training and validation edges the logits are in-fold, on its test
 edges they are out-of-fold, so the pooled test score of the head is a legitimate out-of-fold
-number. That head is the consultant the feedback loop uses. Evaluated on its own, it is
+number. That head is the consultant the feedback model uses. Evaluated on its own, it is
 also the strongest single-modality baseline in this study. We report it in every table for
 that reason. A cross-fitted variant, in which training-edge logits come from an inner
-cross-validation so that the loop trains on advice no more reliable than the advice it is
+cross-validation so that the feedback model trains on advice no more reliable than the advice it is
 scored with, was implemented and measured. It scored lower on both datasets and is reported
 in Section~\ref{sec:results}. The in-fold head is retained.
 
@@ -214,7 +214,7 @@ of it.
 
 \subsection{Adaptive Gated Attention Fusion}
 
-AGAF projects each modality into a shared 128-dimensional space through a linear layer, batch
+The fusion model projects each modality into a shared 128-dimensional space through a linear layer, batch
 normalisation and ReLU, so 64 to 128 for the structural embedding and 768 to 128 for the semantic
 one. A gate consumes the concatenated projections and emits two logits, softmaxed at
 temperature 1.0 into weights $(\alpha_{g}, \alpha_{l})$ that convexly combine them:
@@ -231,11 +231,11 @@ $\mathbf{f}_{e}$ produces class logits. Both inputs are standardised before ente
 module. The scalers are held in the trainer and persisted separately, so the module's
 \texttt{state\_dict} stays free of fitted statistics.
 
-One constraint on this stage is load-bearing. AGAF consumes \emph{per-fold out-of-fold}
+One constraint on this stage is load-bearing. The fusion model consumes \emph{per-fold out-of-fold}
 structural embeddings only. It never receives embeddings from a GNN fitted on all edges,
 because such a model has already seen the test edges' labels, and those labels would reach
 the fusion classifier through its own input features. That is a leak no split downstream of it
-could detect. For each held-out fold, the structural embeddings supplied to AGAF come from a
+could detect. For each held-out fold, the structural embeddings supplied to the fusion model come from a
 model that never saw that fold's labels. Earlier runs in this project violated this rule, and
 the reproduction entry point now enforces it.
 
@@ -248,7 +248,7 @@ Figure~\ref{fig:loopflow} gives the stage as it runs.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_loop_flow}
-\caption{One pass of the feedback loop. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce.}
+\caption{One pass of the feedback model. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce.}
 \label{fig:loopflow}
 \end{figure}
 
@@ -261,13 +261,13 @@ $k = 29.0$ on NF-UNSW-NB15 and $k = 16.0$ on NF-ToN-IoT. The validation curves a
 every candidate inside the noise band of the mean, so these values are the argmax of a flat
 curve rather than a tuned optimum, and we say so wherever they appear.
 
-\paragraph{Consultation.} The loop consults the per-fold trained head described in the
+\paragraph{Consultation.} The feedback model consults the per-fold trained head described in the
 semantic branch. For every flagged edge it reads that fold's stored head logits, a
 $C$-dimensional class judgement computed from the edge's sentence alone. The judgement does
 not depend on the graph model's current belief about the edge, so the coupling is
 bidirectional in routing but not in content.
 
-The embedding-only alternative, used by the semantic rung and by AGAF, is a whitened
+The embedding-only alternative, used by the semantic model and by the fusion model, is a whitened
 prototype scorer. Within each fold we centre the training-fold embeddings, fit a ZCA whitener
 by eigendecomposition of their covariance with a floor on small eigenvalues (necessary
 because the training fold has fewer rows than the 768 embedding dimensions), and take the
@@ -278,9 +278,9 @@ spread until random and real advice became indistinguishable.
 
 The rule that keeps the comparison fair applies everywhere: every
 rung uses the same encoder, the same graph, the same folds and the same training seeds. The
-loop additionally trains a classification head on the semantic embeddings, and that head is
-reported alone. The loop was first built with the prototype scorer as its consultant, on the
-argument that a consultant the loop already contains would only be echoed. That
+feedback model additionally trains a classification head on the semantic embeddings, and that head is
+reported alone. The feedback model was first built with the prototype scorer as its consultant, on the
+argument that a consultant the feedback model already contains would only be echoed. That
 configuration, and five attempts to make its advice usable, are reported as negative results
 in Section~\ref{sec:results}. The trained head replaced it after those measurements.
 
@@ -313,15 +313,15 @@ We measure \emph{churn}, the fraction of edges whose predicted class changed sin
 iteration, and stop when churn falls below $0.01$ or after three iterations, whichever comes
 first.
 
-\paragraph{Output fusion.} The loop's prediction is not the graph head's logits after the
+\paragraph{Output fusion.} The feedback model's prediction is not the graph head's logits after the
 last iteration. The refined edge embedding and the consultant's logits are each projected to
 128 dimensions and mixed by a per-edge gate $g_e \in (0,1)$ that reads the entropy and
 maximum probability of both the graph head and the consultant, so it can route towards
 whichever view is confident on that edge. A two-layer classifier over the gated concatenation
 produces a correction, and the final logits are that correction plus the gated residual
 $(1-g_e)\,\mathbf{z}^{\text{gnn}}_e + g_e\,\mathbf{z}^{\text{head}}_e$. The consultant's
-own judgement is a floor the loop can fall back to on edges where the graph view is
-unsure. This stage has the same projection width as AGAF, so the loop and AGAF differ in
+own judgement is a floor the feedback model can fall back to on edges where the graph view is
+unsure. This stage has the same projection width as the fusion model, so the feedback model and the fusion model differ in
 where semantics enter (inside the graph update, or only at the output) and not in fusion
 capacity. Switching the stage off, together with the injection, yields the \texttt{head\_only}
 control used throughout Section~\ref{sec:results}: the same network, trained in the same
@@ -366,9 +366,9 @@ and swept in \texttt{refit}. (D5) E-GraphSAGE's published Eq.~4 aggregates edge 
 but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}_u \Vert
 \mathbf{e}_{uv}])$. We follow the code, since the published numbers came from it.
 
-One design variable is internal to the loop rather than a rung of the ladder: the identity of
-the semantic consultant. The loop was first built around the whitened prototype scorer, the same
-one the semantic rung uses, and later around a per-fold classification head trained on
+One design variable is internal to the feedback model rather than a rung of the ladder: the identity of
+the semantic consultant. The feedback model was first built around the whitened prototype scorer, the same
+one the semantic model uses, and later around a per-fold classification head trained on
 the same frozen embeddings. Both versions are reported, at the same three seeds, at the same
 fold partition, and with the injection scale unchanged. Only the selected entropy percentile
 differs between them, at 31 against 29 on NF-UNSW-NB15 and 25 against 16 on NF-ToN-IoT.
@@ -410,7 +410,7 @@ seed-matched bootstrap (seed 42 against 42, 1 against 1, 2 against 2) is reporte
 secondary check. The decision rule was fixed before the runs: a difference is called
 \emph{separated} only if its two-level 95\% interval excludes zero, and \emph{not separated}
 otherwise; we do not describe point-estimate orderings as significant.  % numcheck: allow -- the sentence refuses the word
-The semantic rung is
+The semantic model is
 deterministic given the folds and has zero seed variance, so it enters comparisons as a fixed
 side. Comparisons against re-trained published baselines use the same procedure with three
 baseline seeds on the other side.

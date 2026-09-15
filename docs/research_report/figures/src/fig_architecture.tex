@@ -69,8 +69,8 @@
 \draw[gflow] (gemb.south) to[out=-90,in=150] (jn);
 \draw[sflow] (semb.north) to[out=90,in=210] (jn);
 
-\node[fbox, text width=1.9cm] (agaf) at (13.75,1.25) {AGAF:\\ gated attention fusion};
-\node[lbox, text width=1.9cm] (loop) at (13.75,-1.25) {feedback loop};
+\node[fbox, text width=1.9cm] (agaf) at (13.75,1.25) {fusion model:\\ gated attention fusion};
+\node[lbox, text width=1.9cm] (loop) at (13.75,-1.25) {feedback model};
 \draw[flow, draw=cFuse] (jn) -- (agaf.west);
 \draw[flow, draw=cLoop] (jn) -- (loop.west);
 
@@ -80,8 +80,8 @@
 \node[rotate=90, font=\small, text=cInk] at (15.88,0)
       {pooled five-fold out-of-fold macro-F1};
 
-\draw[gflow] (gemb.east) -- node[ann, above, pos=0.62]{graph encoder} (15.10,3.0);
-\draw[sflow] (semb.east) -- node[ann, above, pos=0.55]{semantic rung} (15.10,-3.0);
+\draw[gflow] (gemb.east) -- node[ann, above, pos=0.62]{GNN model} (15.10,3.0);
+\draw[sflow] (semb.east) -- node[ann, above, pos=0.55]{semantic model} (15.10,-3.0);
 \draw[flow, draw=cFuse] (agaf.east) -- (15.10,1.25);
 \draw[flow, draw=cLoop] (loop.east) -- (15.10,-1.25);
 

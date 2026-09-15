@@ -5,9 +5,9 @@ This work built one reproducible edge-level intrusion detection pipeline and ran
 two NetFlow datasets that differ by roughly a factor of 47 in class imbalance. Each aggregated
 flow is encoded twice, once structurally by a graph attention encoder and once as a label-free
 sentence read by a frozen cybersecurity language encoder. Four stages are compared under one
-protocol: each branch alone, gated attention fusion, and a feedback loop that consults the
+protocol: each branch alone, a gated attention fusion model, and a feedback model that consults the
 semantic branch about high-entropy edges and returns the judgement into the edge representations.
-The loop is reported under two consultants, an embedding-only prototype scorer and a
+The feedback model is reported under two consultants, an embedding-only prototype scorer and a
 classification head trained on the same semantic embeddings, because the change between them
 turned out to be the largest effect measured.
 
@@ -15,10 +15,9 @@ Everything was measured at three training seeds with the fold partition fixed, s
 five-fold out-of-fold macro-F1, and compared with a bootstrap that resamples edges and training
 seed. A difference counts as separated only when its interval excludes zero.
 
-With the trained-head consultant the loop is separated above AGAF, above the graph
-encoder, above the semantic rung and above every faithful re-trained baseline, on both
+With the trained-head consultant the feedback model is separated above the fusion model, above the GNN model, above the semantic model and above every faithful re-trained baseline, on both
 datasets. With the prototype consultant, none of those comparisons is separated on either
-dataset. Changing the consultant, and nothing else about the architecture, moved the loop by
+dataset. Changing the consultant, and nothing else about the architecture, moved the feedback model by
 $+0.0697$ and $+0.0523$.
 
 The second result explains the first. An oracle consultant, handed the true label through the
@@ -29,7 +28,7 @@ is changed deliberately, and with output fusion disabled neither realistic consu
 separated from doing nothing. The binding constraint is the consultant, not the mechanism around
 it.
 
-Two findings stand on their own. AGAF is not separated from the graph encoder
+Two findings stand on their own. The fusion model is not separated from the GNN model
 on either dataset and falls below it under heavy imbalance. The alternative injection design,
 which biases graph attention instead of the edge representation, changes no prediction at all,
 for two independent structural reasons on the two graphs.

@@ -65,21 +65,21 @@ def table_ladder() -> str:
         return f"${fmt(rung['mean'])} \\pm {fmt(rung['std'])}$ & {seeds}"
 
     for label, key, source in (
-        ("Graph encoder", "gnn", head),
-        ("Semantic rung", "llm", head),
-        ("AGAF", "agaf", head),
+        ("GNN model", "gnn", head),
+        ("Semantic model", "llm", head),
+        ("Fusion model", "agaf", head),
     ):
         rows.append(
             f"{label:<30} & " + " & ".join(cells(source[d]["rungs"][key]) for d in DATASETS) + " \\\\"
         )
     rows.append("\\midrule")
     rows.append(
-        "Loop, prototype consultant     & "
+        "Feedback model, prototype consultant    & "
         + " & ".join(cells(proto[d]["rungs"]["loop"]) for d in DATASETS)
         + " \\\\"
     )
     rows.append(
-        "Loop, trained-head consultant  & "
+        "Feedback model, trained-head consultant & "
         + " & ".join(cells(head[d]["rungs"]["loop"]) for d in DATASETS)
         + " \\\\"
     )
@@ -92,7 +92,7 @@ def table_ladder() -> str:
     )
     return wrap(
         "Pooled out-of-fold macro-F1 by rung, three training seeds at a fixed fold partition. "
-        "The loop is reported under both consultants. The $\\pm$ is training-seed variance only. "
+        "The feedback model is reported under both consultants. The $\\pm$ is training-seed variance only. "
         "Absolute levels are not comparable across datasets.",
         "tab:ladder",
         body,
@@ -104,20 +104,20 @@ def table_comparisons() -> str:
     proto = load("results/multiseed_ladder_v2_legacy.json")
     plan = {
         "unsw_nb15": [
-            ("loop $-$ AGAF", proto, "loop_vs_agaf", "prototype"),
-            ("loop $-$ AGAF", head, "loop_vs_agaf", "trained head"),
-            ("loop $-$ graph", proto, "loop_vs_gnn", "prototype"),
-            ("loop $-$ graph", head, "loop_vs_gnn", "trained head"),
-            ("loop $-$ semantic", head, "loop_vs_llm", "trained head"),
-            ("AGAF $-$ graph", head, "agaf_vs_gnn", "either"),
+            ("feedback $-$ fusion", proto, "loop_vs_agaf", "prototype"),
+            ("feedback $-$ fusion", head, "loop_vs_agaf", "trained head"),
+            ("feedback $-$ GNN", proto, "loop_vs_gnn", "prototype"),
+            ("feedback $-$ GNN", head, "loop_vs_gnn", "trained head"),
+            ("feedback $-$ semantic", head, "loop_vs_llm", "trained head"),
+            ("fusion $-$ GNN", head, "agaf_vs_gnn", "either"),
         ],
         "ton_iot": [
-            ("loop $-$ AGAF", proto, "loop_vs_agaf", "prototype"),
-            ("loop $-$ AGAF", head, "loop_vs_agaf", "trained head"),
-            ("loop $-$ graph", proto, "loop_vs_gnn", "prototype"),
-            ("loop $-$ graph", head, "loop_vs_gnn", "trained head"),
-            ("loop $-$ semantic", head, "loop_vs_llm", "trained head"),
-            ("AGAF $-$ graph", head, "agaf_vs_gnn", "either"),
+            ("feedback $-$ fusion", proto, "loop_vs_agaf", "prototype"),
+            ("feedback $-$ fusion", head, "loop_vs_agaf", "trained head"),
+            ("feedback $-$ GNN", proto, "loop_vs_gnn", "prototype"),
+            ("feedback $-$ GNN", head, "loop_vs_gnn", "trained head"),
+            ("feedback $-$ semantic", head, "loop_vs_llm", "trained head"),
+            ("fusion $-$ GNN", head, "agaf_vs_gnn", "either"),
         ],
     }
     lines = []
@@ -298,11 +298,11 @@ def table_vsbaselines() -> str:
             lines.append(f" & {label:<26} & " + " & ".join(cells) + " \\\\")
     body = (
         "\\begin{tabular}{llll}\n\\toprule\n"
-        "Dataset & Baseline & Loop, prototype consultant & Loop, trained-head consultant \\\\\n"
+        "Dataset & Baseline & Feedback model, prototype & Feedback model, trained head \\\\\n"
         "\\midrule\n" + "\n".join(lines) + "\n\\bottomrule\n\\end{tabular}"
     )
     return wrap(
-        "The loop against each re-trained baseline, under both consultants, two-level bootstrap "
+        "The feedback model against each re-trained baseline, under both consultants, two-level bootstrap "
         "over edges and both seed sets. Positive favours our rung. \\emph{ns} marks an interval "
         "containing zero.",
         "tab:vsbaselines",
@@ -329,7 +329,7 @@ def table_decomposition() -> str:
             f"{ep['share_node_features_percent']}\\%",
         ),
         (
-            "our loop rung",
+            "our feedback model rung",
             levels["loop"],
             f"${fmt(ep['step_architecture'], signed=True)}$, architecture",
             f"{ep['share_architecture_percent']}\\%",
@@ -338,7 +338,7 @@ def table_decomposition() -> str:
     lines = [f"{a:<28} & {fmt(b)} & {c} & {e} \\\\" for a, b, c, e in rows]
     lines.append("\\midrule")
     lines.append(
-        f"(our AGAF rung)             & {fmt(levels['agaf'])} & "
+        f"(our fusion model rung)     & {fmt(levels['agaf'])} & "
         f"${fmt(agaf_ep['step_architecture'], signed=True)}$ over the same base & "
         f"{agaf_ep['share_architecture_percent']}\\% of {fmt(agaf_ep['total_gap'])} \\\\"
     )
@@ -350,7 +350,7 @@ def table_decomposition() -> str:
     )
     return wrap(
         "Decomposition of the NF-UNSW-NB15 gap against TE-G-SAGE. Point estimates only. "
-        "Shares are of the total gap to the loop.",
+        "Shares are of the total gap to the feedback model.",
         "tab:decomposition",
         body,
     )
@@ -380,12 +380,12 @@ def table_perclass() -> str:
             lines.append(f"{tex:<24} & {counts[name]:>4} & {values} \\\\")
     body = (
         "\\begin{tabular}{lrccc}\n\\toprule\n"
-        "Class & edges & graph & AGAF & loop \\\\\n\\midrule\n"
+        "Class & edges & GNN & fusion & feedback \\\\\n\\midrule\n"
         + "\n".join(lines)
         + "\n\\bottomrule\n\\end{tabular}"
     )
     return wrap(
-        "Per-class F1, mean over three seeds, with edge counts. The loop is the canonical one, "
+        "Per-class F1, mean over three seeds, with edge counts. The feedback model is the canonical one, "
         "consulting the trained head. NF-ToN-IoT's \\texttt{dos} and \\texttt{ransomware} are "
         "excluded from the metric and omitted here.",
         "tab:perclass",

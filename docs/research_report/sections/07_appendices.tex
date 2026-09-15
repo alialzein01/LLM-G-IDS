@@ -4,17 +4,16 @@
 \label{app:negative}
 
 This appendix holds the measurements behind Section~\ref{sec:res-prototype}. They are
-reported in full because the case for changing the loop's consultant rests on them, and
+reported in full because the case for changing the feedback model's consultant rests on them, and
 because each one closes a line of investigation that would otherwise look open.
 
 \subsection{Conditions A, B and C}
 \label{app:abc}
 
-Three configurations of the loop were run at three seeds on both datasets, with the fold
-partition fixed. Condition A is the canonical prototype-consultant loop. Condition B trains
+Three configurations of the feedback model were run at three seeds on both datasets, with the fold
+partition fixed. Condition A is the canonical prototype-consultant feedback model. Condition B trains
 the selector head whose entropy ranks edges and calibrates the consultant's temperature per
-fold instead of pinning it. Condition C re-selects the two knobs on top of B. The graph
-encoder and AGAF rungs are unaffected by any of the three and are shown for reference in
+fold instead of pinning it. Condition C re-selects the two knobs on top of B. The GNN model and fusion model rungs are unaffected by any of the three and are shown for reference in
 Table~\ref{tab:abc}.
 
 \begin{table}[htbp]
@@ -27,21 +26,21 @@ Table~\ref{tab:abc}.
 Dataset & Rung & A (canonical) & B (signals fixed) & C (B, re-selected) \\
 \midrule
 \multirow{3}{*}{UNSW}
- & loop          & 0.7644 & 0.7610 & 0.7809 \\
- & AGAF          & 0.7793 & 0.7793 & 0.7793 \\
- & graph encoder & 0.7437 & 0.7437 & 0.7437 \\
+ & feedback model          & 0.7644 & 0.7610 & 0.7809 \\
+ & fusion model          & 0.7793 & 0.7793 & 0.7793 \\
+ & GNN model & 0.7437 & 0.7437 & 0.7437 \\
 \midrule
 \multirow{3}{*}{ToN}
- & loop          & 0.4521 & 0.4147 & 0.4630 \\
- & AGAF          & 0.4102 & 0.4102 & 0.4102 \\
- & graph encoder & 0.4336 & 0.4336 & 0.4336 \\
+ & feedback model          & 0.4521 & 0.4147 & 0.4630 \\
+ & fusion model          & 0.4102 & 0.4102 & 0.4102 \\
+ & GNN model & 0.4336 & 0.4336 & 0.4336 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The decision rule was fixed before the runs. It returns the same verdict in all three
-conditions: the loop is not separated from AGAF on either dataset. On NF-UNSW-NB15 the
-two-level interval for loop minus AGAF is $-0.0156$ [$-0.0552$, $+0.0268$] in A, $-0.0192$
+conditions: the feedback model is not separated from the fusion model on either dataset. On NF-UNSW-NB15 the
+two-level interval for the feedback model minus the fusion model is $-0.0156$ [$-0.0552$, $+0.0268$] in A, $-0.0192$
 [$-0.0594$, $+0.0197$] in B and $+0.0008$ [$-0.0464$, $+0.0447$] in C. On NF-ToN-IoT it is
 $+0.0428$ [$-0.0316$, $+0.1105$], $+0.0060$ [$-0.0667$, $+0.0739$] and $+0.0527$ [$-0.0118$,
 $+0.1194$]. Condition C carries the highest point estimate on both datasets. That is not a
@@ -56,9 +55,9 @@ from 0.102 to 0.487, and the temperature fell from about 9.4 to 0.105. On NF-ToN
 selector head moved from 0.029 to 0.065 up to 0.293 to 0.333, disagreement fell from 0.8988
 to between 0.580 and 0.638, maximum probability rose from 0.101 to 0.500, and temperature
 fell from about 9.5 to 0.030. A better-calibrated consultant and a genuinely
-uncertainty-ranked selector made the loop worse on both datasets.
+uncertainty-ranked selector made the feedback model worse on both datasets.
 
-\subsection{What the canonical loop was actually injecting}
+\subsection{What the canonical feedback model was actually injecting}
 \label{app:magnitudes}
 
 Table~\ref{tab:magnitudes} gives the mean absolute magnitude added to the 39-wide encoded
@@ -83,7 +82,7 @@ C (B, re-selected)   & 1.103 / 1.100 / 1.158 & 2.845 / 2.893 / 2.992 & \\
 
 Under the canonical prototype configuration the mechanism was injecting between 0.02 and 0.08
 of a standard deviation. Calibrating the temperature raised that by a factor of roughly 17 on
-NF-UNSW-NB15 and roughly 125 on NF-ToN-IoT. Two things follow. The prototype loop's advantage
+NF-UNSW-NB15 and roughly 125 on NF-ToN-IoT. Two things follow. The prototype feedback model's advantage
 over feedback-off was late fusion rather than feedback. The injection scale is also close to
 redundant with the learned bias strength, since condition C moved the scale from 2.0 to 5.0 and
 from 20.0 to 10.0 while the end-to-end magnitude barely moved.
@@ -140,19 +139,19 @@ class.
 \subsection{Consultant complementarity on the flagged set}
 \label{app:complementarity}
 
-The loop consults the edges the graph encoder is least certain about, so what matters is not a
+The feedback model consults the edges the GNN model is least certain about, so what matters is not a
 consultant's accuracy over the whole graph but its accuracy where it is actually asked.
 Table~\ref{tab:complementarity} gives that, at seed 42.
 
 \begin{table}[htbp]
 \centering
-\caption{Accuracy on the entropy-flagged edge set at seed 42, for the graph encoder, each
-consultant, and the resulting loop.}
+\caption{Accuracy on the entropy-flagged edge set at seed 42, for the GNN model, each
+consultant, and the resulting feedback model.}
 \label{tab:complementarity}
 \small
 \begin{tabular}{llccc}
 \toprule
-Dataset & Consultant & graph encoder & consultant & resulting loop \\
+Dataset & Consultant & GNN model & consultant & resulting feedback model \\
 \midrule
 \multirow{2}{*}{NF-UNSW-NB15}
  & prototype    & 0.547 & 0.647 & 0.658 \\
@@ -165,7 +164,7 @@ Dataset & Consultant & graph encoder & consultant & resulting loop \\
 \end{tabular}
 \end{table}
 
-The NF-ToN-IoT prototype row is the clearest statement of the problem. On the edges the loop
+The NF-ToN-IoT prototype row is the clearest statement of the problem. On the edges the feedback model
 selects, that consultant is less accurate than the model it is supposed to correct.
 
 Table~\ref{tab:disagreement} gives what happens where the two disagree, the only
@@ -173,7 +172,7 @@ place a consultant can change an answer.
 
 \begin{table}[htbp]
 \centering
-\caption{Among entropy-flagged edges where the consultant and the graph encoder disagree, how
+\caption{Among entropy-flagged edges where the consultant and the GNN model disagree, how
 often the consultant is right. Seed 42, at the canonical entropy percentile for each dataset.}
 \label{tab:disagreement}
 \small
@@ -232,13 +231,12 @@ stages run through one entry point:
 \texttt{\ \ --only fusion oof prototypes top\_k\_sweep feedback ladder}
 \end{quote}
 
-with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. The loop consults
+with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. The feedback model consults
 the trained head when \texttt{train\_feedback} is given \texttt{--use-llm-head}. Without
 that flag it reproduces the superseded prototype-consultant ladder, at the knobs kept under
 \texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold structural embeddings must be
 regenerated with
-\texttt{step3.build\_oof\_gnn\_embeddings} before the fusion stage whenever the graph
-encoder changes. The fusion stage does not do it, and will otherwise train on stale
+\texttt{step3.build\_oof\_gnn\_embeddings} before the fusion stage whenever the GNN model changes. The fusion stage does not do it, and will otherwise train on stale
 embeddings.
 
 \paragraph{Result contracts.} Every number in this report traces to one of the files in

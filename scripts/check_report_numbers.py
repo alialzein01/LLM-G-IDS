@@ -95,7 +95,8 @@ PHRASE_EXEMPTIONS: tuple[str, ...] = (
 # wrong word for this system's semantic branch, so it is flagged only where the
 # line is also talking about our own components.
 OURS = re.compile(
-    r"\b(our|we|CySecBERT|semantic branch|semantic head|AGAF|the loop|the head|consultant)\b",
+    r"\b(our|we|CySecBERT|semantic branch|semantic head|AGAF|the loop|the head|consultant"
+    r"|GNN model|semantic model|fusion model|feedback model)\b",
     re.IGNORECASE,
 )
 

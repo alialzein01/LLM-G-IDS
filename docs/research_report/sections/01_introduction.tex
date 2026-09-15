@@ -84,7 +84,7 @@ role from that of a generative large language model.
 Neither representation is assumed to win in every case; the design instead lets them
 challenge and complement one another. The parallel fusion stage runs
 the graph and semantic encoders side by side and combines their edge embeddings through
-Adaptive Gated Attention Fusion (AGAF). The feedback stage adds uncertainty-guided
+Adaptive Gated Attention Fusion, referred to throughout as the fusion model. The feedback stage adds uncertainty-guided
 semantic feedback: edges with high-entropy GNN predictions are selected for semantic
 consultation, and the resulting signal is reintroduced by modifying the edge
 representations that the next graph update consumes. A second design, which biases graph
@@ -133,7 +133,7 @@ Five research questions frame the study:
     individually on NF-UNSW-NB15 and NF-ToN-IoT under the same five-fold out-of-fold
     evaluation protocol?
 
-    \item[RQ2.] Does AGAF score above both single-branch rungs on NF-UNSW-NB15 and
+    \item[RQ2.] Does the fusion model score above both single-branch rungs on NF-UNSW-NB15 and
     NF-ToN-IoT, and are those differences separated under the bootstrap protocol?
 
     \item[RQ3.] Does uncertainty-guided semantic feedback add value beyond static fusion
@@ -144,7 +144,7 @@ Five research questions frame the study:
     strength of the semantic consultant affect fusion and feedback on NF-UNSW-NB15 and
     NF-ToN-IoT?
 
-    \item[RQ5.] How does the feedback loop compare against published graph-based
+    \item[RQ5.] How does the feedback model compare against published graph-based
     intrusion detection architectures re-trained on the same aggregated representation
     under the same protocol on NF-UNSW-NB15 and NF-ToN-IoT, and how much of any observed
     difference is attributable to representation and tuning rather than to architecture?
@@ -171,10 +171,10 @@ stage under one consistent protocol. The work makes five contributions.
     label-free by an explicit validation guard, preventing the semantic branch from seeing
     the target attack name or a synonymous relation label.
 
-    \item It implements and compares two multimodal stages: AGAF for parallel structural--
+    \item It implements and compares two multimodal stages: the fusion model for parallel structural--
     semantic fusion, and uncertainty-guided semantic feedback that reintroduces semantic
-    evidence into the edge representations of uncertain edges. The feedback loop consults
-    a classification head trained on the semantic embeddings. The loop is reported under that
+    evidence into the edge representations of uncertain edges. The feedback model consults
+    a classification head trained on the semantic embeddings. The feedback model is reported under that
     consultant and under the weaker embedding-only scorer it was first built with, so the
     reader can see how much of the result is the mechanism and how much is the consultant.
 
@@ -196,8 +196,8 @@ The contribution is not presented as a universal improvement over existing
 intrusion detectors. It is an implementation and controlled evaluation of a particular
 form of structural--semantic cooperation, together with evidence about its limits. The
 headline of that evidence is stated here so it is not mistaken for a footnote later. With a
-trained semantic consultant the feedback loop is the highest rung on both datasets, separated
-from the graph encoder, from AGAF and from every faithful re-trained baseline. With
+trained semantic consultant the feedback model is the highest rung on both datasets, separated
+from the GNN model, from the fusion model and from every faithful re-trained baseline. With
 the weaker consultant it was first built with, none of those comparisons is separated at all.
 And when final-output fusion is removed, so that semantic evidence can reach the classifier
 only by re-entering the graph, neither consultant produces a gain we could separate from zero.
@@ -213,7 +213,7 @@ experimental scope, research questions, and contribution. Section~\ref{sec:relat
 reviews graph-based intrusion detection, cybersecurity language encoders,
 structural--semantic fusion, and iterative graph--language feedback, and positions the
 study against the closest prior mechanisms. Section~\ref{sec:method} describes the two
-datasets, graph and text construction, the structural and semantic branches, AGAF,
+datasets, graph and text construction, the structural and semantic branches, the fusion model,
 uncertainty-guided semantic feedback, the baseline protocol, and the shared evaluation
 procedure.
 
