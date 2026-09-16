@@ -31,9 +31,16 @@ class UncertaintySelector(nn.Module):
     """Phase 4.1 — flag edges the GNN is uncertain about.
 
     Uncertainty = Shannon entropy of the per-edge softmax distribution.
-    The top-k% highest-entropy edges are flagged. The threshold is
-    calibrated once per fold on train-fold predictions and stored in a
-    persistent buffer so inference reuses it without re-quantiling.
+    The top-k% highest-entropy edges are flagged.
+
+    **The threshold is recomputed on every call.** `calibrate` exists and would
+    pin it in a persistent buffer, but nothing in this project calls it, so
+    `calibrated_threshold` stays NaN and `forward` takes the quantile of the
+    distribution it was handed. The flagged set is therefore always exactly the
+    top k% of the CURRENT pass, and which edges are in it can change from one
+    pass to the next as the model's predictions move. Section 3.7 of the report
+    says the same thing; it used to say the threshold was calibrated once and
+    reused, which this code has never done.
 
     Parameters
     ----------
@@ -66,7 +73,12 @@ class UncertaintySelector(nn.Module):
         return -(probs * (probs + eps).log()).sum(dim=-1)
 
     def calibrate(self, probs: torch.Tensor) -> torch.Tensor:
-        """Set the entropy threshold to the top-k% quantile of `probs`."""
+        """Set the entropy threshold to the top-k% quantile of `probs`.
+
+        Not called anywhere in this project. Left in place because pinning the
+        threshold is a reasonable thing to want, but note that every published
+        number was produced with the threshold recomputed per pass.
+        """
         h = self.entropy(probs)
         q = 1.0 - self.top_k_percent / 100.0
         threshold = torch.quantile(h, q)
@@ -76,8 +88,9 @@ class UncertaintySelector(nn.Module):
     def forward(self, probs: torch.Tensor) -> torch.Tensor:
         """Return `[E]` bool mask; True where entropy exceeds threshold.
 
-        If `calibrate` has not been called, computes the threshold on the
-        fly from `probs` itself (used by dashboard sweeps).
+        `calibrate` is never called in this project, so this is the path every
+        published run took: the threshold is the top-k% quantile of `probs`
+        itself, recomputed on each call.
         """
         h = self.entropy(probs)
         if torch.isnan(self.calibrated_threshold):

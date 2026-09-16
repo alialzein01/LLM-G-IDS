@@ -200,8 +200,8 @@ rule as the structural branch. Each fold's head is applied to every edge and its
 stored: on that fold's training and validation edges the logits are in-fold, on its test
 edges they are out-of-fold, so the pooled test score of the head is a legitimate out-of-fold
 number. That head is the consultant the feedback model uses. Evaluated on its own, it is
-also the strongest single-modality baseline in this study. We report it in every table for
-that reason. A cross-fitted variant, in which training-edge logits come from an inner
+also the strongest single-modality baseline in this study, and this report treats it as the
+consultant rather than as a rung of the ladder. A cross-fitted variant, in which training-edge logits come from an inner
 cross-validation so that the feedback model trains on advice no more reliable than the advice it is
 scored with, was implemented and measured. It scored lower on both datasets and is reported
 in Section~\ref{sec:results}. The in-fold head is retained.
@@ -213,6 +213,7 @@ is what makes the semantic branch an independent view of the edge rather than a 
 of it.
 
 \subsection{Adaptive Gated Attention Fusion}
+\label{sec:method-fusion}
 
 The fusion model projects each modality into a shared 128-dimensional space through a linear layer, batch
 normalisation and ReLU, so 64 to 128 for the structural embedding and 768 to 128 for the semantic
@@ -231,13 +232,21 @@ $\mathbf{f}_{e}$ produces class logits. Both inputs are standardised before ente
 module. The scalers are held in the trainer and persisted separately, so the module's
 \texttt{state\_dict} stays free of fitted statistics.
 
-One constraint on this stage is load-bearing. The fusion model consumes \emph{per-fold out-of-fold}
-structural embeddings only. It never receives embeddings from a GNN fitted on all edges,
-because such a model has already seen the test edges' labels, and those labels would reach
-the fusion classifier through its own input features. That is a leak no split downstream of it
-could detect. For each held-out fold, the structural embeddings supplied to the fusion model come from a
-model that never saw that fold's labels. Earlier runs in this project violated this rule, and
-the reproduction entry point now enforces it.
+One constraint on this stage is load-bearing. The fusion model consumes \emph{per-fold
+out-of-fold} structural embeddings only, never embeddings from a GNN fitted on all edges. Such a
+model has already seen the test edges' labels, and those labels would reach the fusion
+classifier through its own input features, which is a leak no split downstream of it could
+detect. Earlier runs in this project used exactly that, and the reproduction entry point now
+enforces the out-of-fold rule.
+
+What the construction guarantees is worth stating precisely, because it is weaker than
+\emph{never}. For each held-out fold, the embeddings of that fold's \emph{test} edges come from
+a GNN that never saw their labels. The embeddings of its \emph{training} edges come from the
+other folds' GNNs, each of which was fitted on a partition that includes some of the held-out
+fold, so the fusion classifier is fitted on features that are one step removed from the test
+labels. This is the standard out-of-fold stacking construction and is what the published
+numbers use. A fully nested construction, with an inner split inside every training fold, would
+remove even that step and was not run.
 
 \subsection{Uncertainty-Guided Semantic Feedback}
 
@@ -254,9 +263,9 @@ Figure~\ref{fig:loopflow} gives the stage as it runs.
 
 
 \paragraph{Selection.} For each edge we compute the Shannon entropy, in nats, of the GNN's
-predictive distribution, and flag the edges above the $(1 - k/100)$ quantile. The threshold is
-calibrated once and reused, so the flagged set is a fixed-size top-$k\%$ rather than a moving
-target. We select $k$ on validation folds only, over $[15, 35]$ at three training seeds:
+predictive distribution, and flag the edges above the $(1 - k/100)$ quantile. The quantile is
+recomputed from the current predictive distribution at every pass, so the flagged set is always
+exactly the top $k\%$ of that pass and its membership can change between passes. We select $k$ on validation folds only, over $[15, 35]$ at three training seeds:
 $k = 29.0$ on NF-UNSW-NB15 and $k = 16.0$ on NF-ToN-IoT. The validation curves are flat, with
 every candidate inside the noise band of the mean, so these values are the argmax of a flat
 curve rather than a tuned optimum, and we say so wherever they appear.
@@ -267,8 +276,10 @@ $C$-dimensional class judgement computed from the edge's sentence alone. The jud
 not depend on the graph model's current belief about the edge, so the coupling is
 bidirectional in routing but not in content.
 
-The embedding-only alternative, used by the semantic model and by the fusion model, is a whitened
-prototype scorer. Within each fold we centre the training-fold embeddings, fit a ZCA whitener
+The embedding-only alternative, used by the semantic model and by the prototype-consultant
+configuration of the feedback model, is a whitened prototype scorer. The fusion model does not
+use it; as Section~\ref{sec:method-fusion} states, it consumes the standardised 768-dimensional
+embedding directly. Within each fold we centre the training-fold embeddings, fit a ZCA whitener
 by eigendecomposition of their covariance with a floor on small eigenvalues (necessary
 because the training fold has fewer rows than the 768 embedding dimensions), and take the
 class-wise mean in the whitened space as that class's prototype. An edge is whitened with the
@@ -279,7 +290,7 @@ spread until random and real advice became indistinguishable.
 The rule that keeps the comparison fair applies everywhere: every
 rung uses the same encoder, the same graph, the same folds and the same training seeds. The
 feedback model additionally trains a classification head on the semantic embeddings, and that head is
-reported alone. The feedback model was first built with the prototype scorer as its consultant, on the
+its consultant. The feedback model was first built with the prototype scorer as its consultant, on the
 argument that a consultant the feedback model already contains would only be echoed. That
 configuration, and five attempts to make its advice usable, are reported as negative results
 in Section~\ref{sec:results}. The trained head replaced it after those measurements.
