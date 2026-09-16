@@ -1,21 +1,23 @@
 {
   "consultation_rates": {
-    "note": "The confidence gate keeps the top half of the flagged set by consultant confidence (bias_confidence_fraction 0.5), so gated = flagged // 2.",
+    "note": "Flagged is the top k% of edges by entropy at the canonical k (29.0 / 16.0); gated is the top half of that set by consultant confidence (bias_confidence_fraction 0.5). Earlier values (204/102, 532/266) came from results/dev/crossfit/task2_summary.json at the pre-reselection k = 31 / 25 and are superseded (HANDOFF.md section 4, Gap B).",
     "ton_iot": {
       "edges": 2127,
-      "flagged": 532,
-      "flagged_percent": 25.0,
-      "gated": 266,
-      "gated_percent": 12.5,
-      "source": "results/dev/crossfit/task2_summary.json:ton_iot.n_flagged, seed 42"
+      "flagged": 341,
+      "flagged_percent": 16.0,
+      "gated": 170,
+      "gated_percent": 8.0,
+      "source": "results/consultant_complementarity.json:ton_iot.n_flagged / consultants.trained_head.n_gated, seed 42",
+      "top_k_percent": 16.0
     },
     "unsw_nb15": {
       "edges": 656,
-      "flagged": 204,
-      "flagged_percent": 31.1,
-      "gated": 102,
-      "gated_percent": 15.5,
-      "source": "results/dev/crossfit/task2_summary.json:unsw_nb15.n_flagged, seed 42"
+      "flagged": 190,
+      "flagged_percent": 29.0,
+      "gated": 95,
+      "gated_percent": 14.5,
+      "source": "results/consultant_complementarity.json:unsw_nb15.n_flagged / consultants.trained_head.n_gated, seed 42",
+      "top_k_percent": 29.0
     }
   },
   "decomposition_unsw": {

@@ -107,24 +107,30 @@ def knob_curves() -> dict:
 
 
 def consultation_rates() -> dict:
-    """How much of the graph the loop actually consults, at seed 42."""
-    stats = json.loads((ROOT / "docs" / "research_report" / "dataset_stats.json").read_text())
-    crossfit = load("results/dev/crossfit/task2_summary.json")
+    """How much of the graph the loop actually consults, at the canonical knobs."""
+    comp = load("results/consultant_complementarity.json")
     out: dict[str, dict] = {}
     for ds in DATASETS:
-        edges = stats[ds]["num_edges"]
-        flagged = crossfit[ds]["n_flagged"]
+        d = comp[ds]
+        edges = d["n_edges"]
+        flagged = d["n_flagged"]
+        gated = d["consultants"]["trained_head"]["n_gated"]
         out[ds] = {
             "edges": edges,
             "flagged": flagged,
             "flagged_percent": round(100.0 * flagged / edges, 1),
-            "gated": flagged // 2,
-            "gated_percent": round(100.0 * (flagged // 2) / edges, 1),
-            "source": f"results/dev/crossfit/task2_summary.json:{ds}.n_flagged, seed 42",
+            "gated": gated,
+            "gated_percent": round(100.0 * gated / edges, 1),
+            "top_k_percent": d["top_k_percent"],
+            "source": f"results/consultant_complementarity.json:{ds}.n_flagged / "
+                      f"consultants.trained_head.n_gated, seed {comp['seed']}",
         }
     out["note"] = (
-        "The confidence gate keeps the top half of the flagged set by consultant "
-        "confidence (bias_confidence_fraction 0.5), so gated = flagged // 2."
+        "Flagged is the top k% of edges by entropy at the canonical k (29.0 / 16.0); "
+        "gated is the top half of that set by consultant confidence "
+        "(bias_confidence_fraction 0.5). Earlier values (204/102, 532/266) came from "
+        "results/dev/crossfit/task2_summary.json at the pre-reselection k = 31 / 25 "
+        "and are superseded (HANDOFF.md section 4, Gap B)."
     )
     return out
 
