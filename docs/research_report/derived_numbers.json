@@ -101,5 +101,100 @@
         "validation_min": 0.8238
       }
     }
+  },
+  "per_class_deltas": {
+    "note": "Differences of the three-seed per-class means in results/multiseed_head_per_class.json, whose class order is the dataset config's label order. No per-class difference carries an interval.",
+    "ton_iot": {
+      "class_counts": [
+        1746,
+        16,
+        35,
+        116,
+        157,
+        25,
+        13,
+        12
+      ],
+      "class_names": [
+        "Benign",
+        "backdoor",
+        "ddos",
+        "injection",
+        "mitm",
+        "password",
+        "scanning",
+        "xss"
+      ],
+      "feedback_minus_fusion": {
+        "Benign": 0.0555198395475025,
+        "backdoor": 0.22803610333022095,
+        "ddos": 0.05017495989824605,
+        "injection": 0.14266177851612027,
+        "mitm": 0.14835695520981018,
+        "password": -0.08619537509697689,
+        "scanning": 0.03822673863241821,
+        "xss": 0.17682133528815452
+      },
+      "feedback_minus_gnn": {
+        "Benign": 0.023655633682492683,
+        "backdoor": 0.0902537437020195,
+        "ddos": 0.10987305441351,
+        "injection": 0.08417450585967146,
+        "mitm": -0.027267508525068096,
+        "password": 0.17326744565550536,
+        "scanning": 0.22416124441496604,
+        "xss": -0.11162113702443349
+      }
+    },
+    "unsw_nb15": {
+      "class_counts": [
+        311,
+        25,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40
+      ],
+      "class_names": [
+        "Normal",
+        "Analysis",
+        "Backdoors",
+        "DoS",
+        "Exploits",
+        "Fuzzers",
+        "Generic",
+        "Reconnaissance",
+        "Shellcode",
+        "Worms"
+      ],
+      "feedback_minus_fusion": {
+        "Analysis": 0.030921008945426154,
+        "Backdoors": 0.144157250736198,
+        "DoS": 0.09782610747923592,
+        "Exploits": -0.00031254883575559944,
+        "Fuzzers": 0.041873247428049765,
+        "Generic": 0.14903280045779455,
+        "Normal": 0.03904657171569603,
+        "Reconnaissance": -0.01852481245819315,
+        "Shellcode": 0.053113888186802516,
+        "Worms": 0.0106750558888844
+      },
+      "feedback_minus_gnn": {
+        "Analysis": 0.18688585924530415,
+        "Backdoors": 0.20902519060413793,
+        "DoS": 0.15936807095343697,
+        "Exploits": 0.02712011839829065,
+        "Fuzzers": 0.1541510932120398,
+        "Generic": 0.030782067690105608,
+        "Normal": 0.041415753109330655,
+        "Reconnaissance": -0.03790702868251461,
+        "Shellcode": 0.12896171889920627,
+        "Worms": 0.003975885905024956
+      }
+    }
   }
 }

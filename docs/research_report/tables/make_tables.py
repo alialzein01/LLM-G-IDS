@@ -152,6 +152,67 @@ def table_comparisons() -> str:
     )
 
 
+def table_metrics() -> str:
+    """Macro-F1 beside accuracy and weighted F1, on the rows the metric scores.
+
+    The instructor's brief asks for accuracy. It is reported here rather than in
+    the headline table because on NF-ToN-IoT it barely separates the rungs: the
+    benign class holds 82% of the scored edges, so a rung can be well above
+    another on macro-F1 and a point or two away on accuracy.
+    """
+    head = load("results/multiseed_ladder_v2_head.json")
+    proto = load("results/multiseed_ladder_v2_legacy.json")
+
+    def cells(rung: dict) -> str:
+        parts = []
+        for key in ("macro_f1", "accuracy", "weighted_f1"):
+            block = rung if key == "macro_f1" else rung[key]
+            mean = block["mean"] if key == "macro_f1" else block["mean"]
+            std = block["std"] if key == "macro_f1" else block["std"]
+            parts.append(f"${fmt(mean)} \\pm {fmt(std)}$")
+        return " & ".join(parts)
+
+    rows = []
+    for label, key, source in (
+        ("GNN model", "gnn", head),
+        ("Semantic model", "llm", head),
+        ("Fusion model", "agaf", head),
+    ):
+        rows.append(
+            f"{label:<38} & "
+            + " & ".join(cells(source[d]["rungs"][key]) for d in DATASETS)
+            + " \\\\"
+        )
+    rows.append("\\midrule")
+    rows.append(
+        "Feedback model, prototype consultant    & "
+        + " & ".join(cells(proto[d]["rungs"]["loop"]) for d in DATASETS)
+        + " \\\\"
+    )
+    rows.append(
+        "Feedback model, trained-head consultant & "
+        + " & ".join(cells(head[d]["rungs"]["loop"]) for d in DATASETS)
+        + " \\\\"
+    )
+    body = (
+        "\\begin{tabular}{lcccccc}\n\\toprule\n"
+        "& \\multicolumn{3}{c}{NF-UNSW-NB15 (10 classes)} "
+        "& \\multicolumn{3}{c}{NF-ToN-IoT (8 classes)} \\\\\n"
+        "\\cmidrule(lr){2-4}\\cmidrule(lr){5-7}\n"
+        "Rung & macro-F1 & accuracy & weighted F1 & macro-F1 & accuracy & weighted F1 \\\\\n"
+        "\\midrule\n" + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}"
+    )
+    return wrap(
+        "Three metrics per rung, mean $\\pm$ training-seed standard deviation over three seeds, "
+        "all scored on the rows the metric scores. Accuracy on NF-ToN-IoT is dominated by the "
+        "benign class, which holds 82\\% of those edges, so every graph rung sits above 0.83 "
+        "there and the metric separates them far less than macro-F1 does. Macro-F1 weights a "
+        "12-edge class the same as a 1{,}746-edge one, which is why it is the headline.",
+        "tab:metrics",
+        body,
+    )
+
+
 def table_ablations() -> str:
     lines = []
     for i, key in enumerate(DATASETS):
@@ -425,6 +486,7 @@ def table_knobcurves() -> str:
 
 TABLES = {
     "ladder": table_ladder,
+    "metrics": table_metrics,
     "comparisons": table_comparisons,
     "ablations": table_ablations,
     "mechanism": table_mechanism,

@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """Data figures for the M2 research report.
 
-Every value below is transcribed from the frozen figure briefs in
+Most values below are transcribed from the frozen figure briefs in
 `figures/FIGURE_BRIEFS.md`, which were themselves checked against the result
-contracts under `results/`. Nothing here is computed at draw time, so a plot
-cannot drift from the tables; it can only disagree, and `check_report_numbers.py`
-is what catches that.
+contracts under `results/`. Nothing transcribed is computed at draw time, so such
+a plot cannot drift from the tables; it can only disagree, and
+`check_report_numbers.py` is what catches that.
+
+`fig_metrics` and `fig_perclass_levels` are the exception and READ THEIR VALUES
+FROM THE CONTRACTS at draw time, through `_load`. Between them they would need
+about a hundred transcribed numbers, and transcription at that volume is how
+Figure 8's NF-ToN-IoT row went stale when the per-class artifact was corrected on
+2026-09-16. Their briefs name the artifact and the keys instead of listing
+values, which is the thing to check them against.
 
 Usage:  OMP_NUM_THREADS=1 python make_plots.py [name ...]
 """
+import json
 import sys
 from pathlib import Path
 
@@ -19,6 +27,13 @@ import numpy as np
 from matplotlib.patches import Rectangle
 
 OUT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[4]  # src -> figures -> research_report -> docs -> repo
+
+DATASET_TITLES = (("unsw_nb15", "NF-UNSW-NB15"), ("ton_iot", "NF-ToN-IoT"))
+
+
+def _load(rel: str) -> dict:
+    return json.loads((ROOT / rel).read_text())
 
 # Okabe-Ito; roles are fixed across all nine figures.
 C_GRAPH, C_SEM, C_FUSE = "#0072B2", "#E69F00", "#009E73"
@@ -441,9 +456,135 @@ def fig_comparisons():
     save(fig, "fig_comparisons")
 
 
+# --------------------------------------------------------------------------- 10
+def fig_metrics():
+    """Macro-F1 and accuracy, four rungs, both datasets. Values read at draw time.
+
+    Rows are datasets, columns are metrics, and no two panels share a y-axis:
+    the accuracy panels would otherwise be flattened against the macro-F1 range,
+    which is the opposite of the point. The feedback model is the canonical one,
+    consulting the trained head; the prototype configuration is a separate
+    experimental arm and belongs in the ladder figure, not here.
+    """
+    head = _load("results/multiseed_ladder_v2_head.json")
+    rungs = [("gnn", "GNN model", C_GRAPH), ("llm", "semantic model", C_SEM),
+             ("agaf", "fusion model", C_FUSE), ("loop", "feedback model", C_LOOP)]
+    metrics = [("macro_f1", "pooled out-of-fold macro-F1"),
+               ("accuracy", "accuracy")]
+
+    fig, axes = plt.subplots(2, 2, figsize=(6.1, 5.2))
+    for row, (key, title) in enumerate(DATASET_TITLES):
+        block = head[key]["rungs"]
+        for col, (metric, ylabel) in enumerate(metrics):
+            ax = axes[row][col]
+            vals, errs, seeds = [], [], []
+            for name, _, _ in rungs:
+                rung = block[name]
+                inner = rung if metric == "macro_f1" else rung[metric]
+                vals.append(inner["mean"])
+                errs.append(inner["std"])
+                seeds.append([inner["per_seed"][str(sd)] for sd in (42, 1, 2)])
+
+            for i, ((_, _, colour), v, e) in enumerate(zip(rungs, vals, errs)):
+                ax.bar(i, v, width=0.68, color=colour, edgecolor=colour,
+                       linewidth=0.9, zorder=3)
+                # The semantic model is deterministic; a zero-height bar would
+                # read as a missing measurement rather than as no spread.
+                if e > 0:
+                    ax.errorbar(i, v, yerr=e, fmt="none", ecolor="#333333",
+                                elinewidth=0.8, capsize=2.5, zorder=5)
+            for i, pts in enumerate(seeds):
+                if len(set(pts)) == 1:
+                    continue
+                ax.scatter(i + np.array([-0.17, 0.0, 0.17]), pts, s=9,
+                           facecolors="none", edgecolors="#333333",
+                           linewidths=0.6, zorder=6)
+
+            lo, hi = min(vals), max(vals)
+            pad = max((hi - lo) * 0.28, 0.02)
+            ax.set_ylim(max(0.0, lo - pad), min(1.0, hi + pad))
+            ax.set_xlim(-0.65, 3.65)
+            ax.set_xticks(range(4))
+            ax.set_xticklabels([lab for _, lab, _ in rungs], rotation=25,
+                               ha="right", fontsize=7.5, rotation_mode="anchor")
+            ax.set_ylabel(ylabel, fontsize=8)
+            tidy(ax)
+
+    fig.tight_layout(rect=(0, 0.095, 1, 0.93))
+    # One header per row rather than a title on each panel: the dataset is the
+    # row, the metric is the y-axis, and repeating the dataset name four times
+    # would say neither.
+    for row, (_, title) in enumerate(DATASET_TITLES):
+        top = max(axes[row][c].get_position().y1 for c in (0, 1))
+        fig.text(0.5, top + 0.018, title, ha="center", va="bottom", fontsize=9)
+    fig.text(0.5, 0.012,
+             "Left column macro-F1, right column accuracy, both on the rows the metric scores. "
+             "Error bars are training-seed\nvariance at a fixed fold partition; open circles are "
+             "the three seeds. The semantic model is deterministic and has none.\nEvery panel has "
+             "its own y-axis. On NF-ToN-IoT the benign class holds 82% of scored edges, so "
+             "accuracy stays high\nfor every graph rung while macro-F1 separates them.",
+             ha="center", va="bottom", fontsize=6.5, color="#444444")
+    save(fig, "fig_metrics")
+
+
+# --------------------------------------------------------------------------- 11
+def fig_perclass_levels():
+    """Per-class F1 levels, four rungs, one panel per dataset. Read at draw time.
+
+    The heatmap in `fig_perclass` shows where the feedback model gains and
+    loses. It cannot show from what level, and on a 12-edge class that is the
+    difference between a real gain and an artifact of a class nobody predicts.
+    Classes are ordered by edge count so the reader sees the levels fall as the
+    support does.
+    """
+    per_class = _load("results/multiseed_head_per_class.json")
+    rungs = [("gnn", "GNN model", C_GRAPH), ("llm", "semantic model", C_SEM),
+             ("agaf", "fusion model", C_FUSE), ("loop", "feedback model", C_LOOP)]
+
+    fig, axes = plt.subplots(2, 1, figsize=(6.1, 5.6))
+    for ax, (key, title) in zip(axes, DATASET_TITLES):
+        block = per_class[key]
+        counts = block["class_counts"]
+        order = sorted(range(len(counts)), key=lambda i: -counts[i])
+        names = [f"{block['class_names'][i]}\n({counts[i]})" for i in order]
+        x = np.arange(len(order))
+        width = 0.2
+
+        for j, (name, label, colour) in enumerate(rungs):
+            mean = block["per_class_f1_3seed"][name]["mean"]
+            std = block["per_class_f1_3seed"][name]["std"]
+            offset = (j - 1.5) * width
+            ax.bar(x + offset, [mean[i] for i in order], width=width,
+                   color=colour, edgecolor=colour, linewidth=0.4,
+                   label=label if ax is axes[0] else None, zorder=3)
+            ax.errorbar(x + offset, [mean[i] for i in order],
+                        yerr=[std[i] for i in order], fmt="none",
+                        ecolor="#333333", elinewidth=0.5, capsize=1.2, zorder=5)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(names, fontsize=6.5)
+        ax.set_xlim(-0.6, len(order) - 0.4)
+        ax.set_ylim(0.0, 1.05)
+        ax.set_ylabel("per-class F1", fontsize=8)
+        ax.set_title(title, fontsize=9)
+        tidy(ax)
+
+    axes[0].legend(ncol=4, fontsize=7.5, frameon=False,
+                   loc="upper center", bbox_to_anchor=(0.5, 1.30))
+    fig.tight_layout(rect=(0, 0.075, 1, 0.945))
+    fig.text(0.5, 0.012,
+             "Three-seed means with training-seed standard deviations; classes are ordered by "
+             "edge count, given under each label.\nThe feedback model consults the trained head. "
+             "No per-class difference carries an interval, and on the smallest classes\na single "
+             "edge moves F1 substantially.",
+             ha="center", va="bottom", fontsize=6.5, color="#444444")
+    save(fig, "fig_perclass_levels")
+
+
 FIGS = {"ladder": fig_ladder, "imbalance": fig_imbalance,
         "mechanism": fig_mechanism, "decomposition": fig_decomposition,
-        "perclass": fig_perclass, "comparisons": fig_comparisons}
+        "perclass": fig_perclass, "comparisons": fig_comparisons,
+        "metrics": fig_metrics, "perclass_levels": fig_perclass_levels}
 
 if __name__ == "__main__":
     wanted = sys.argv[1:] or list(FIGS)

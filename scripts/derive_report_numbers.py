@@ -135,6 +135,41 @@ def consultation_rates() -> dict:
     return out
 
 
+def per_class_deltas() -> dict:
+    """Per-class F1 of the feedback model minus the rungs below it.
+
+    Section 4.7 names the classes where the feedback model gains most and where
+    it loses. Those are differences of two committed per-class means, so they
+    exist nowhere in the artifacts and would be unverifiable typed into the
+    manuscript. Computed here instead, with the class names attached, because a
+    bare array of deltas is exactly the thing that gets misaligned.
+    """
+    out: dict[str, dict] = {}
+    per_class = load("results/multiseed_head_per_class.json")
+    for ds in DATASETS:
+        block = per_class[ds]
+        means = block["per_class_f1_3seed"]
+        names = block["class_names"]
+        out[ds] = {
+            "class_names": names,
+            "class_counts": block["class_counts"],
+            "feedback_minus_gnn": {
+                n: means["loop"]["mean"][i] - means["gnn"]["mean"][i]
+                for i, n in enumerate(names)
+            },
+            "feedback_minus_fusion": {
+                n: means["loop"]["mean"][i] - means["agaf"]["mean"][i]
+                for i, n in enumerate(names)
+            },
+        }
+    out["note"] = (
+        "Differences of the three-seed per-class means in "
+        "results/multiseed_head_per_class.json, whose class order is the dataset "
+        "config's label order. No per-class difference carries an interval."
+    )
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--print", action="store_true", help="print the JSON as well")
@@ -145,6 +180,7 @@ def main() -> int:
         "decomposition_unsw": decomposition(),
         "knob_curves": knob_curves(),
         "consultation_rates": consultation_rates(),
+        "per_class_deltas": per_class_deltas(),
     }
     OUT.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     print(f"-> {OUT.relative_to(ROOT)}")

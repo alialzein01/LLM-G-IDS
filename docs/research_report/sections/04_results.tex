@@ -71,6 +71,29 @@ falls below the rung it is meant to improve on. The semantic model is the weakes
 a much wider margin under NF-ToN-IoT's imbalance, where the prototype scorer reaches 0.2785
 against the GNN model's 0.4336.
 
+Table~\ref{tab:metrics} adds accuracy and support-weighted F1 beside macro-F1 for the same
+rungs, scored on the same rows. The feedback model with its trained-head consultant is the
+highest rung on all three metrics on both datasets, which macro-F1 alone does not establish.
+The three metrics do not carry the same information, and NF-ToN-IoT shows why. Its benign class
+holds 82\% of the scored edges, so every graph rung reaches at least 0.83 accuracy there while
+their macro-F1 values run from 0.4102 to 0.5044. The feedback model stands above the GNN model
+on both, at 0.5044 against 0.4336 on macro-F1 and 0.9186 against 0.8739 on accuracy, so the gap
+that looks nearly closed is the one measured on a metric where the benign class casts four votes
+in five. Weighted F1 behaves the same way for the same reason. Macro-F1 is the headline metric throughout this report because it
+gives a 12-edge class and a 1{,}746-edge class the same weight, which is the comparison the
+research questions are about.
+
+\input{tables/tab_metrics}
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_metrics}
+\caption{Macro-F1 and accuracy for the four rungs, both datasets. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. Every panel has its own y-axis. The accuracy panels span a far narrower range than the macro-F1 panels, and on NF-ToN-IoT that is the benign majority showing through.}
+\label{fig:metrics}
+\end{figure}
+
+Figure~\ref{fig:metrics} draws both metrics side by side.
+
 The feedback model's position depends on its consultant. With the prototype scorer it is above the GNN model and the semantic model on both datasets, below the fusion model on NF-UNSW-NB15 by 0.0149, and above
 the fusion model on NF-ToN-IoT by 0.0419. With the trained head it is the highest rung on both. The change
 is $+0.0697$ on NF-UNSW-NB15 and $+0.0523$ on NF-ToN-IoT. Two things changed together and the
@@ -337,9 +360,20 @@ share is 15.1\%.
 \subsection{Per-class behaviour}
 \label{sec:res-perclass}
 
-Macro-F1 averages over classes of very different sizes. Table~\ref{tab:perclass} in
-Appendix~\ref{app:perclass} gives the per-class picture with the class sizes beside it.
-Figure~\ref{fig:perclass} gives the differences the Discussion argues about.
+Macro-F1 averages over classes of very different sizes, so it hides which classes a rung is
+good at. Figure~\ref{fig:perclasslevels} gives the levels: four rungs on every evaluated class,
+ordered by edge count. Table~\ref{tab:perclass} in Appendix~\ref{app:perclass} gives the same
+values with the counts beside them. Two patterns are visible before any difference is taken.
+Performance falls with support on both datasets, and it falls much faster on NF-ToN-IoT, where
+the four smallest classes hold 12 to 25 edges and no rung reaches 0.35 on three of them.
+Figure~\ref{fig:perclass} then gives the differences the Discussion argues about.
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=\textwidth]{fig_perclass_levels}
+\caption{Per-class F1 for the four rungs, both datasets, with classes ordered by edge count and the count under each label. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition. No per-class value carries an interval, and on the smallest classes a single edge moves F1 substantially.}
+\label{fig:perclasslevels}
+\end{figure}
 
 \begin{figure}[tbp]
 \centering
@@ -355,6 +389,15 @@ On NF-ToN-IoT the feedback model is above the fusion model on seven of eight, lo
 against 0.2996. Against the GNN model the feedback model is above on nine of ten NF-UNSW-NB15 classes
 and six of eight NF-ToN-IoT classes, losing Reconnaissance on the first and \texttt{mitm} and
 \texttt{xss} on the second.
+
+The feedback model's gains are concentrated in the low-support classes, which is where a
+macro-average is decided. Against the GNN model it adds $+0.2090$ on NF-UNSW-NB15's Backdoors
+and $+0.1594$ on its DoS, both 40-edge classes, and $+0.0903$ on NF-ToN-IoT's \texttt{backdoor}
+at 16 edges and $+0.2242$ on \texttt{scanning} at 13. Its losses are in the same size range and
+go the other way: $-0.0273$ on \texttt{mitm}, $-0.1116$ on \texttt{xss} at 12 edges, and
+\texttt{password} at 0.2134 against the fusion model's 0.2996. On classes this small a single
+edge moves F1 by several points, so these are the differences least able to bear weight, and
+none of them carries an interval.
 
 RQ4 turns on two rare-class observations. The fusion model's NF-ToN-IoT collapse is concentrated in the
 classes where the GNN model is strong: \texttt{mitm} falls from 0.8838 to 0.7082 and
