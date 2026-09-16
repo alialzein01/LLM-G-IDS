@@ -355,22 +355,24 @@ def fig_perclass():
 
 # --------------------------------------------------------------------------- 9
 def fig_comparisons():
-    # (label, two-level est/lo/hi, seed-matched est/lo/hi)
+    # (label, two-level est/lo/hi, seed-matched est/lo/hi), transcribed from
+    # results/multiseed_ladder_v2_head.json and ..._legacy.json. The two-level
+    # values draw a training seed independently on each side.
     unsw = [
         ("head", f"feedback {MINUS} semantic", (0.0989, 0.0721, 0.1267), (0.0991, 0.0743, 0.1253)),
-        ("head", f"feedback {MINUS} GNN", (0.0908, 0.0412, 0.1407), (0.0907, 0.0571, 0.1250)),
-        ("head", f"feedback {MINUS} fusion", (0.0546, 0.0228, 0.0880), (0.0551, 0.0331, 0.0779)),
-        ("proto", f"feedback {MINUS} GNN", (0.0206, -0.0203, 0.0625), (0.0207, -0.0001, 0.0421)),
-        ("proto", f"feedback {MINUS} fusion", (-0.0156, -0.0552, 0.0268), (-0.0150, -0.0425, 0.0126)),
-        ("indep", f"fusion {MINUS} GNN", (0.0362, -0.0096, 0.0822), (0.0356, 0.0038, 0.0678)),
+        ("head", f"feedback {MINUS} GNN", (0.0916, 0.0376, 0.1425), (0.0907, 0.0571, 0.1250)),
+        ("head", f"feedback {MINUS} fusion", (0.0557, 0.0208, 0.0905), (0.0551, 0.0331, 0.0779)),
+        ("proto", f"feedback {MINUS} GNN", (0.0214, -0.0278, 0.0657), (0.0207, -0.0001, 0.0421)),
+        ("proto", f"feedback {MINUS} fusion", (-0.0145, -0.0556, 0.0276), (-0.0150, -0.0425, 0.0126)),
+        ("indep", f"fusion {MINUS} GNN", (0.0370, -0.0212, 0.0929), (0.0356, 0.0038, 0.0678)),
     ]
     ton = [
         ("head", f"feedback {MINUS} semantic", (0.2231, 0.1703, 0.2771), (0.2228, 0.1732, 0.2713)),
-        ("head", f"feedback {MINUS} GNN", (0.0694, 0.0129, 0.1288), (0.0691, 0.0171, 0.1200)),
-        ("head", f"feedback {MINUS} fusion", (0.0932, 0.0180, 0.1667), (0.0940, 0.0406, 0.1480)),
-        ("proto", f"feedback {MINUS} GNN", (0.0191, -0.0180, 0.0596), (0.0182, -0.0050, 0.0418)),
-        ("proto", f"feedback {MINUS} fusion", (0.0428, -0.0316, 0.1105), (0.0431, -0.0059, 0.0936)),
-        ("indep", f"fusion {MINUS} GNN", (-0.0238, -0.0921, 0.0607), (-0.0249, -0.0697, 0.0226)),
+        ("head", f"feedback {MINUS} GNN", (0.0697, 0.0129, 0.1283), (0.0691, 0.0171, 0.1200)),
+        ("head", f"feedback {MINUS} fusion", (0.0936, 0.0139, 0.1720), (0.0940, 0.0406, 0.1480)),
+        ("proto", f"feedback {MINUS} GNN", (0.0193, -0.0180, 0.0604), (0.0182, -0.0050, 0.0418)),
+        ("proto", f"feedback {MINUS} fusion", (0.0433, -0.0376, 0.1199), (0.0431, -0.0059, 0.0936)),
+        ("indep", f"fusion {MINUS} GNN", (-0.0235, -0.0910, 0.0602), (-0.0249, -0.0697, 0.0226)),
     ]
     tone = {"head": {"loop": C_LOOP, "AGAF": C_FUSE},
             "proto": {"loop": "#F0A882", "AGAF": "#8ED9C1"},

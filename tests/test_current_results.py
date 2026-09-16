@@ -74,7 +74,9 @@ class CurrentResultsContractTest(unittest.TestCase):
         self.assertFalse(ms["nothing_separated"])
         for name in self.SEPARATED:
             c = ms["comparisons"][name]
-            self.assertEqual(c["two_level"]["resampled"], "edges_and_training_seed")
+            self.assertEqual(
+                c["two_level"]["resampled"], "edges_and_both_seeds_independently"
+            )
             self.assertTrue(c["separated_two_level"], name)
             self.assertGreater(c["two_level"]["mean_diff"], 0.0, name)
         for name in self.NOT_SEPARATED:

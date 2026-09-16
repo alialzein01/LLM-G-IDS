@@ -4,9 +4,12 @@ Consumes the per-seed captures written by the multi-seed sweep
 (`results/multiseed/{dataset}_seed{S}/`) and reports, for each dataset:
 
   * per-rung pooled OOF macro-F1 at every seed, plus mean and standard deviation;
+  * per-rung accuracy and weighted F1 on the same rows, for the metrics a reader
+    asks for beside macro-F1;
   * whether each pairwise comparison keeps its sign at every seed;
-  * a TWO-LEVEL bootstrap CI that resamples BOTH edges and the training seed, so
-    the interval carries rung-side seed variance rather than assuming it away;
+  * a TWO-LEVEL bootstrap CI that resamples edges and draws a training seed
+    INDEPENDENTLY for each side, so the interval carries seed variance on both
+    rungs rather than assuming the two sides had the same kind of run;
   * a seed-matched bootstrap (edges only, paired within a seed, averaged across
     seeds) as the secondary, narrower estimate.
 
@@ -161,6 +164,37 @@ def _load_seed_preds(
     }
 
 
+def _eval_accuracy(labels, preds, eval_classes) -> float:
+    """Accuracy over the rows `eval_macro_f1` scores.
+
+    Same row mask, so accuracy and macro-F1 describe the same edges. On
+    NF-ToN-IoT that means the `dos` and `ransomware` rows are outside it, as
+    everywhere else in this project.
+    """
+    from sklearn.metrics import accuracy_score
+
+    y_true = np.asarray(labels)
+    y_pred = np.asarray(preds)
+    row_mask = np.isin(y_true, list(eval_classes))
+    return float(accuracy_score(y_true[row_mask], y_pred[row_mask]))
+
+
+def _eval_weighted_f1(labels, preds, eval_classes) -> float:
+    """F1 averaged over the evaluated classes weighted by their support."""
+    from sklearn.metrics import f1_score
+
+    labs = list(eval_classes)
+    y_true = np.asarray(labels)
+    y_pred = np.asarray(preds)
+    row_mask = np.isin(y_true, labs)
+    return float(
+        f1_score(
+            y_true[row_mask], y_pred[row_mask],
+            average="weighted", labels=labs, zero_division=0,
+        )
+    )
+
+
 def _two_level_bootstrap(
     labels: np.ndarray,
     per_seed: dict[int, dict[str, np.ndarray]],
@@ -171,11 +205,20 @@ def _two_level_bootstrap(
 ) -> dict:
     """Resample edges AND the training seed.
 
-    Each iteration draws one seed uniformly from the completed runs and one
-    bootstrap sample of edges, then scores both rungs on that same draw. The
-    resulting interval answers "would this gap survive a different training run
-    and a different sample of edges?", which is the question a reader asks of a
-    single-seed headline.
+    Each iteration draws one key uniformly from `per_seed` and one bootstrap
+    sample of edges, then scores both sides on that same draw. The interval
+    answers "would this gap survive a different training run and a different
+    sample of edges?", which is the question a reader asks of a single-seed
+    headline.
+
+    What the keys are determines how the two sides' seeds are drawn, and the
+    caller decides. A dict keyed by the three training seeds draws one seed and
+    gives it to both sides, which is a paired draw. A dict keyed by the nine
+    (seed_a, seed_b) combinations, which `_cross_seed_pairs` builds and every
+    caller in this project now passes, draws a seed independently on each side.
+    The independent draw is the procedure the report describes and is the wider
+    of the two, because it admits the case where one side had a good run and the
+    other a bad one.
     """
     rng = np.random.default_rng(BOOTSTRAP_SEED)
     seeds = sorted(per_seed)
@@ -196,6 +239,51 @@ def _two_level_bootstrap(
         "resampled": "edges_and_training_seed",
         "n_seeds": len(seeds),
     }
+
+
+def _cross_seed_pairs(
+    per_seed: dict[int, dict[str, np.ndarray]], a: str, b: str
+) -> dict[int, dict[str, np.ndarray]]:
+    """The nine (seed_a, seed_b) combinations for one pair of rungs.
+
+    Built exactly as `src/pipeline/baselines/compare_to_ladder_multiseed.py`
+    builds it for rung-against-baseline comparisons, so both families of
+    interval in the report come from the same draw.
+
+    Sides are renamed `left` and `right` because one rung can appear on both:
+    `_cross_seed_pairs(per_seed, "loop", "loop")` would collide on a single key
+    otherwise.
+    """
+    seeds = sorted(per_seed)
+    n = len(seeds)
+    return {
+        i * n + j: {"left": per_seed[sa][a], "right": per_seed[sb][b]}
+        for i, sa in enumerate(seeds)
+        for j, sb in enumerate(seeds)
+    }
+
+
+def independent_seed_two_level(
+    labels: np.ndarray,
+    per_seed: dict[int, dict[str, np.ndarray]],
+    a: str,
+    b: str,
+    eval_classes,
+    iters: int = BOOTSTRAP_ITERS,
+) -> dict:
+    """Two-level interval with the training seed drawn independently per side.
+
+    `n_seeds` stays the number of training runs on each side, which is what the
+    contracts record and what a reader needs; `n_seed_pairs` says how many
+    combinations the uniform draw ranged over.
+    """
+    block = _two_level_bootstrap(
+        labels, _cross_seed_pairs(per_seed, a, b), "left", "right", eval_classes, iters
+    )
+    block["resampled"] = "edges_and_both_seeds_independently"
+    block["n_seeds"] = len(per_seed)
+    block["n_seed_pairs"] = len(per_seed) ** 2
+    return block
 
 
 def _seed_matched_bootstrap(
@@ -262,11 +350,34 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
         ).read_text()
     )["llm_alone_prototype"]
 
+    # Accuracy and weighted F1 beside macro-F1, on the same rows. The instructor's
+    # metric list asks for accuracy; macro-F1 stays the headline because on
+    # NF-ToN-IoT the benign class holds 82% of the scored edges and accuracy
+    # barely moves between rungs.
+    accuracy = {
+        rung: {s: _eval_accuracy(labels, per_seed[s][rung], config.eval_classes)
+               for s in seeds}
+        for rung in rungs
+    }
+    weighted = {
+        rung: {s: _eval_weighted_f1(labels, per_seed[s][rung], config.eval_classes)
+               for s in seeds}
+        for rung in rungs
+    }
+
+    def spread(values: dict) -> dict:
+        vals = list(values.values())
+        return {
+            "per_seed": {str(s): values[s] for s in seeds},
+            "mean": float(np.mean(vals)),
+            "std": float(np.std(vals, ddof=1)),
+        }
+
     per_rung = {
         rung: {
-            "per_seed": {str(s): scores[rung][s] for s in seeds},
-            "mean": float(np.mean(list(scores[rung].values()))),
-            "std": float(np.std(list(scores[rung].values()), ddof=1)),
+            **spread(scores[rung]),
+            "accuracy": spread(accuracy[rung]),
+            "weighted_f1": spread(weighted[rung]),
         }
         for rung in rungs
     }
@@ -292,6 +403,15 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
         per_seed[s]["llm"] = llm_preds
     scores["llm"] = {s: llm for s in seeds}
 
+    llm_acc = _eval_accuracy(labels, llm_preds, config.eval_classes)
+    llm_wf1 = _eval_weighted_f1(labels, llm_preds, config.eval_classes)
+    per_rung["llm"]["accuracy"] = {
+        "per_seed": {str(s): llm_acc for s in seeds}, "mean": llm_acc, "std": 0.0,
+    }
+    per_rung["llm"]["weighted_f1"] = {
+        "per_seed": {str(s): llm_wf1 for s in seeds}, "mean": llm_wf1, "std": 0.0,
+    }
+
     pairs = list(COMPARISONS)
     if has_head_alone:
         pairs += [p for p in HEAD_ALONE_COMPARISONS]
@@ -302,7 +422,7 @@ def aggregate(dataset: str, seeds=SEEDS, capture_root: Path | None = None) -> di
         comparisons[f"{a}_vs_{b}"] = {
             "per_seed_diff": signs,
             "sign_stable_across_seeds": len({v > 0 for v in signs.values()}) == 1,
-            "two_level": _two_level_bootstrap(
+            "two_level": independent_seed_two_level(
                 labels, per_seed, a, b, config.eval_classes
             ),
             "seed_matched": _seed_matched_bootstrap(
@@ -365,7 +485,11 @@ def main() -> None:
         )
         for rung, v in r["rungs"].items():
             per = "  ".join(f"{s}:{x:.4f}" for s, x in v["per_seed"].items())
-            print(f"  {rung:<5} mean {v['mean']:.4f} +/- {v['std']:.4f}   [{per}]")
+            print(
+                f"  {rung:<11} macroF1 {v['mean']:.4f} +/- {v['std']:.4f}   [{per}]"
+                f"   acc {v['accuracy']['mean']:.4f}"
+                f"   wF1 {v['weighted_f1']['mean']:.4f}"
+            )
         print(f"  order: {r['mean_order']}")
         for name, c in r["comparisons"].items():
             t = c["two_level"]

@@ -50,9 +50,24 @@
           "42": 0.7219365593805762,
           "1": 0.7674312792157633,
           "2": 0.7418399771589683
+        },
+        "accuracy_mean": 0.8104674796747968,
+        "accuracy_std": 0.01448839169652768,
+        "accuracy_per_seed": {
+          "42": 0.7957317073170732,
+          "1": 0.8246951219512195,
+          "2": 0.8109756097560976
+        },
+        "weighted_f1_mean": 0.8207174600380812,
+        "weighted_f1_std": 0.01481299875069135,
+        "weighted_f1_per_seed": {
+          "42": 0.8056520109797579,
+          "1": 0.8352643926830092,
+          "2": 0.8212359764514765
         }
       },
       "llm": {
+        "note": "deterministic given folds and frozen embeddings; carries no training-seed variance",
         "macro_f1_mean": 0.7353188026257084,
         "macro_f1_std": 0.0,
         "macro_f1_per_seed": {
@@ -60,7 +75,20 @@
           "1": 0.7353188026257084,
           "2": 0.7353188026257084
         },
-        "note": "deterministic given folds and frozen embeddings; carries no training-seed variance"
+        "accuracy_mean": 0.7789634146341463,
+        "accuracy_std": 0.0,
+        "accuracy_per_seed": {
+          "42": 0.7789634146341463,
+          "1": 0.7789634146341463,
+          "2": 0.7789634146341463
+        },
+        "weighted_f1_mean": 0.791444466569956,
+        "weighted_f1_std": 0.0,
+        "weighted_f1_per_seed": {
+          "42": 0.791444466569956,
+          "1": 0.791444466569956,
+          "2": 0.791444466569956
+        }
       },
       "agaf": {
         "macro_f1_mean": 0.7793329545641249,
@@ -69,6 +97,20 @@
           "42": 0.7679707333515186,
           "1": 0.7912012871436847,
           "2": 0.7788268431971715
+        },
+        "accuracy_mean": 0.8363821138211383,
+        "accuracy_std": 0.020696556762618196,
+        "accuracy_per_seed": {
+          "42": 0.8125,
+          "1": 0.8475609756097561,
+          "2": 0.8490853658536586
+        },
+        "weighted_f1_mean": 0.8398354200911083,
+        "weighted_f1_std": 0.01573491903309833,
+        "weighted_f1_per_seed": {
+          "42": 0.8219180277843194,
+          "1": 0.8514042822682697,
+          "2": 0.8461839502207358
         }
       },
       "feedback": {
@@ -78,9 +120,24 @@
           "42": 0.8332390262699155,
           "1": 0.8386597337285349,
           "2": 0.8304426745571662
+        },
+        "accuracy_mean": 0.8851626016260162,
+        "accuracy_std": 0.0038362979854017778,
+        "accuracy_per_seed": {
+          "42": 0.885670731707317,
+          "1": 0.8887195121951219,
+          "2": 0.8810975609756098
+        },
+        "weighted_f1_mean": 0.8886618661010744,
+        "weighted_f1_std": 0.003630765310229857,
+        "weighted_f1_per_seed": {
+          "42": 0.8888790828905065,
+          "1": 0.8921791464784748,
+          "2": 0.884927368934242
         }
       },
       "head_alone": {
+        "role": "strongest LLM-only baseline AND the loop's own consultant; not a fusion rung",
         "macro_f1_mean": 0.8374242987797712,
         "macro_f1_std": 0.004835057732523828,
         "macro_f1_per_seed": {
@@ -88,7 +145,20 @@
           "1": 0.8385547512749145,
           "2": 0.8415939791990734
         },
-        "role": "strongest LLM-only baseline AND the loop's own consultant; not a fusion rung"
+        "accuracy_mean": 0.8907520325203252,
+        "accuracy_std": 0.01014989042451131,
+        "accuracy_per_seed": {
+          "42": 0.8795731707317073,
+          "1": 0.8932926829268293,
+          "2": 0.899390243902439
+        },
+        "weighted_f1_mean": 0.8932571343801929,
+        "weighted_f1_std": 0.008294211992195596,
+        "weighted_f1_per_seed": {
+          "42": 0.8841009885163299,
+          "1": 0.8954025755559333,
+          "2": 0.9002678390683155
+        }
       }
     },
     "comparisons": {
@@ -100,12 +170,13 @@
         },
         "sign_stable_across_seeds": true,
         "two_level": {
-          "mean_diff": 0.05461742964013861,
-          "ci_low": 0.022771356248866996,
-          "ci_high": 0.0879992260881312,
-          "prob_positive": 1.0,
-          "resampled": "edges_and_training_seed",
-          "n_seeds": 3
+          "mean_diff": 0.05567981932678256,
+          "ci_low": 0.020754048746082297,
+          "ci_high": 0.09046042279760824,
+          "prob_positive": 0.999,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
         },
         "seed_matched": {
           "mean_diff": 0.055112433375560585,
@@ -126,12 +197,13 @@
         },
         "sign_stable_across_seeds": true,
         "two_level": {
-          "mean_diff": 0.09078883702336578,
-          "ci_low": 0.04115315178569134,
-          "ci_high": 0.14072663402398553,
-          "prob_positive": 1.0,
-          "resampled": "edges_and_training_seed",
-          "n_seeds": 3
+          "mean_diff": 0.09158038797388926,
+          "ci_low": 0.037573053861685274,
+          "ci_high": 0.14250582339145001,
+          "prob_positive": 0.9995,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
         },
         "seed_matched": {
           "mean_diff": 0.09074293787519784,
@@ -152,12 +224,13 @@
         },
         "sign_stable_across_seeds": true,
         "two_level": {
-          "mean_diff": 0.03617140738322715,
-          "ci_low": -0.009601370455122273,
-          "ci_high": 0.0821668097027248,
-          "prob_positive": 0.9455,
-          "resampled": "edges_and_training_seed",
-          "n_seeds": 3
+          "mean_diff": 0.036962958333750635,
+          "ci_low": -0.02122108472697693,
+          "ci_high": 0.09294797014509415,
+          "prob_positive": 0.8865,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
         },
         "seed_matched": {
           "mean_diff": 0.03563050449963726,
@@ -178,12 +251,13 @@
         },
         "sign_stable_across_seeds": false,
         "two_level": {
-          "mean_diff": -0.0030066138912141563,
-          "ci_low": -0.024235444923496694,
-          "ci_high": 0.01361399811875282,
-          "prob_positive": 0.4065,
-          "resampled": "edges_and_training_seed",
-          "n_seeds": 3
+          "mean_diff": -0.0032416543104164847,
+          "ci_low": -0.022811453736269603,
+          "ci_high": 0.012769240929463292,
+          "prob_positive": 0.394,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
         },
         "seed_matched": {
           "mean_diff": -0.003194617826924952,
@@ -208,8 +282,9 @@
           "ci_low": 0.07210534479284238,
           "ci_high": 0.12671339672676013,
           "prob_positive": 1.0,
-          "resampled": "edges_and_training_seed",
-          "n_seeds": 3
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
         },
         "seed_matched": {
           "mean_diff": 0.09906425759704218,
@@ -230,12 +305,13 @@
         },
         "sign_stable_across_seeds": true,
         "two_level": {
-          "mean_diff": 0.09379545091457991,
-          "ci_low": 0.042037321189291,
-          "ci_high": 0.14126528037075117,
-          "prob_positive": 1.0,
-          "resampled": "edges_and_training_seed",
-          "n_seeds": 3
+          "mean_diff": 0.09458700186510342,
+          "ci_low": 0.04025224426898977,
+          "ci_high": 0.14698583095121937,
+          "prob_positive": 0.9995,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
         },
         "seed_matched": {
           "mean_diff": 0.09393755570212281,
@@ -373,7 +449,19 @@
             "2": 0.7418399771589683
           },
           "accuracy_mean": 0.8104674796747968,
-          "weighted_f1_mean": 0.8207174600380812
+          "accuracy_std": 0.01448839169652768,
+          "accuracy_per_seed": {
+            "42": 0.7957317073170732,
+            "1": 0.8246951219512195,
+            "2": 0.8109756097560976
+          },
+          "weighted_f1_mean": 0.8207174600380812,
+          "weighted_f1_std": 0.01481299875069135,
+          "weighted_f1_per_seed": {
+            "42": 0.8056520109797579,
+            "1": 0.8352643926830092,
+            "2": 0.8212359764514765
+          }
         },
         "llm": {
           "macro_f1_mean": 0.7353188026257084,
@@ -384,7 +472,19 @@
             "2": 0.7353188026257084
           },
           "accuracy_mean": 0.7789634146341463,
-          "weighted_f1_mean": 0.7914444665699559
+          "accuracy_std": 0.0,
+          "accuracy_per_seed": {
+            "42": 0.7789634146341463,
+            "1": 0.7789634146341463,
+            "2": 0.7789634146341463
+          },
+          "weighted_f1_mean": 0.791444466569956,
+          "weighted_f1_std": 0.0,
+          "weighted_f1_per_seed": {
+            "42": 0.791444466569956,
+            "1": 0.791444466569956,
+            "2": 0.791444466569956
+          }
         },
         "agaf": {
           "macro_f1_mean": 0.7793329545641249,
@@ -395,7 +495,19 @@
             "2": 0.7788268431971715
           },
           "accuracy_mean": 0.8363821138211383,
-          "weighted_f1_mean": 0.8398354200911083
+          "accuracy_std": 0.020696556762618196,
+          "accuracy_per_seed": {
+            "42": 0.8125,
+            "1": 0.8475609756097561,
+            "2": 0.8490853658536586
+          },
+          "weighted_f1_mean": 0.8398354200911083,
+          "weighted_f1_std": 0.01573491903309833,
+          "weighted_f1_per_seed": {
+            "42": 0.8219180277843194,
+            "1": 0.8514042822682697,
+            "2": 0.8461839502207358
+          }
         },
         "feedback": {
           "macro_f1_mean": 0.7644274950452105,
@@ -406,18 +518,31 @@
             "2": 0.7600820859876934
           },
           "accuracy_mean": 0.8236788617886179,
-          "weighted_f1_mean": 0.8331740974881553
+          "accuracy_std": 0.004900229045219991,
+          "accuracy_per_seed": {
+            "42": 0.8201219512195121,
+            "1": 0.8292682926829268,
+            "2": 0.8216463414634146
+          },
+          "weighted_f1_mean": 0.8331740974881553,
+          "weighted_f1_std": 0.004750302979667065,
+          "weighted_f1_per_seed": {
+            "42": 0.831282102611381,
+            "1": 0.8385788666114719,
+            "2": 0.8296613232416129
+          }
         }
       },
       "comparisons": {
         "loop_vs_agaf": {
           "two_level": {
-            "mean_diff": -0.015605593468753568,
-            "ci_low": -0.05520854221515595,
-            "ci_high": 0.02676803578196463,
-            "prob_positive": 0.229,
-            "resampled": "edges_and_training_seed",
-            "n_seeds": 3
+            "mean_diff": -0.014543203782109625,
+            "ci_low": -0.05564956675448488,
+            "ci_high": 0.02763627372470355,
+            "prob_positive": 0.2475,
+            "resampled": "edges_and_both_seeds_independently",
+            "n_seeds": 3,
+            "n_seed_pairs": 9
           },
           "seed_matched": {
             "mean_diff": -0.014973633977911589,
@@ -437,12 +562,13 @@
         },
         "loop_vs_gnn": {
           "two_level": {
-            "mean_diff": 0.020565813914473586,
-            "ci_low": -0.020328309286690584,
-            "ci_high": 0.06248087422955355,
-            "prob_positive": 0.7975,
-            "resampled": "edges_and_training_seed",
-            "n_seeds": 3
+            "mean_diff": 0.02135736486499707,
+            "ci_low": -0.027772571795053724,
+            "ci_high": 0.06566914121794594,
+            "prob_positive": 0.7965,
+            "resampled": "edges_and_both_seeds_independently",
+            "n_seeds": 3,
+            "n_seed_pairs": 9
           },
           "seed_matched": {
             "mean_diff": 0.02065687052172567,
@@ -462,12 +588,13 @@
         },
         "agaf_vs_gnn": {
           "two_level": {
-            "mean_diff": 0.03617140738322715,
-            "ci_low": -0.009601370455122273,
-            "ci_high": 0.0821668097027248,
-            "prob_positive": 0.9455,
-            "resampled": "edges_and_training_seed",
-            "n_seeds": 3
+            "mean_diff": 0.036962958333750635,
+            "ci_low": -0.02122108472697693,
+            "ci_high": 0.09294797014509415,
+            "prob_positive": 0.8865,
+            "resampled": "edges_and_both_seeds_independently",
+            "n_seeds": 3,
+            "n_seed_pairs": 9
           },
           "seed_matched": {
             "mean_diff": 0.03563050449963726,
@@ -565,7 +692,7 @@
     "The selected top_k_percent and injection_scale were optimized on rotating validation folds; nested cross-validation or an untouched set is required for a fully unbiased final estimate."
   ],
   "consultant_decision": "The loop's semantic consultant is the per-fold trained head on CySecBERT embeddings (llm_head_logits.pt, in-fold on train/val, out-of-fold on test; the cross-fitted variant was measured worse, 2026-09-07). The LLM rung and AGAF keep the embedding-only whitened prototype: the semantic branch is compared as an encoder, the loop is the proposed system. The head alone is reported as the strongest LLM-only baseline in every table. Architecture parity rule: same encoder, same graph, same folds, same seeds on every rung; the loop additionally trains a classification head on the semantic embeddings.",
-  "loop_vs_head_alone_headline": "The loop is NOT separated from the head alone it consults: two-level -0.0030 [-0.0242, +0.0136], seed-matched -0.0032 [-0.0121, +0.0064], sign unstable across seeds. State this wherever the loop's gain over AGAF or the GNN is stated.",
+  "loop_vs_head_alone_headline": "The loop is NOT separated from the head alone it consults: two-level -0.0032 [-0.0228, +0.0128], seed-matched -0.0032 [-0.0121, +0.0064], sign unstable across seeds. State this wherever the loop's gain over AGAF or the GNN is stated.",
   "per_class_f1_3seed": {
     "gnn": {
       "mean": [
@@ -703,52 +830,58 @@
   "architecture_parity_rule": "same encoder, same graph, same folds, same seeds on every rung; the loop additionally trains a classification head on the semantic embeddings",
   "statistical_comparisons": {
     "feedback_vs_agaf": {
-      "mean_diff": 0.05461742964013861,
-      "ci_low": 0.022771356248866996,
-      "ci_high": 0.0879992260881312,
-      "prob_positive": 1.0,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
+      "mean_diff": 0.05567981932678256,
+      "ci_low": 0.020754048746082297,
+      "ci_high": 0.09046042279760824,
+      "prob_positive": 0.999,
+      "resampled": "edges_and_both_seeds_independently",
+      "n_seeds": 3,
+      "n_seed_pairs": 9
     },
     "feedback_vs_gnn": {
-      "mean_diff": 0.09078883702336578,
-      "ci_low": 0.04115315178569134,
-      "ci_high": 0.14072663402398553,
-      "prob_positive": 1.0,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
+      "mean_diff": 0.09158038797388926,
+      "ci_low": 0.037573053861685274,
+      "ci_high": 0.14250582339145001,
+      "prob_positive": 0.9995,
+      "resampled": "edges_and_both_seeds_independently",
+      "n_seeds": 3,
+      "n_seed_pairs": 9
     },
     "agaf_vs_gnn": {
-      "mean_diff": 0.03617140738322715,
-      "ci_low": -0.009601370455122273,
-      "ci_high": 0.0821668097027248,
-      "prob_positive": 0.9455,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
+      "mean_diff": 0.036962958333750635,
+      "ci_low": -0.02122108472697693,
+      "ci_high": 0.09294797014509415,
+      "prob_positive": 0.8865,
+      "resampled": "edges_and_both_seeds_independently",
+      "n_seeds": 3,
+      "n_seed_pairs": 9
     },
     "feedback_vs_head_alone": {
-      "mean_diff": -0.0030066138912141563,
-      "ci_low": -0.024235444923496694,
-      "ci_high": 0.01361399811875282,
-      "prob_positive": 0.4065,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
+      "mean_diff": -0.0032416543104164847,
+      "ci_low": -0.022811453736269603,
+      "ci_high": 0.012769240929463292,
+      "prob_positive": 0.394,
+      "resampled": "edges_and_both_seeds_independently",
+      "n_seeds": 3,
+      "n_seed_pairs": 9
     },
     "feedback_vs_llm": {
       "mean_diff": 0.09892241003327815,
       "ci_low": 0.07210534479284238,
       "ci_high": 0.12671339672676013,
       "prob_positive": 1.0,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
+      "resampled": "edges_and_both_seeds_independently",
+      "n_seeds": 3,
+      "n_seed_pairs": 9
     },
     "head_alone_vs_gnn": {
-      "mean_diff": 0.09379545091457991,
-      "ci_low": 0.042037321189291,
-      "ci_high": 0.14126528037075117,
-      "prob_positive": 1.0,
-      "resampled": "edges_and_training_seed",
-      "n_seeds": 3
+      "mean_diff": 0.09458700186510342,
+      "ci_low": 0.04025224426898977,
+      "ci_high": 0.14698583095121937,
+      "prob_positive": 0.9995,
+      "resampled": "edges_and_both_seeds_independently",
+      "n_seeds": 3,
+      "n_seed_pairs": 9
     }
   },
   "statistical_comparisons_note": "Mirror of multi_seed.comparisons[*].two_level, kept for readers who look here first. `separated_two_level` / `separated_seed_matched` live in the multi_seed block.",

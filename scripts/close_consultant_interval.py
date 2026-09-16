@@ -17,9 +17,9 @@ out-of-fold predictions at all three seeds:
 so this is a bootstrap over tensors that are already on disk. It reuses the exact
 procedures the rest of the report uses, imported from `aggregate_multiseed`, so
 the resulting interval is comparable with every other interval in the report:
-the two-level bootstrap over edges AND training seed as primary, and the
-seed-matched bootstrap over edges alone as secondary, both at 2,000 iterations
-from bootstrap seed 42.
+the two-level bootstrap over edges and training seed as primary, with the seed
+drawn independently for each arm, and the seed-matched bootstrap over edges
+alone as secondary, both at 2,000 iterations from bootstrap seed 42.
 
 **The comparison is confounded and stays confounded.** The two configurations
 differ in the consultant AND in the selected entropy percentile, 31 to 29 on
@@ -51,7 +51,7 @@ from src.pipeline.step4.aggregate_multiseed import (
     BOOTSTRAP_SEED,
     SEEDS,
     _seed_matched_bootstrap,
-    _two_level_bootstrap,
+    independent_seed_two_level,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -101,7 +101,7 @@ def run(dataset: str) -> dict:
     means = {n: float(np.mean(list(v.values()))) for n, v in per_seed_scores.items()}
     point = means["loop_trained_head"] - means["loop_prototype"]
 
-    two_level = _two_level_bootstrap(
+    two_level = independent_seed_two_level(
         labels, per_seed, "loop_trained_head", "loop_prototype", config.eval_classes
     )
     seed_matched = _seed_matched_bootstrap(
@@ -145,7 +145,8 @@ def main() -> None:
         "bootstrap_seed": BOOTSTRAP_SEED,
         "protocol": (
             "Fold partition held fixed at the seed-42 stratified split; only training "
-            "seeds vary. Primary interval resamples edges AND the training seed; the "
+            "seeds vary. Primary interval resamples edges and draws a training seed "
+            "independently for each arm; the "
             "seed-matched interval resamples edges only, paired within a seed. A "
             "difference counts as separated only when the primary interval excludes zero."
         ),

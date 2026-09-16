@@ -40,6 +40,18 @@
 11000     # port-vs-feature scale ratio under the v1 encoding bug; archive 4
 443       # example port number in the encoding discussion
 
+# --- per-variant edge focus weights (method, table tab:focus) -----------------
+# src/models/gnn_classifier.py:22-24, VARIANT_FOCUS. Source-code constants, not
+# measurements. They were accepted until 2026-09-16 only because a bootstrap CI
+# bound of 0.01247 rendered as the percentage "1.25"; when that interval moved,
+# the coincidence went with it. Listed here so the table's provenance is the
+# source file it actually comes from.
+1.25      # temporal flow_count and behavioural flow_count; content port
+0.75      # temporal total_bytes, behavioural total_bytes and protocol
+1.50      # temporal avg_duration, content total_bytes, behavioural port
+0.25      # temporal port
+1.00      # content protocol, behavioural avg_duration
+
 # --- test suite ---------------------------------------------------------------
 167       # passing tests; OMP_NUM_THREADS=1 python -m pytest tests/ -q, 2026-09-11
 359       # passing subtests in the same run
