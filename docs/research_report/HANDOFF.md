@@ -3,8 +3,8 @@
 *Written 2026-09-13, after the figures landed. This is the document to read before auditing
 the report, and the document to hand to anyone who has to defend a sentence in it.*
 
-The report is `docs/research_report/main.tex`, compiled to `build/main.pdf`. Sixty-one pages,
-16,627 words of body prose, nine sections, ten tables, nine figures, 26 references.
+The report is `docs/research_report/main.tex`, compiled to `build/main.pdf`. Sixty-five pages,
+17,850 words of body prose, nine sections, eleven tables, eleven figures, 26 references.
 
 ---
 
@@ -12,16 +12,16 @@ The report is `docs/research_report/main.tex`, compiled to `build/main.pdf`. Six
 
 ```bash
 cd docs/research_report && ./build.sh            # tables, number audit, PDF
-cd docs/research_report && ./build.sh figures    # the above, plus redraw all nine figures
-OMP_NUM_THREADS=1 python -m pytest tests/ -q     # 167 tests, 359 subtests
+cd docs/research_report && ./build.sh figures    # the above, plus redraw all eleven figures
+OMP_NUM_THREADS=1 python -m pytest tests/ -q     # 174 tests, 359 subtests
 python scripts/check_report_numbers.py           # exit code; build.sh only warns
 python scripts/check_report_numbers.py --explain 0.8341   # where one number comes from
 python scripts/prose_stats.py                    # writing statistics per section
 ```
 
-Last full run: build clean, **no overfull boxes**, audit **0 unknown numbers, 0 unverified
-provenance, 0 banned terms** across nine sections, **167 tests pass**. Four terminology
-warnings remain and are all correct usage, exempted in-line.
+Last full run (2026-09-17): build clean, **no overfull boxes**, audit **0 unknown numbers, 0
+unverified provenance, 0 banned terms** across ten sections, **174 tests pass**. Four
+terminology warnings remain and are all correct usage, exempted in-line.
 
 `OMP_NUM_THREADS=1` is not optional. Without it pooled macro-F1 drifts by roughly 0.012 at a
 fixed seed, which is larger than several differences the report measures, and one earlier
@@ -56,13 +56,15 @@ The section the report stands on. Eight subsections:
 |---|---|---|
 | 4.1 protocol | what was actually run | both `*_current.json` |
 | 4.2 ladder | four rungs, loop drawn under both consultants | `multiseed_ladder_v2_head.json`, `multiseed_ladder_v2_legacy.json` |
+| 4.2 metrics | accuracy and weighted F1 beside macro-F1 | same two files, `rungs.*.accuracy` / `.weighted_f1` |
 | 4.2 comparisons | which steps are separated | `statistical_comparisons` in both contracts |
 | 4.3 ablations | feedback on vs off vs random | `feedback_ablations_per_seed` |
 | 4.3 isolation | the mechanism with output fusion disabled | `*_oracle_ceiling_v2_trained_head.json` |
 | 4.4 five treatments | why the consultant changed | archive 2026-09-06 and 2026-09-07 |
 | 4.5 attention | injection through attention is inert | archive §2.1 |
 | 4.6 baselines | vs re-trained E-GraphSAGE and TE-G-SAGE | `*_sota_baselines.json` |
-| 4.7 per-class | where the loop gains and loses | `multiseed_head_per_class.json` |
+| 4.6 ToN asymmetry | who could predict a dropped class, and what it cost | `ton_iot_dropped_class_bound.json` |
+| 4.7 per-class | levels, then where the loop gains and loses | `multiseed_head_per_class.json` |
 | 4.8 knobs | both selection curves are flat | `results/knob_selection_head/` |
 
 The two results the report is built around:
@@ -76,7 +78,7 @@ The two results the report is built around:
 
 ### §5 Discussion
 Answers RQ1–RQ5, argues that class imbalance (12.4:1 against 582:1) is the axis the two
-datasets differ on, decomposes where the loop's gain comes from, and states seven limitations.
+datasets differ on, decomposes where the loop's gain comes from, and states eight limitations.
 Introduces no numbers that §4 has not already established.
 
 ### §6 Conclusion
@@ -152,6 +154,38 @@ prototype consultant is right 45 times and wrong 178 where its answer would chan
 and the confidence gate does not rescue it: inside its own most confident half the split is 28
 against 63. That is the binding-constraint claim, stated in counts.
 
+## 4b. The 2026-09-16 audit, and where each of its seven points is answered
+
+A consistency audit of the code against the manuscript found seven mismatches. Every published
+number reproduced from saved predictions, so nothing was fabricated, but two of the seven could
+have changed a separation verdict and one showed the report asking for a metric it never
+reported. All seven are closed. No retraining was done, and no separated verdict changed.
+
+| # | The mismatch | How it was answered |
+|---|---|---|
+| 1 | §3.6 said the fusion model "never" receives embeddings from a model that saw the test labels. Its training-edge embeddings come from folds that include the held-out fold. | §3.6 now states what holds: test-edge embeddings are clean, training-edge embeddings are one step removed, this is standard out-of-fold stacking, and a nested construction was not run |
+| 2 | On NF-ToN-IoT the fusion model and the baselines could predict the two excluded classes; the other three rungs could not. | Code fixed in three files and pinned by `tests/test_dropped_class_masking.py`; the published runs are bounded in `results/ton_iot_dropped_class_bound.json` and disclosed in §3.9, §4.6 and the Discussion |
+| 3 | `reproduce_ladder.py` ran the prototype consultant and compared against the trained-head contract. | Fixed; it now prints "All four rungs match". Note that `assemble_ladder` must NOT be given `--use-llm-head`: there that flag replaces the LLM rung with the head |
+| 4 | `run_pipeline --seed` reseeded the fold partition, the inverse of the protocol. | `--seed` is now the training seed and reaches every stage that trains; `--split-seed` owns the partition. `train_gnn` gained the `--seed` it never had |
+| 5 | §3.9 said the two-level bootstrap draws a seed independently per side; the ladder code drew one shared seed. | Ladder code now draws independently, every ladder interval regenerated. Every interval widened; **no verdict changed** |
+| 6 | §3.7 said the entropy threshold is "calibrated once and reused". `calibrate()` is never called. | Text and all three docstrings on `UncertaintySelector` now say the quantile is recomputed per pass |
+| 7 | §3.6 said the fusion model uses the prototype scorer; §3.5 and §3.7 said the trained head is "reported alone" and "in every table". | All three sentences corrected. `PROJECT_NOTES.md` carried the prototype error twice and is fixed on disk (that file is gitignored) |
+
+Two defects were found while closing these, neither of them in the audit's list:
+
+1. **The NF-ToN-IoT per-class values were scored over the wrong rows** (all 2,127 rather than
+   the rows the metric scores), so the per-class table did not average to the ladder table:
+   0.4305 against 0.4336 for the GNN model, and a matching gap at every rung. Fixed, and
+   `scripts/build_per_class_artifact.py` now asserts the identity on every run. Nothing
+   qualitative moved; every change was an increase between +0.0003 and +0.0272.
+2. **The method's per-variant focus weights were passing the number audit by coincidence.** A
+   bootstrap CI bound of 0.01247 rendered as the percentage string "1.25". When S1 moved that
+   interval the coincidence vanished. They are source-code constants and are now in
+   `number_allowlist.txt` against `src/models/gnn_classifier.py:22-24`. Worth knowing that the
+   audit accepts numbers this loosely.
+
+---
+
 ## 5. Scope decisions a reader might mistake for omissions
 
 **`head_alone` is not a rung.** The trained head standing alone scores 0.8374 on UNSW and
@@ -178,17 +212,17 @@ Measured by `scripts/prose_stats.py`. No em dashes anywhere, by editorial rule.
 
 | Section | Words | Sentences | Paragraphs | Em dashes | Semicolons |
 |---|---:|---:|---:|---:|---:|
-| abstract | 246 | 13 | 3 | 0 | 0 |
+| abstract | 248 | 13 | 3 | 0 | 0 |
 | cover | 52 | 14 | 14 | 0 | 0 |
-| introduction | 2,078 | 107 | 29 | 0 | 0 |
-| related work | 2,393 | 132 | 31 | 0 | 0 |
-| method | 4,160 | 214 | 56 | 0 | 3 |
-| results | 3,610 | 205 | 49 | 0 | 6 |
-| discussion | 2,220 | 115 | 29 | 0 | 0 |
-| conclusion | 449 | 24 | 6 | 0 | 0 |
-| appendices | 1,210 | 70 | 29 | 0 | 1 |
+| introduction | 2,052 | 106 | 29 | 0 | 1 |
+| related work | 2,377 | 134 | 31 | 0 | 0 |
+| method | 4,475 | 227 | 58 | 0 | 4 |
+| results | 4,372 | 251 | 55 | 0 | 7 |
+| discussion | 2,320 | 123 | 30 | 0 | 0 |
+| conclusion | 448 | 23 | 6 | 0 | 0 |
+| appendices | 1,297 | 76 | 30 | 0 | 2 |
 | statements | 209 | 11 | 5 | 0 | 0 |
-| **total** | **16,627** | **905** | **251** | **0** | **10** |
+| **total** | **17,850** | **978** | **261** | **0** | **14** |
 
 Run `scripts/prose_stats.py` for the full per-section distributions.
 
@@ -196,14 +230,21 @@ Run `scripts/prose_stats.py` for the full per-section distributions.
 
 ## 7. Figures
 
-Nine, all generated from sources in `docs/research_report/figures/src/`. Three are standalone
-TikZ documents (architecture, loop flow, E-GraphSAGE ceiling); six are matplotlib
-(`make_plots.py`). The plotted values are transcribed from the specifications in
-`FIGURE_BRIEFS.md`, which were checked against the contracts. `./build.sh figures` redraws all
-nine; a plain build uses the committed PDFs.
+Eleven, all generated from sources in `docs/research_report/figures/src/`. Three are standalone
+TikZ documents (architecture, loop flow, E-GraphSAGE ceiling); eight are matplotlib
+(`make_plots.py`). `./build.sh figures` redraws all eleven; a plain build uses the committed
+PDFs.
 
-A figure disagreeing with a table would not be caught by the compiler. It is caught by reading
-the figure against its brief, and the briefs carry every number a figure may contain.
+Most plotted values are transcribed from the specifications in `FIGURE_BRIEFS.md`, which were
+checked against the contracts. A figure disagreeing with a table would not be caught by the
+compiler. It is caught by reading the figure against its brief, and those briefs carry every
+number their figure may contain.
+
+**Two figures are different.** `fig_metrics` and `fig_perclass_levels` read their values from
+the contracts at draw time. Between them that would have been about a hundred transcribed
+numbers, and transcription at that volume is how `fig_perclass`'s NF-ToN-IoT row went stale
+when the per-class artifact was corrected on 2026-09-16. Their briefs name the artifact and the
+keys, and say what the figure should show, which is what you check them against instead.
 
 ---
 

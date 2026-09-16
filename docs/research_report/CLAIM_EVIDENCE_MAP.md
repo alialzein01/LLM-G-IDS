@@ -86,19 +86,26 @@ Mean ± std over seeds 42/1/2. The LLM rung is deterministic given the folds (st
 
 ## C. Ladder significance — two-level bootstrap (edges AND training seed), `[verified]`
 
+**Regenerated 2026-09-16 with the seed drawn INDEPENDENTLY for each side.** Section 3.9 always
+described an independent draw; the ladder code drew one seed and handed it to both rungs, which
+is a paired draw and gives a narrower interval. Every value in this table moved and every one
+of them widened. **No verdict changed.** The superseded shared-seed intervals are the ones
+this table carried before that date and must not be quoted: they are narrower than the
+procedure the manuscript describes.
+
 The loop is measured under both consultants, and the two halves of this table are the
 report's central result. Intervals are `multi_seed.comparisons[*].two_level` in
 `multiseed_ladder_v2_head.json` and `multiseed_ladder_v2_legacy.json`.
 
 | ID | Contrast | Consultant | UNSW | ToN |
 |---|---|---|---|---|
-| C1 | AGAF − GNN | either | +0.0362 [−0.0096, +0.0822] → **NOT-SEP** | −0.0238 [−0.0921, +0.0607], not sign-stable → **NOT-SEP** |
-| C2 | Loop − AGAF | prototype | −0.0156 [−0.0552, +0.0268] → **NOT-SEP** | +0.0428 [−0.0316, +0.1105] → **NOT-SEP** |
-| C3 | Loop − AGAF | trained head | +0.0546 [+0.0228, +0.0880] → **SEP** | +0.0932 [+0.0180, +0.1667] → **SEP** |
-| C4 | Loop − GNN | prototype | +0.0206 [−0.0203, +0.0625] → **NOT-SEP** | +0.0191 [−0.0180, +0.0596] → **NOT-SEP** |
-| C5 | Loop − GNN | trained head | +0.0908 [+0.0412, +0.1407] → **SEP** | +0.0694 [+0.0129, +0.1288] → **SEP** |
+| C1 | AGAF − GNN | either | +0.0370 [−0.0212, +0.0929] → **NOT-SEP** | −0.0235 [−0.0910, +0.0602], not sign-stable → **NOT-SEP** |
+| C2 | Loop − AGAF | prototype | −0.0145 [−0.0556, +0.0276] → **NOT-SEP** | +0.0433 [−0.0376, +0.1199] → **NOT-SEP** |
+| C3 | Loop − AGAF | trained head | +0.0557 [+0.0208, +0.0905] → **SEP** | +0.0936 [+0.0139, +0.1720] → **SEP** |
+| C4 | Loop − GNN | prototype | +0.0214 [−0.0278, +0.0657] → **NOT-SEP** | +0.0193 [−0.0180, +0.0604] → **NOT-SEP** |
+| C5 | Loop − GNN | trained head | +0.0916 [+0.0376, +0.1425] → **SEP** | +0.0697 [+0.0129, +0.1283] → **SEP** |
 | C6 | Loop − LLM | trained head | +0.0989 [+0.0721, +0.1267] → **SEP** | +0.2231 [+0.1703, +0.2771] → **SEP** |
-| C7 | Loop − LLM | prototype | — | — | **OPEN** — the prototype aggregate carries no such comparison; marked `[GAP]` in the manuscript |
+| C7 | Loop − LLM | prototype | — | — | **OPEN in the manuscript.** The regenerated prototype aggregate now DOES carry this comparison, because the per-seed head logits it needs were built after that file was last written. The `[GAP]` marker in the `tab_comparisons` caption is stale as a result. Adding the row is a content decision that has not been taken |
 
 **C8 — the defensible ladder sentences.** *With the trained-head consultant every loop
 comparison is separated on both datasets.* *With the prototype consultant nothing is
@@ -114,10 +121,30 @@ clearest illustration of what admitting seed variance costs. **NOT-SEP.**
 partition. Fold-partition variance is unmeasured, so ±std is a lower bound on total
 uncertainty. Say so wherever a ± appears.
 
-**C11 — the consultant change itself.** +0.0697 UNSW and +0.0523 ToN, three-seed means.
-**DERIV / PT** — no bootstrap was run between the two loop configurations, and the change is
-confounded with the re-selected entropy percentile (31→29, 25→16). Marked `[GAP]` in the
-manuscript. Never call it separated.
+**C11 — the consultant change itself.** +0.0697 UNSW and +0.0523 ToN, three-seed means. The
+`[GAP]` was closed on 2026-09-13 by `results/consultant_change_interval.json` and the interval
+regenerated on 2026-09-16 under the independent draw: **+0.0701 [+0.0353, +0.1057] SEP** on
+UNSW, **+0.0511 [−0.0082, +0.1110] NOT-SEP** on ToN. The change stays confounded with the
+re-selected entropy percentile (31→29, 25→16), so every statement of it must say so, and the
+ToN side must never be called separated.
+
+**C12 — accuracy and weighted F1 (added 2026-09-16).** Reported in `tab_metrics` and
+`fig_metrics`, from `rungs.*.accuracy` and `rungs.*.weighted_f1` in the two ladder aggregates,
+scored on the rows the metric scores. **PT** — no interval was computed for any of them, and
+none may be described as separated.
+
+| rung | UNSW acc / wF1 | ToN acc / wF1 |
+|---|---|---|
+| GNN | 0.8105 / 0.8207 | 0.8739 / 0.8949 |
+| semantic | 0.7790 / 0.7914 | 0.4995 / 0.6071 |
+| fusion | 0.8364 / 0.8398 | 0.8329 / 0.8550 |
+| feedback, trained head | 0.8852 / 0.8887 | 0.9186 / 0.9223 |
+
+**C13 — what accuracy may and may not be used to say.** *The feedback model is the highest rung
+on all three metrics on both datasets.* **PT**, permitted. *Accuracy separates the rungs.*
+**FORBIDDEN** — on NF-ToN-IoT the benign class holds 82% of the scored edges, every graph rung
+clears 0.83, and no accuracy difference carries an interval. The reason macro-F1 is the
+headline must appear wherever accuracy does.
 
 ---
 

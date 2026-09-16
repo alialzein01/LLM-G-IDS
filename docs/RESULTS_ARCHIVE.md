@@ -13,7 +13,7 @@ disagree, the contract wins and this file is stale.
 ### The trail: what was tried, what it cost, what it bought
 
 If you are here to see whether the work was investigated rather than guessed, read these
-six entries in order. Together they are the record of one mechanism being pushed until it
+entries in order. Together they are the record of one mechanism being pushed until it
 either worked or was shown not to.
 
 | # | Entry | What was attempted | Outcome |
@@ -25,10 +25,131 @@ either worked or was shown not to.
 | 5 | 2026-09-07 | Five further treatments on the same consultant: selector supervision, temperature, reliability weighting, advice format, cross-fitting | All five negative, each from a different angle. The table below is the case for what came next |
 | 6 | 2026-09-07 | Change the consultant itself, from the embedding-only prototype to a per-fold trained head | +0.0697 UNSW and +0.0523 ToN, and every ladder comparison becomes separated |
 | 7 | 2026-09-13 | Put an interval on step 6, and complete the flagged-set disagreement split | Separated on UNSW, **not** on ToN. Two earlier figures found to be at the wrong knobs and not reproducible; both replaced. See `results/consultant_change_interval.json` and `results/consultant_complementarity.json` |
+| 8 | 2026-09-17 | Audit the code against every sentence of the report | Seven mismatches, all closed without retraining. Every ladder interval recomputed under the procedure the text describes; **no verdict changed**. Two further defects found on the way: the ToN per-class values were scored over the wrong rows, and the focus-weight table was passing the audit by coincidence |
 
 The improvement in step 6 is only meaningful because steps 1 to 5 are on the record. A
 report that showed only step 6 would be claiming a lucky configuration; the archive is what
 turns it into a diagnosis.
+
+---
+
+## 2026-09-17 — Consistency audit of the code against the report
+
+A line-by-line audit of the manuscript against the code found seven mismatches. Every published
+number reproduced from saved predictions, so nothing was fabricated. Nothing was retrained.
+**No separated verdict changed anywhere.** The full point-by-point map is in
+`docs/research_report/HANDOFF.md` section 4b; this entry records the two measurement changes
+and the two defects the work exposed.
+
+### The two-level bootstrap now draws a seed independently per side
+
+Section 3.9 has always said each iteration "draws a training seed independently for each side".
+The ladder code drew one seed and gave it to both rungs. That is a paired draw, and a paired
+draw is narrower, because it never admits the case where one rung had a good run and the other
+a bad one. The baseline comparisons already drew independently, so the report's two families of
+interval were computed two different ways.
+
+`aggregate_multiseed` now builds the nine (seed_a, seed_b) combinations exactly as
+`compare_to_ladder_multiseed` does and hands them to the same unchanged bootstrap function;
+drawing one of nine keys uniformly IS an independent draw on each side. Macro-F1 means, per-seed
+values and every seed-matched interval are byte-identical. Every two-level interval widened:
+
+| comparison | before | after | verdict |
+|---|---|---|---|
+| UNSW loop − AGAF | +0.0546 [+0.0228, +0.0880] | +0.0557 [+0.0208, +0.0905] | separated, unchanged |
+| UNSW loop − GNN | +0.0908 [+0.0412, +0.1407] | +0.0916 [+0.0376, +0.1425] | separated, unchanged |
+| UNSW AGAF − GNN | +0.0362 [−0.0096, +0.0822] | +0.0370 [−0.0212, +0.0929] | not separated, unchanged |
+| UNSW loop − head | −0.0030 [−0.0242, +0.0136] | −0.0032 [−0.0228, +0.0128] | not separated, unchanged |
+| ToN loop − AGAF | +0.0932 [+0.0180, +0.1667] | +0.0936 [+0.0139, +0.1720] | separated, unchanged |
+| ToN loop − GNN | +0.0694 [+0.0129, +0.1288] | +0.0697 [+0.0129, +0.1283] | separated, unchanged |
+| ToN AGAF − GNN | −0.0238 [−0.0921, +0.0607] | −0.0235 [−0.0910, +0.0602] | not separated, unchanged |
+| ToN loop − head | −0.0028 [−0.0388, +0.0318] | −0.0032 [−0.0342, +0.0299] | not separated, unchanged |
+
+The consultant change keeps both verdicts too: +0.0701 [+0.0353, +0.1057] separated on UNSW,
++0.0511 [−0.0082, +0.1110] not separated on ToN. Four aggregates were regenerated, not two,
+because Appendix A quotes the `fixed` and `fixed_reselected` ladders for conditions B and C and
+leaving those on the old draw would have put one sentence on two procedures. The baseline
+intervals were re-verified rather than rewritten: all 60 comparisons per dataset reproduce to
+four decimals, which is the evidence that they already drew independently.
+
+`scripts/refresh_contracts.py` now regenerates the ladder blocks of the schema-5/7 and schema-6
+contracts, which had been hand-assembled since `b03cd0d` with nothing able to rebuild them.
+
+### The NF-ToN-IoT scoring asymmetry, bounded
+
+`dos` (4 edges) and `ransomware` (3) are excluded from the metric. Rows carrying those labels
+are not scored. The asymmetry was on the other side: the GNN, semantic and feedback stages
+masked those logit columns before argmax and could never spend a scored edge on them, while the
+fusion stage and all six re-trained baselines could. The code now masks in all three places
+(`train_fusion.py`, `train_gnn.py`, `baselines/harness.py`), pinned by
+`tests/test_dropped_class_masking.py`. `train_gnn` was also selecting NF-ToN-IoT checkpoints on
+a 10-class validation score while every other stage selected on 8; that is fixed too.
+
+The published runs predate the fix and were not re-run, so the effect is bounded instead in
+`results/ton_iot_dropped_class_bound.json`. Crediting every dropped-class prediction with the
+TRUE LABEL is the most generous repair available, so the result is an upper bound and never an
+estimate:
+
+| model | into dropped (42/1/2) | actual → bound | feedback model |
+|---|---|---|---|
+| fusion | 3 / 374 / 6 | 0.3975→0.4251, 0.3910→0.4651, 0.4422→0.4721 | 0.4985 / 0.5012 / 0.5135 |
+| E-GraphSAGE as published = refit | 58 / 63 / 47 | 0.4084→0.4494, 0.4196→0.4775, 0.4144→0.4648 | |
+| E-GraphSAGE + features | 66 / 28 / 60 | 0.3989→0.4489, 0.4775→**0.5206**, 0.4311→0.4928 | |
+| TE-G-SAGE as published | 83 / 161 / 206 | 0.2088→0.2193, 0.1996→0.3023, 0.1710→0.2700 | |
+| TE-G-SAGE + features | 51 / 116 / 73 | 0.3757→0.4218, 0.3312→0.4017, 0.3501→0.4024 | |
+| TE-G-SAGE refit | 81 / 32 / 29 | 0.2282→0.2918, 0.2488→0.2692, 0.2265→0.2771 | |
+
+The bound stays below the feedback model at every seed except E-GraphSAGE with our node
+features at seed 1, and that comparison is already reported as not separated at
++0.0667 [−0.0181, +0.1505]. **No claim in the report depends on the asymmetry.** Do not describe
+any of this as the numbers having been corrected; nothing was re-measured.
+
+### Two defects the audit did not list, found while closing it
+
+**The NF-ToN-IoT per-class F1 values were scored over the wrong rows.** They were computed over
+all 2,127 edges, so a `dos` edge predicted as `ddos` counted as a false positive against `ddos`.
+The headline metric restricts to rows whose true label is evaluated, so the per-class table did
+not average to the ladder table at any rung:
+
+| rung | per-class mean, as published | ladder macro-F1 |
+|---|---|---|
+| gnn | 0.4305 | 0.4336 |
+| agaf | 0.4079 | 0.4102 |
+| loop | 0.4985 | 0.5044 |
+| head_alone | 0.5019 | 0.5081 |
+| llm | 0.2782 | 0.2785 |
+
+Scoring the correct rows closes all five gaps exactly. NF-UNSW-NB15 drops no class and is
+unchanged. Every ToN value moved up, between +0.0003 and +0.0272, and no counting claim in §4.7
+changed: the feedback model is still above the fusion model on 7 of 8 ToN classes losing only
+`password`, and above the GNN model on 6 of 8 losing `mitm` and `xss`. The two printed values
+that moved are `password` 0.2100→0.2134 and 0.2950→0.2996.
+`scripts/build_per_class_artifact.py` now regenerates that artifact and asserts the identity on
+every run.
+
+**The method's per-variant focus weights were passing the number audit by coincidence.** The
+value 1.25 in `tab:focus` was accepted because a bootstrap CI lower bound of 0.01247 rendered as
+the percentage string "1.25". When the interval moved to 0.01266 the coincidence vanished and
+the audit flagged it. The weights are source-code constants and are now in
+`number_allowlist.txt` against `src/models/gnn_classifier.py:22-24`. The wider lesson is that
+`check_report_numbers.py` accepts a token if ANY contract value renders to it under any of its
+spellings, including as a percentage, so a match is weak evidence on its own.
+
+### Reported for the first time: accuracy and per-class levels
+
+The instructor's brief asks for accuracy, per-class F1 and attention to low-sample classes. The
+report had per-class differences only. `tab_metrics` and `fig_metrics` add accuracy and
+weighted F1 for every rung, and `fig_perclass_levels` adds the per-class levels beside the
+existing difference heatmap. Accuracy carries no interval and separates nothing: on NF-ToN-IoT
+the benign class holds 82% of the scored edges and every graph rung clears 0.83.
+
+| rung | UNSW acc / wF1 | ToN acc / wF1 |
+|---|---|---|
+| GNN | 0.8105 / 0.8207 | 0.8739 / 0.8949 |
+| semantic | 0.7790 / 0.7914 | 0.4995 / 0.6071 |
+| fusion | 0.8364 / 0.8398 | 0.8329 / 0.8550 |
+| feedback, trained head | 0.8852 / 0.8887 | 0.9186 / 0.9223 |
+| head alone | 0.8908 / 0.8933 | 0.9164 / 0.9200 |
 
 ---
 
