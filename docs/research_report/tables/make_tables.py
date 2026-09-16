@@ -387,7 +387,8 @@ def table_perclass() -> str:
     return wrap(
         "Per-class F1, mean over three seeds, with edge counts. The feedback model is the canonical one, "
         "consulting the trained head. NF-ToN-IoT's \\texttt{dos} and \\texttt{ransomware} are "
-        "excluded from the metric and omitted here.",
+        "excluded from the metric and omitted here, and F1 is computed on the rows the metric "
+        "scores, so each column's mean is that rung's macro-F1 in Table~\\ref{tab:ladder}.",
         "tab:perclass",
         body,
     )

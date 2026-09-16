@@ -296,15 +296,18 @@ def fig_decomposition():
 
 # --------------------------------------------------------------------------- 8
 def fig_perclass():
+    # (class, edges, feedback - fusion, feedback - GNN), transcribed from
+    # results/multiseed_head_per_class.json, whose class order is the dataset
+    # config's label order, not alphabetical.
     unsw = [("Normal", 311, 0.0390, 0.0414), ("Analysis", 25, 0.0309, 0.1869),
             ("Backdoors", 40, 0.1442, 0.2090), ("DoS", 40, 0.0978, 0.1594),
             ("Exploits", 40, -0.0003, 0.0271), ("Fuzzers", 40, 0.0419, 0.1542),
             ("Generic", 40, 0.1490, 0.0308), ("Reconnaissance", 40, -0.0185, -0.0379),
             ("Shellcode", 40, 0.0531, 0.1290), ("Worms", 40, 0.0107, 0.0040)]
-    ton = [("Benign", 1746, 0.0558, 0.0234), ("backdoor", 16, 0.2027, 0.0834),
-           ("ddos", 35, 0.0494, 0.1064), ("injection", 116, 0.1433, 0.0842),
-           ("mitm", 157, 0.1484, -0.0273), ("password", 25, -0.0850, 0.1699),
-           ("scanning", 13, 0.0335, 0.2159), ("xss", 12, 0.1768, -0.1116)]
+    ton = [("Benign", 1746, 0.0555, 0.0237), ("backdoor", 16, 0.2280, 0.0903),
+           ("ddos", 35, 0.0502, 0.1099), ("injection", 116, 0.1427, 0.0842),
+           ("mitm", 157, 0.1484, -0.0273), ("password", 25, -0.0862, 0.1733),
+           ("scanning", 13, 0.0382, 0.2242), ("xss", 12, 0.1768, -0.1116)]
 
     rows, labels = [[np.nan, np.nan]], [""]
     for name, n, a, b in unsw:
