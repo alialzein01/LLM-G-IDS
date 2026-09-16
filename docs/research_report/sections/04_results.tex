@@ -300,6 +300,22 @@ from E-GraphSAGE as published, at $+0.0203$ [$-0.0230$, $+0.0633$] and $-0.0061$
 $+0.0777$]. On NF-UNSW-NB15 neither the GNN model nor the semantic model is separated from
 TE-G-SAGE with our node features, at $+0.0249$ and $+0.0163$.
 
+The NF-ToN-IoT baselines were scored under a looser rule than the rungs they are compared
+against, and the margin has to be read against that. As Section~\ref{sec:method-protocol}
+states, these models and the fusion model could predict \texttt{dos} or \texttt{ransomware} for
+an edge the metric scores, losing it, while the GNN, semantic and feedback models could not.
+Across the three seeds that happened on 3, 374 and 6 edges for the fusion model, on 58, 63 and
+47 for E-GraphSAGE as published, on 66, 28 and 60 for E-GraphSAGE with our node features, and on
+between 29 and 206 for the three TE-G-SAGE configurations. Replacing every one of those
+predictions with the true label gives an upper bound on what the mask could have been worth, and
+that bound is more generous than any mask could be, because no mask redirects an edge to the
+right class. The bound stays below the feedback model at every seed for the fusion model and for
+five of the six baselines. The exception is E-GraphSAGE with our node features at seed 1, where
+it reaches 0.5206 against the feedback model's 0.5012. Table~\ref{tab:vsbaselines} already
+reports that comparison as not separated, at $+0.0667$ [$-0.0181$, $+0.1505$], so no claim in
+this report depends on the asymmetry. Every count and both macro-F1 values, per model and per
+seed, are in \texttt{results/ton\_iot\_dropped\_class\_bound.json}.
+
 Because most of the NF-UNSW-NB15 margin is not architectural, it repays decomposition.
 Table~\ref{tab:decomposition} walks from the strongest published configuration to our rungs.
 Every level is a three-seed mean, no step carries an interval, and no step is a separation claim.

@@ -144,7 +144,7 @@ is new is the measurement, in a setting where the answer turns out to be negativ
 \subsection{Limitations, read as findings}
 \label{sec:disc-limitations}
 
-Most of the seven limitations below are results in their own right, and all of them affect how
+Most of the eight limitations below are results in their own right, and all of them affect how
 the numbers should be read.
 
 \begin{enumerate}
@@ -184,6 +184,14 @@ the numbers should be read.
     semantic consultant clear it, and only at the second consultant. The honest summary of RQ5 is
     that our structural pipeline matches a published architecture on that graph rather than
     improving on it.
+
+    \item \textbf{Two NF-ToN-IoT stages were scored under a looser rule than the rest.} The
+    fusion model and the re-trained baselines could predict the two classes the metric excludes
+    and lose a scored edge that way. The GNN, semantic and feedback models could not. Section
+    \ref{sec:res-baselines} bounds the cost by crediting every such prediction with the true
+    label, and the bound stays below the feedback model everywhere except E-GraphSAGE with our
+    node features at one seed, where the comparison is already not separated. The code now masks
+    those classes at every stage, so the asymmetry is confined to the runs reported here.
 \end{enumerate}
 
 \subsection{What follows from this}

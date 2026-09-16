@@ -272,7 +272,7 @@ Artifact & What it carries \\
 \paragraph{Checks.} The repository's test suite pins the contracts against each other and
 against the on-disk graphs, including a test asserting that both datasets declare the same
 architecture. It runs with \texttt{OMP\_NUM\_THREADS=1 python -m pytest tests/ -q} and reports
-167 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
+172 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
 \texttt{scripts/check\_report\_numbers.py} extracts every numeric token from the section
 sources and checks it against the contracts, the archive, the dataset statistics and an
 explicit allowlist. \texttt{scripts/prose\_stats.py} measures the writing against the

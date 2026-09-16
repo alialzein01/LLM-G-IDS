@@ -31,6 +31,7 @@ from src.pipeline.common.splits import (
     FocalLoss,
     create_edge_splits,
     get_class_weights,
+    mask_dropped_logits,
 )
 
 
@@ -144,12 +145,24 @@ def _apply_scalers(
 # Classes used for in-fold model selection (early stopping). Set to the dataset's
 # eval_classes in main() so we select epochs on the metric we actually report.
 EVAL_CLASSES: tuple[int, ...] = tuple(range(NUM_CLASSES))
+# Classes the protocol excludes from the metric. Their logit columns are driven to
+# -inf before every argmax, so this stage cannot spend a scored edge on a class it
+# is not scored for. Set from the dataset config in main(), like EVAL_CLASSES.
+# Until 2026-09-16 it was empty everywhere, which on NF-ToN-IoT let this stage
+# predict `dos` and `ransomware` while the GNN, semantic and feedback stages could
+# not; see results/ton_iot_dropped_class_bound.json for what that cost.
+DROPPED_CLASSES: tuple[int, ...] = ()
+
+
+def _eval_preds(logits: torch.Tensor) -> torch.Tensor:
+    """Predicted classes under the evaluation protocol."""
+    return mask_dropped_logits(logits, DROPPED_CLASSES).argmax(dim=1)
 
 
 def _macro_f1(
     logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor
 ) -> float:
-    preds = logits[mask].argmax(dim=1).cpu().numpy()
+    preds = _eval_preds(logits[mask]).cpu().numpy()
     targets = labels[mask].cpu().numpy()
     return float(
         f1_score(targets, preds, average="macro", labels=list(EVAL_CLASSES), zero_division=0)
@@ -337,7 +350,7 @@ def _train_one_fold(
         eval_logits, _, diagnostics = model(gnn_t, llm_t, head_logits=head_raw)
         test_f1 = _macro_f1(eval_logits, labels, test_mask)
         test_indices = test_mask.nonzero(as_tuple=True)[0].cpu().numpy()
-        test_predictions = eval_logits[test_mask].argmax(dim=1).cpu().numpy()
+        test_predictions = _eval_preds(eval_logits[test_mask]).cpu().numpy()
         test_gate = diagnostics["gate"][test_mask]
         test_feature_attention = diagnostics["feature_attention"][test_mask]
         gate_test_mean_gnn = float(diagnostics["gate_gnn_mean"][test_mask].mean().item())
@@ -444,6 +457,7 @@ def main(
     hidden_dim: int = HIDDEN_DIM,
 ) -> None:
     global USE_HEAD_LOGITS, HEAD_OUTPUT_GATE, EVAL_CLASSES, OVERSAMPLE_RATIO, SEED
+    global DROPPED_CLASSES
     global FUSION_MODE, FIXED_LAMBDA, ALIGN_LAMBDA, ALIGN_TEMPERATURE
     global ACTIVE_PROJ_DIM, ACTIVE_HIDDEN_DIM
     USE_HEAD_LOGITS = use_head_logits
@@ -457,6 +471,7 @@ def main(
     ACTIVE_PROJ_DIM = proj_dim
     ACTIVE_HIDDEN_DIM = hidden_dim
     EVAL_CLASSES = get_dataset_config(dataset).eval_classes
+    DROPPED_CLASSES = get_dataset_config(dataset).dropped_classes
     print(
         f"Fusion variant: mode={fusion_mode} proj_dim={proj_dim} hidden_dim={hidden_dim} "
         f"align_lambda={align_lambda} fixed_lambda={fixed_lambda}"
@@ -593,7 +608,7 @@ def main(
     gnn_t, llm_t = _apply_scalers(gnn_emb, final_llm_emb, gnn_scaler, llm_scaler)
     with torch.no_grad():
         logits, edge_emb, diagnostics = final_model(gnn_t, llm_t, head_logits=final_head_raw)
-        preds = logits.argmax(dim=1).cpu().numpy()
+        preds = _eval_preds(logits).cpu().numpy()
 
     torch.save(edge_emb.detach().cpu(), output_path / "edge_embeddings.pt")
     torch.save(diagnostics["gate"].detach().cpu(), output_path / "gate_weights.pt")

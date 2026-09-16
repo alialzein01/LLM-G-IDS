@@ -53,5 +53,5 @@
 1.00      # content protocol, behavioural avg_duration
 
 # --- test suite ---------------------------------------------------------------
-167       # passing tests; OMP_NUM_THREADS=1 python -m pytest tests/ -q, 2026-09-11
+172       # passing tests; OMP_NUM_THREADS=1 python -m pytest tests/ -q, 2026-09-16
 359       # passing subtests in the same run

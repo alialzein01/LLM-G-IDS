@@ -8,7 +8,11 @@ import torch.nn as nn
 
 from src.pipeline.common.datasets import DatasetConfig
 from src.pipeline.common.metrics import classification_metrics
-from src.pipeline.common.splits import eval_macro_f1, get_class_weights
+from src.pipeline.common.splits import (
+    eval_macro_f1,
+    get_class_weights,
+    mask_dropped_logits,
+)
 
 GRAD_CLIP = 1.0
 
@@ -24,6 +28,7 @@ def run_out_of_fold(
     seed: int,
     class_weighting: str,
     eval_classes: tuple[int, ...],
+    dropped_classes: tuple[int, ...] = (),
     max_epochs: int = 300,
     patience: int = 25,
     lr: float = 1e-3,
@@ -34,6 +39,11 @@ def run_out_of_fold(
 
     Early stopping selects on validation macro-F1 restricted to `eval_classes`.
     Test masks are never read for selection.
+
+    `dropped_classes` are driven to -inf before every argmax, so a baseline is
+    held to the same protocol as the rungs it is compared against. Before
+    2026-09-16 these models could predict a class the metric does not score,
+    which cost them recall on edges the rungs could not lose.
     """
     pooled = np.full(labels.shape[0], -1, dtype=np.int64)
 
@@ -68,7 +78,10 @@ def run_out_of_fold(
 
             model.eval()
             with torch.no_grad():
-                val_preds = model(x, edge_index, edge_attr)[val_mask].argmax(dim=1)
+                val_logits = model(x, edge_index, edge_attr)[val_mask]
+                val_preds = mask_dropped_logits(
+                    val_logits, dropped_classes
+                ).argmax(dim=1)
             val_f1 = eval_macro_f1(labels[val_mask], val_preds, eval_classes)
 
             if val_f1 > best_f1:
@@ -83,7 +96,9 @@ def run_out_of_fold(
             model.load_state_dict(best_state)
         model.eval()
         with torch.no_grad():
-            fold_preds = model(x, edge_index, edge_attr).argmax(dim=1).cpu().numpy()
+            fold_preds = mask_dropped_logits(
+                model(x, edge_index, edge_attr), dropped_classes
+            ).argmax(dim=1).cpu().numpy()
         test_mask = fold["test_mask"].cpu().numpy()
         pooled[test_mask] = fold_preds[test_mask]
 

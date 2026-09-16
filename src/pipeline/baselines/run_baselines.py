@@ -36,7 +36,11 @@ from src.pipeline.baselines.preprocess import (
     te_g_sage_edge_features,
 )
 from src.pipeline.common.datasets import get_dataset_config
-from src.pipeline.common.splits import eval_macro_f1, get_class_weights
+from src.pipeline.common.splits import (
+    eval_macro_f1,
+    get_class_weights,
+    mask_dropped_logits,
+)
 
 SCHEMA_VERSION = 1
 
@@ -201,6 +205,7 @@ def _validation_score(
     lr: float,
     weight_decay: float,
     eval_classes: tuple[int, ...],
+    dropped_classes: tuple[int, ...] = (),
 ) -> float:
     fold_scores: list[float] = []
     for fold_idx, fold in enumerate(folds):
@@ -230,7 +235,9 @@ def _validation_score(
 
             model.eval()
             with torch.no_grad():
-                val_preds = model(x, edge_index, edge_attr)[val_mask].argmax(dim=1)
+                val_preds = mask_dropped_logits(
+                    model(x, edge_index, edge_attr)[val_mask], dropped_classes
+                ).argmax(dim=1)
             val_f1 = eval_macro_f1(labels[val_mask], val_preds, eval_classes)
             if val_f1 > best_f1:
                 best_f1, stale = val_f1, 0
@@ -306,6 +313,7 @@ def select_refit(dataset: str, model_name: str, seeds: list[int]) -> dict:
                     lr=float(candidate["lr"]),
                     weight_decay=weight_decay,
                     eval_classes=config.eval_classes,
+                    dropped_classes=config.dropped_classes,
                 ),
             }
             for seed in seeds
@@ -363,6 +371,7 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
             seed=seed,
             class_weighting="inverse_frequency",
             eval_classes=config.eval_classes,
+            dropped_classes=config.dropped_classes,
             optimizer="adam",
             lr=float(egraph_winner["lr"]),
             weight_decay=0.0,
@@ -416,6 +425,7 @@ def _run_refit(dataset: str, seeds: list[int]) -> Path:
             seed=seed,
             class_weighting="inverse_frequency",
             eval_classes=config.eval_classes,
+            dropped_classes=config.dropped_classes,
             optimizer="adam",
             lr=float(te_winner["lr"]),
             weight_decay=TEG_WEIGHT_DECAY,
@@ -510,6 +520,7 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
             seed=seed,
             class_weighting=str(egraph_refit["class_weighting"]),
             eval_classes=config.eval_classes,
+            dropped_classes=config.dropped_classes,
             optimizer=str(egraph_refit["optimizer"]),
             lr=float(egraph_refit["lr"]),
             weight_decay=float(egraph_refit["weight_decay"]),
@@ -559,6 +570,7 @@ def _run_plus_node_features(dataset: str, seeds: list[int]) -> Path:
             seed=seed,
             class_weighting=str(te_refit["class_weighting"]),
             eval_classes=config.eval_classes,
+            dropped_classes=config.dropped_classes,
             optimizer=str(te_refit["optimizer"]),
             lr=float(te_refit["lr"]),
             weight_decay=float(te_refit["weight_decay"]),
@@ -643,6 +655,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
             seed=seed,
             class_weighting="inverse_frequency",
             eval_classes=config.eval_classes,
+            dropped_classes=config.dropped_classes,
             optimizer="adam",
             lr=EGRAPH_LR,
             weight_decay=0.0,
@@ -692,6 +705,7 @@ def run(dataset: str, mode: str, seeds: list[int]) -> Path:
             seed=seed,
             class_weighting="inverse_frequency",
             eval_classes=config.eval_classes,
+            dropped_classes=config.dropped_classes,
             optimizer="adam",
             lr=TEG_LR,
             weight_decay=TEG_WEIGHT_DECAY,

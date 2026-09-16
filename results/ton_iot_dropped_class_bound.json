@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "dataset": "NF-ToN-IoT",
+  "dataset_key": "ton_iot",
+  "metric": "pooled_oof_macro_f1",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "n_edges": 2127,
+  "n_scored_edges": 2120,
+  "dropped_classes": [
+    3,
+    7
+  ],
+  "dropped_class_names": [
+    "dos",
+    "ransomware"
+  ],
+  "dropped_class_edges": {
+    "dos": 4,
+    "ransomware": 3
+  },
+  "what_this_measures": "Scored edges that the fusion model or a re-trained baseline predicted into a class the metric excludes. The GNN, semantic and feedback models could not make that prediction because their dropped-class logits were masked before argmax. The upper bound replaces every such prediction with the true label, which is the most generous repair available and is therefore an upper bound, not an estimate.",
+  "feedback_macro_f1_per_seed": {
+    "42": 0.49854816237783617,
+    "1": 0.501235158160148,
+    "2": 0.5135160122363981
+  },
+  "models": {
+    "fusion": {
+      "display_name": "Fusion model (AGAF)",
+      "source": "results/multiseed_v2/head/ton_iot_seed<S>/metrics.json:predictions",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 3,
+          "macro_f1": 0.3974711630900891,
+          "macro_f1_upper_bound": 0.42508575583794334,
+          "headroom": 0.027614592747854216
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 374,
+          "macro_f1": 0.39098143906812927,
+          "macro_f1_upper_bound": 0.46513692715552996,
+          "headroom": 0.07415548808740069
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 6,
+          "macro_f1": 0.4422458548691029,
+          "macro_f1_upper_bound": 0.4721182275668201,
+          "headroom": 0.029872372697717198
+        }
+      }
+    },
+    "e_graphsage_as_published": {
+      "display_name": "E-GraphSAGE as published",
+      "source": "data/ton_iot/processed/baselines/e_graphsage_as_published_oof_preds.npy",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 58,
+          "macro_f1": 0.40841225688082305,
+          "macro_f1_upper_bound": 0.44944833259053374,
+          "headroom": 0.041036075709710684
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 63,
+          "macro_f1": 0.4196231051915351,
+          "macro_f1_upper_bound": 0.47747088886951056,
+          "headroom": 0.05784778367797544
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 47,
+          "macro_f1": 0.41436721794374354,
+          "macro_f1_upper_bound": 0.4648388834147946,
+          "headroom": 0.050471665471051086
+        }
+      }
+    },
+    "e_graphsage_refit": {
+      "display_name": "E-GraphSAGE refit",
+      "source": "data/ton_iot/processed/baselines/e_graphsage_refit_oof_preds.npy",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 58,
+          "macro_f1": 0.40841225688082305,
+          "macro_f1_upper_bound": 0.44944833259053374,
+          "headroom": 0.041036075709710684
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 63,
+          "macro_f1": 0.4196231051915351,
+          "macro_f1_upper_bound": 0.47747088886951056,
+          "headroom": 0.05784778367797544
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 47,
+          "macro_f1": 0.41436721794374354,
+          "macro_f1_upper_bound": 0.4648388834147946,
+          "headroom": 0.050471665471051086
+        }
+      }
+    },
+    "e_graphsage_plus_node_features": {
+      "display_name": "E-GraphSAGE + our node features",
+      "source": "data/ton_iot/processed/baselines/e_graphsage_plus_node_features_oof_preds.npy",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 66,
+          "macro_f1": 0.39886598296448816,
+          "macro_f1_upper_bound": 0.4488983923491092,
+          "headroom": 0.05003240938462106
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 28,
+          "macro_f1": 0.4774891496739398,
+          "macro_f1_upper_bound": 0.5206177084636526,
+          "headroom": 0.043128558789712834
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 60,
+          "macro_f1": 0.43109800190941455,
+          "macro_f1_upper_bound": 0.4927885169754903,
+          "headroom": 0.06169051506607576
+        }
+      }
+    },
+    "te_g_sage_as_published": {
+      "display_name": "TE-G-SAGE as published",
+      "source": "data/ton_iot/processed/baselines/te_g_sage_as_published_oof_preds.npy",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 83,
+          "macro_f1": 0.20875606352290516,
+          "macro_f1_upper_bound": 0.2193410274666492,
+          "headroom": 0.010584963943744058
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 161,
+          "macro_f1": 0.19956263117001322,
+          "macro_f1_upper_bound": 0.3023129157505545,
+          "headroom": 0.1027502845805413
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 206,
+          "macro_f1": 0.1709731783793563,
+          "macro_f1_upper_bound": 0.2700188748670973,
+          "headroom": 0.099045696487741
+        }
+      }
+    },
+    "te_g_sage_plus_node_features": {
+      "display_name": "TE-G-SAGE + our node features",
+      "source": "data/ton_iot/processed/baselines/te_g_sage_plus_node_features_oof_preds.npy",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 51,
+          "macro_f1": 0.37565221138686977,
+          "macro_f1_upper_bound": 0.42176843387418883,
+          "headroom": 0.04611622248731906
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 116,
+          "macro_f1": 0.33116455634448155,
+          "macro_f1_upper_bound": 0.40166974084543244,
+          "headroom": 0.07050518450095089
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 73,
+          "macro_f1": 0.3501448478975372,
+          "macro_f1_upper_bound": 0.40240160959740057,
+          "headroom": 0.052256761699863374
+        }
+      }
+    },
+    "te_g_sage_refit": {
+      "display_name": "TE-G-SAGE refit",
+      "source": "data/ton_iot/processed/baselines/te_g_sage_refit_oof_preds.npy",
+      "per_seed": {
+        "42": {
+          "predictions_into_dropped_classes_on_scored_rows": 81,
+          "macro_f1": 0.2282466424690418,
+          "macro_f1_upper_bound": 0.29175640431307837,
+          "headroom": 0.06350976184403656
+        },
+        "1": {
+          "predictions_into_dropped_classes_on_scored_rows": 32,
+          "macro_f1": 0.24877843700506733,
+          "macro_f1_upper_bound": 0.2691847571217234,
+          "headroom": 0.02040632011665608
+        },
+        "2": {
+          "predictions_into_dropped_classes_on_scored_rows": 29,
+          "macro_f1": 0.22653866185942995,
+          "macro_f1_upper_bound": 0.27714853501514797,
+          "headroom": 0.05060987315571802
+        }
+      }
+    }
+  },
+  "bounds_that_exceed_the_feedback_model": [
+    {
+      "model": "e_graphsage_plus_node_features",
+      "seed": "1",
+      "macro_f1_upper_bound": 0.5206177084636526,
+      "feedback_macro_f1": 0.501235158160148
+    }
+  ],
+  "code_fixed": "src/pipeline/step3/train_fusion.py, src/pipeline/step3/train_gnn.py and src/pipeline/baselines/harness.py now mask dropped classes before every argmax; tests/test_dropped_class_masking.py pins it. The numbers here describe the published runs, which predate that fix and were not re-run."
+}

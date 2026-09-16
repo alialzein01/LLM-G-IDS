@@ -198,6 +198,17 @@ quoted. The loop is now given under both consultants.
 | E23 | Baselines used the same rows, labels, folds and evaluation classes as our rungs. | `data_provenance` block with SHA-256 of `aggregated_edges.csv` and `folds.pt` `[verified]` | **PT** — the hashes are worth quoting |
 | E24 | Each paper's own categorical featurisation was preserved. | `preprocessing` block `[verified]` | **PT** |
 
+### E.5 The NF-ToN-IoT scoring asymmetry (2026-09-16 audit, point 2)
+
+| ID | Claim | Evidence | Status |
+|---|---|---|---|
+| E25 | On NF-ToN-IoT the fusion model and all six re-trained baselines were scored **without** the dropped-class mask that the GNN, semantic and feedback models use, so only they could spend a scored edge on `dos` or `ransomware`. | `results/ton_iot_dropped_class_bound.json`; `train_fusion.py`, `train_gnn.py`, `harness.py` now mask, pinned by `tests/test_dropped_class_masking.py` | **PT** — must be disclosed wherever the ToN baseline margins are stated |
+| E26 | Scored edges lost that way, per seed 42/1/2: fusion 3/374/6; E-GraphSAGE as published and refit 58/63/47; E-GraphSAGE + features 66/28/60; TE-G-SAGE as published 83/161/206; TE-G-SAGE + features 51/116/73; TE-G-SAGE refit 81/32/29. | same artifact, `models.*.per_seed` | **PT** `[verified 2026-09-16]` |
+| E27 | Crediting every such prediction with the true label bounds the repair. The bound stays **below** the feedback model at every seed for the fusion model and five of six baselines. | same artifact, `macro_f1_upper_bound` | **PT** — it is an upper bound, never an estimate |
+| E28 | The one exception is E-GraphSAGE + features at seed 1, bound 0.5206 against the feedback model's 0.5012. That comparison is **already** reported as not separated, `+0.0667 [−0.0181, +0.1505]`. | `bounds_that_exceed_the_feedback_model`; `ton_iot_sota_baselines.json:statistical_comparisons_3seed.feedback_vs_e_graphsage_plus_node_features` | **NOT-SEP** — therefore no claim in the report depends on the asymmetry |
+| E29 | "The asymmetry was corrected and the numbers re-measured." | — | **FORBIDDEN** — nothing was re-run; the code was fixed and the effect bounded |
+| E30 | On NF-ToN-IoT the GNN model selected checkpoints on 10-class validation macro-F1 while the feedback model and baselines selected on 8. Fixed in `train_gnn.py`; published numbers predate the fix. | §3.9 disclosure; `train_gnn.EVAL_CLASSES` now set from the dataset config | **PT** — disclose, do not re-run |
+
 ---
 
 ## F. Decomposition of the naive UNSW gap

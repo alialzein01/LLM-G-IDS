@@ -27,6 +27,7 @@ from src.pipeline.common.splits import (
     FocalLoss,
     create_edge_splits,
     get_class_weights,
+    mask_dropped_logits,
 )
 
 
@@ -110,13 +111,27 @@ def _build_model(data=None) -> GATEdgeClassifier:
     ).to(DEVICE)
 
 
+# The evaluation protocol, set from the dataset config in main(). Until 2026-09-16
+# this stage scored and selected on all ten classes even on NF-ToN-IoT, where the
+# metric covers eight, so its checkpoints were chosen on a different quantity from
+# the one the report states. Fixed here; the published NF-ToN-IoT GNN numbers were
+# produced under the old rule and section 3.9 says so.
+EVAL_CLASSES: tuple[int, ...] = tuple(range(NUM_CLASSES))
+DROPPED_CLASSES: tuple[int, ...] = ()
+
+
+def _eval_preds(logits: torch.Tensor) -> torch.Tensor:
+    """Predicted classes under the evaluation protocol."""
+    return mask_dropped_logits(logits, DROPPED_CLASSES).argmax(dim=1)
+
+
 def _macro_f1(
     logits: torch.Tensor, labels: torch.Tensor, mask: torch.Tensor
 ) -> float:
-    preds = logits[mask].argmax(dim=1).cpu().numpy()
+    preds = _eval_preds(logits[mask]).cpu().numpy()
     targets = labels[mask].cpu().numpy()
     return float(
-        f1_score(targets, preds, average="macro", labels=list(range(NUM_CLASSES)), zero_division=0)
+        f1_score(targets, preds, average="macro", labels=list(EVAL_CLASSES), zero_division=0)
     )
 
 
@@ -204,7 +219,7 @@ def _train_one_fold(
         test_mask = fold["test_mask"]
         test_f1 = _macro_f1(eval_logits, data.edge_label, test_mask)
         test_indices = test_mask.nonzero(as_tuple=True)[0].cpu().numpy()
-        test_predictions = eval_logits[test_mask].argmax(dim=1).cpu().numpy()
+        test_predictions = _eval_preds(eval_logits[test_mask]).cpu().numpy()
 
     print(
         f"  fold {fold_idx} | best epoch={best_epoch} | "
@@ -268,6 +283,9 @@ def main(
     global IN_DIM
     IN_DIM = data.x.shape[1]  # derive from graph (supports pruned node features)
     config = get_dataset_config(dataset)
+    global EVAL_CLASSES, DROPPED_CLASSES
+    EVAL_CLASSES = config.eval_classes
+    DROPPED_CLASSES = config.dropped_classes
 
     # Derive label names from the mapping stored in the Data object
     inv_mapping = {v: k for k, v in data.label_mapping.items()}
@@ -334,7 +352,7 @@ def main(
     final_model.eval()
     with torch.no_grad():
         logits, edge_emb = final_model(data.x, data.edge_index, data.edge_attr)
-        preds = logits.argmax(dim=1).cpu().numpy()
+        preds = _eval_preds(logits).cpu().numpy()
 
     torch.save(edge_emb.detach().cpu(), output_path / "edge_embeddings.pt")
 

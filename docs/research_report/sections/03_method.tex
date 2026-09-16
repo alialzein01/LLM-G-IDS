@@ -383,6 +383,7 @@ and our aggregated representation, not evidence that E-GraphSAGE is a weak detec
 not read it as one.
 
 \subsection{Evaluation and Training Protocol}
+\label{sec:method-protocol}
 
 We use stratified five-fold cross-validation over edges with partition seed 42, represented as
 boolean masks. Within each fold the held-out fifth is the test partition, and the remaining
@@ -438,3 +439,14 @@ Two NF-ToN-IoT classes are smaller than the five-fold minimum: \texttt{dos} with
 passing, but are excluded from the reported metric, so NF-ToN-IoT macro-F1 is computed over 8
 classes and NF-UNSW-NB15 over 10. The two are not comparable in absolute level, and
 we compare only the shape of the ladder across datasets, never the values.
+
+Excluding a class from the metric is not the same as forbidding a model to predict it, and the
+two were not applied uniformly. The GNN model, the semantic model and the feedback model set the
+two excluded logit columns to negative infinity before taking an argmax, so none of them can
+spend a scored edge on a class the metric does not cover. The fusion model and the re-trained
+baselines were scored without that mask, so they can, and an edge lost that way is a miss the
+other three were unable to make. Section~\ref{sec:res-baselines} gives the counts and bounds
+what the difference is worth. A second asymmetry sits beside it: on NF-ToN-IoT the GNN model
+selected its checkpoints on validation macro-F1 over all ten classes, while the feedback model
+and the baselines selected on the eight the metric reports. Both are fixed in the code, and the
+published numbers were produced before the fix and were not re-run.
