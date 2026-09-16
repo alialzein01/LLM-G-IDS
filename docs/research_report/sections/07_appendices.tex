@@ -232,13 +232,20 @@ stages run through one entry point:
 \end{quote}
 
 \begin{sloppypar}
-with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. The feedback model consults
-the trained head when \texttt{train\_feedback} is given \texttt{--use-llm-head}. Without
-that flag it reproduces the superseded prototype-consultant ladder, at the knobs kept under
-\texttt{prototype\_superseded} in each dataset's selected-feedback config. Out-of-fold
-structural embeddings must be regenerated with \texttt{step3.build\_oof\_gnn\_embeddings}
-before the fusion stage whenever the GNN model changes. The fusion stage does not do it, and
-will otherwise train on stale embeddings.
+with \texttt{<key>} either \texttt{unsw\_nb15} or \texttt{ton\_iot}. That runner passes
+\texttt{--use-llm-head} to the sweep and feedback stages, so the feedback model consults the
+trained head as the contracts describe. Calling \texttt{train\_feedback} without that flag
+reproduces the superseded prototype-consultant ladder instead, at the knobs kept under
+\texttt{prototype\_superseded} in each dataset's selected-feedback config. The runner's
+\texttt{--seed} is the training seed and reaches every stage that trains; the fold partition
+has its own \texttt{--split-seed}, which defaults to 42 and should not be changed if the
+results are to stay comparable with the ones reported here. Out-of-fold structural embeddings
+must be regenerated with \texttt{step3.build\_oof\_gnn\_embeddings} before the fusion stage
+whenever the GNN model changes. The fusion stage does not do it, and will otherwise train on
+stale embeddings.
+
+\texttt{reproduce\_ladder.py} rebuilds the NF-UNSW-NB15 ladder end to end and compares it
+against the committed contract, printing any rung that differs by more than 0.0005.
 \end{sloppypar}
 
 \paragraph{Result contracts.} Every number in this report traces to one of the files in
@@ -264,6 +271,7 @@ Artifact & What it carries \\
 \texttt{results/knob\_selection\_head/} & the selection curves \\
 \texttt{results/consultant\_change\_interval.json} & the interval on the consultant change \\
 \texttt{results/consultant\_complementarity.json} & the flagged-set and disagreement figures \\
+\texttt{results/ton\_iot\_dropped\_class\_bound.json} & the NF-ToN-IoT scoring asymmetry, bounded \\
 \texttt{docs/RESULTS\_ARCHIVE.md} & the full record, including retractions \\
 \bottomrule
 \end{tabular}
@@ -272,7 +280,7 @@ Artifact & What it carries \\
 \paragraph{Checks.} The repository's test suite pins the contracts against each other and
 against the on-disk graphs, including a test asserting that both datasets declare the same
 architecture. It runs with \texttt{OMP\_NUM\_THREADS=1 python -m pytest tests/ -q} and reports
-172 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
+174 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
 \texttt{scripts/check\_report\_numbers.py} extracts every numeric token from the section
 sources and checks it against the contracts, the archive, the dataset statistics and an
 explicit allowlist. \texttt{scripts/prose\_stats.py} measures the writing against the

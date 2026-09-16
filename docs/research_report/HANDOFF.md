@@ -217,3 +217,11 @@ the figure against its brief, and the briefs carry every number a figure may con
 | `docs/RESULTS_ARCHIVE.md` | the full record, including the trail of attempts and every retraction |
 | `number_allowlist.txt` | 25 source-code constants the audit accepts, each with a justification |
 | `derived_numbers.json` | quantities computed from contracts rather than read from them |
+
+**One trap in the capture directories.** `results/multiseed_v2/head/*/ladder_summary.json`
+are stale. They were written during a prototype-consultant run at k = 31 and record a loop
+of 0.765; the tensors in the same directories are the trained-head ones every contract
+describes. They are deliberately not rewritten, because rewriting them would mean re-running
+the captures. `aggregate_multiseed` reads the tensors, and takes only the seed-invariant
+prototype LLM rung from the summary, which it re-derives and checks before use. Anything else
+that reads those files is reading a configuration the report does not use.

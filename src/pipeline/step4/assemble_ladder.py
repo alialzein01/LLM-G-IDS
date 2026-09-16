@@ -132,7 +132,12 @@ def assemble_ladder(
     gnn_logits = torch.load(canonical_root / "oof_logits.pt", weights_only=False)
     gnn_pred = _masked_preds(gnn_logits, dropped)
 
-    # The LLM rung must use the same semantic consultant as AGAF and feedback.
+    # The LLM rung is the whitened prototype scorer. `use_llm_head` below swaps
+    # it for the trained head, which is a DIFFERENT rung: the head standing alone,
+    # carried as `head_alone` in the contracts. Under the parity rule of
+    # 2026-09-07 the head is the loop's consultant and the LLM rung stays on the
+    # prototype, so the canonical ladder leaves that flag off. AGAF uses neither;
+    # it consumes the standardised embedding directly.
     llm_proto_logits = _llm_alone_oof(data, emb, folds, protos)
     llm_proto_pred = _masked_preds(llm_proto_logits, dropped)
     llm_head_pred = None

@@ -270,7 +270,17 @@ def main(
     output_dir: str = OUTPUT_DIR,
     dataset: str = "ton_iot",
     device: str = "auto",
+    seed: int = SEED,
 ) -> None:
+    """Train the GNN rung. `seed` is the TRAINING seed, never the fold partition.
+
+    The partition is built once by `build_splits --seed`, and the multi-seed
+    protocol holds it fixed at seed 42 while training seeds vary. Until
+    2026-09-16 this function had no seed parameter at all and always used the
+    module constant, so a multi-seed sweep could not vary this rung.
+    """
+    global SEED
+    SEED = seed
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -400,6 +410,11 @@ if __name__ == "__main__":
         default="auto",
         help="Training device. Affects speed only, not results.",
     )
+    parser.add_argument(
+        "--seed", type=int, default=SEED,
+        help="Training seed. The fold partition is fixed by build_splits and is "
+             "not affected by this.",
+    )
     args = parser.parse_args()
 
     config = get_dataset_config(args.dataset)
@@ -409,4 +424,5 @@ if __name__ == "__main__":
         output_dir=args.output_dir or config.gnn_output_dir,
         dataset=args.dataset,
         device=args.device,
+        seed=args.seed,
     )

@@ -272,6 +272,7 @@ def run_top_k_sweep(
         trained_llm_head=use_llm_head,
         injection_mode=injection_mode,
         gate_mode=gate_mode,
+        injection_scale=injection_scale,
     )
 
     print("\n=== VALIDATION RANKING ===")

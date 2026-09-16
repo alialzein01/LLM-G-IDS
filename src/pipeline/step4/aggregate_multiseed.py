@@ -13,6 +13,14 @@ Consumes the per-seed captures written by the multi-seed sweep
   * a seed-matched bootstrap (edges only, paired within a seed, averaged across
     seeds) as the secondary, narrower estimate.
 
+Every rung is scored from the capture's prediction TENSORS. The one exception is
+`llm_alone_prototype`, read from each capture's `ladder_summary.json` and then
+checked against a recomputation before it is used. That matters because the
+summaries under `results/multiseed_v2/head/` are stale: they were written during a
+prototype-consultant run at k = 31 and still record a loop of 0.765, while the
+tensors beside them are the trained-head ones the contracts describe. Reading a
+rung out of those files would silently report the wrong configuration.
+
 Why two levels. The single-seed contracts bootstrap edges at a fixed seed, which
 answers "would this gap survive a different sample of edges?" but not "would it
 survive a different training run?". `results/unsw_nb15_current.json` records a

@@ -259,3 +259,61 @@ def test_cli_calibrate_temperature_flag_maps_to_legacy_temperature():
         assert captured["selector_head_loss_weight"] == 1.0
     finally:
         _sys.argv, tf.train_feedback = saved_argv, saved_fn
+
+
+def test_a_sweep_written_config_still_resolves(tmp_path):
+    """The config a sweep writes must be usable by the next `train_feedback`.
+
+    `resolve_injection_scale` deliberately has no numeric fallback, so a config
+    without `injection_scale` raises. Until 2026-09-16
+    `write_selected_feedback_config` never wrote one, which meant selecting a
+    knob and then training on it failed unless the caller repeated
+    `--injection-scale` by hand. That is the shape of mistake the no-default
+    rule was added to prevent, reintroduced one step upstream.
+    """
+    from src.pipeline.step4.feedback_config import (
+        load_feedback_config,
+        resolve_injection_scale,
+        write_selected_feedback_config,
+    )
+
+    selected = {
+        "top_k_percent": 29.0,
+        "mean_best_val_macro_f1": 0.8277,
+        "std_best_val_macro_f1": 0.0121,
+        "pooled_oof_test_macro_f1": 0.8341,
+        "sweep_summary_path": "unused",
+    }
+
+    written = write_selected_feedback_config(
+        DATASET, selected, root=tmp_path, injection_scale=2.0
+    )
+    payload = json.loads(written.read_text())
+    assert payload["injection_scale"] == 2.0
+    assert resolve_injection_scale(None, payload, DATASET) == 2.0
+    assert resolve_injection_scale(None, load_feedback_config(DATASET, tmp_path),
+                                   DATASET) == 2.0
+
+    # Omitting it stays an error rather than becoming a silent default.
+    bare = write_selected_feedback_config(DATASET, selected, root=tmp_path)
+    assert "injection_scale" not in json.loads(bare.read_text())
+    with pytest.raises(ValueError, match="No injection_scale"):
+        resolve_injection_scale(None, json.loads(bare.read_text()), DATASET)
+
+
+def test_the_sweep_records_the_scale_it_ranked_candidates_under():
+    """`sweep_top_k` must hand its resolved scale to the config it writes.
+
+    The sweep resolves a scale before ranking anything. If it does not record
+    that value, the selected top-k describes one mechanism strength and the
+    training run that uses the config describes another.
+    """
+    import inspect
+
+    from src.pipeline.step4 import sweep_top_k
+
+    source = inspect.getsource(sweep_top_k.run_top_k_sweep)
+    assert "injection_scale=injection_scale" in source, (
+        "run_top_k_sweep no longer passes its resolved injection_scale to "
+        "write_selected_feedback_config"
+    )

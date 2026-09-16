@@ -5,6 +5,24 @@ features used by the canonical UNSW-NB15 ladder. ToN-IoT's older
 ``enhanced12`` profile remains available for a later feature ablation, but it
 must be requested explicitly so parity runs cannot reuse those artifacts by
 accident.
+
+**Two seeds, and they are not interchangeable.** ``--seed`` is the TRAINING
+seed: it varies initialisation, dropout and data order on every stage that
+trains something. ``--split-seed`` builds the fold partition and defaults to 42.
+The multi-seed protocol holds the partition fixed at the seed-42 split and
+varies only the training seed, which is what makes the seed-matched bootstrap a
+paired comparison; passing ``--seed`` used to reseed the partition instead of
+the training, the exact inverse, and the trained stages kept their own
+constants. Change ``--split-seed`` only when you intend a different partition,
+and expect every downstream artifact to be incomparable with the committed ones.
+
+**The consultant is the trained head.** The ``top_k_sweep`` and ``feedback``
+stages run with ``--use-llm-head``, matching the parity rule of 2026-09-07 and
+the contracts under ``results/``. Without it they produce the superseded
+prototype-consultant ladder, which is recorded under each contract's
+``supersedes`` block. The ``ladder`` stage does NOT get that flag: there it means
+something else entirely, replacing the LLM rung with the trained head rather than
+handing the head to the loop.
 """
 
 from __future__ import annotations
@@ -50,6 +68,9 @@ STAGE_ORDER = [
 
 FEATURE_PROFILES = ("structural10", "enhanced12")
 DEFAULT_SEED = 42
+# The fold partition every committed result was produced on. Held fixed across
+# the three training seeds, which is what makes the seed-matched bootstrap paired.
+DEFAULT_SPLIT_SEED = 42
 
 
 def _git_sha() -> str:
@@ -149,6 +170,7 @@ def run_all(
     *,
     feature_profile: str = "structural10",
     seed: int = DEFAULT_SEED,
+    split_seed: int = DEFAULT_SPLIT_SEED,
     only: list[str] | None = None,
     skip: list[str] | None = None,
     dry_run: bool = False,
@@ -166,6 +188,7 @@ def run_all(
         "dataset": dataset,
         "feature_profile": feature_profile,
         "seed": seed,
+        "split_seed": split_seed,
         "git_sha": _git_sha(),
         "started_at": datetime.now(timezone.utc).isoformat(),
         "dry_run": dry_run,
@@ -234,7 +257,7 @@ def run_all(
             module_runner(
                 "src.pipeline.common.build_splits",
                 "--dataset", dataset,
-                "--seed", str(seed),
+                "--seed", str(split_seed),
             )
         done("splits", t0)
 
@@ -244,8 +267,10 @@ def run_all(
         done("verify", t0)
 
     for name, module, extra in [
-        ("gnn", "src.pipeline.step3.train_gnn", ["--device", "cpu"]),
-        ("oof_emb", "src.pipeline.step3.build_oof_gnn_embeddings", []),
+        ("gnn", "src.pipeline.step3.train_gnn",
+         ["--device", "cpu", "--seed", str(seed)]),
+        ("oof_emb", "src.pipeline.step3.build_oof_gnn_embeddings",
+         ["--seed", str(seed)]),
     ]:
         if stage(name):
             t0 = time.perf_counter()
@@ -269,6 +294,7 @@ def run_all(
             "src.pipeline.step3.train_fusion",
             "--dataset", dataset,
             "--gnn-emb-path", oof_gnn_emb,
+            "--seed", str(seed),
         )
         done("fusion", t0)
 
@@ -284,14 +310,20 @@ def run_all(
 
     for name, module, extra in [
         ("oof", "src.pipeline.step4.build_oof_predictions", []),
-        ("llm_heads", "src.pipeline.step4.build_llm_heads", []),
+        ("llm_heads", "src.pipeline.step4.build_llm_heads", ["--seed", str(seed)]),
         ("prototypes", "src.pipeline.step4.build_prototypes", []),
         (
             "top_k_sweep",
             "src.pipeline.step4.sweep_top_k",
-            ["--min-percent", "15", "--max-percent", "35"],
+            ["--min-percent", "15", "--max-percent", "35",
+             "--use-llm-head", "--seed", str(seed)],
         ),
-        ("feedback", "src.pipeline.step4.train_feedback", ["--modes", "real", "random", "head_only"]),
+        ("feedback", "src.pipeline.step4.train_feedback",
+         ["--modes", "real", "random", "head_only",
+          "--use-llm-head", "--seed", str(seed)]),
+        # No --use-llm-head here. In assemble_ladder that flag swaps the LLM
+        # RUNG onto the trained head; the parity rule keeps that rung on the
+        # prototype scorer and puts the head inside the loop instead.
         ("ladder", "src.pipeline.step4.assemble_ladder", []),
     ]:
         if stage(name):
@@ -326,7 +358,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", default="ton_iot", choices=sorted(DATASETS))
     parser.add_argument("--feature-profile", default="structural10", choices=FEATURE_PROFILES)
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--seed", type=int, default=DEFAULT_SEED,
+        help="Training seed for every stage that trains. Does not touch the "
+             "fold partition.",
+    )
+    parser.add_argument(
+        "--split-seed", type=int, default=DEFAULT_SPLIT_SEED,
+        help="Seed for the fold partition, rebuilt by the `splits` stage. The "
+             "committed results all use 42; changing it makes every downstream "
+             "artifact incomparable with them.",
+    )
     parser.add_argument("--only", nargs="+", choices=STAGE_ORDER)
     parser.add_argument("--skip", nargs="+", choices=STAGE_ORDER)
     parser.add_argument("--dry-run", action="store_true")
@@ -335,6 +377,7 @@ def main() -> None:
         dataset=args.dataset,
         feature_profile=args.feature_profile,
         seed=args.seed,
+        split_seed=args.split_seed,
         only=args.only,
         skip=args.skip,
         dry_run=args.dry_run,

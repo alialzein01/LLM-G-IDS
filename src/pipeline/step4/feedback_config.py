@@ -49,7 +49,17 @@ def write_selected_feedback_config(
     selection_parameter: str = "top_k_percent",
     injection_mode: str = "edge",
     gate_mode: str = DEFAULT_GATE_MODE,
+    injection_scale: float | None = None,
 ) -> Path:
+    """Write the config a sweep selected.
+
+    `injection_scale` is written when given. `resolve_injection_scale` refuses to
+    guess one, so a sweep-written config that omitted it made the very next
+    `train_feedback` raise unless the caller repeated the flag by hand. The
+    sweep already resolved a scale in order to rank its candidates; that is the
+    value to record, because ranking candidates under one strength and training
+    under another is what the no-default rule exists to prevent.
+    """
     top_k = float(selected["top_k_percent"])
     payload = default_feedback_config(dataset)
     payload.update(
@@ -71,6 +81,8 @@ def write_selected_feedback_config(
             "gate_mode": gate_mode,
         }
     )
+    if injection_scale is not None:
+        payload["injection_scale"] = float(injection_scale)
     path = selected_config_path(dataset, root)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2) + "\n")

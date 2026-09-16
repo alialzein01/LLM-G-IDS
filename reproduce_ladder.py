@@ -5,13 +5,24 @@
 Prints the four rungs and writes `ladder_summary.json` +
 `STEP4_UNSW_NB15_RESULTS.md` under `data/unsw_nb15/processed/step4_feedback/`.
 
-Two rules this script exists to enforce — both were violated by earlier runs and
-both silently inflate the loop's apparent advantage:
+Two rules this script exists to enforce. Both were violated by earlier runs and
+both silently distort the loop's apparent advantage:
 
-  1. Every rung uses the SAME LLM: the whitened-prototype scorer. That is the
-     LLM the feedback loop consults, so it is the LLM the loop is measured
-     against. The trained MLP head is a separate, stronger baseline — report it
-     on its own, never as this ladder's LLM rung.
+  1. Parity rule (2026-09-07). Every rung uses the same encoder, the same graph,
+     the same folds and the same training seeds. The loop additionally trains a
+     classification head on the semantic embeddings, and THAT HEAD IS THE
+     CONSULTANT IT QUERIES, so this script runs the loop with
+     `use_llm_head=True`. The LLM rung stays on the whitened-prototype scorer,
+     which is what `results/unsw_nb15_current.json` records for it, so
+     `assemble_ladder` is called WITHOUT that flag: there it would swap the LLM
+     rung itself for the head.
+
+     Until 2026-09-16 this script ran the loop on the prototype consultant and
+     compared the result against the trained-head contract, so it reported a
+     drift of about 0.07 on the loop rung that was a configuration difference
+     rather than drift. Running `train_feedback` WITHOUT `use_llm_head` still
+     reproduces the superseded prototype ladder under each contract's
+     `supersedes` block.
 
   2. AGAF consumes the per-fold OOF GNN embeddings, never
      `step3_gnn/edge_embeddings.pt`. That tensor is written by a GNN trained on
@@ -92,13 +103,15 @@ def main() -> None:
         dataset=DATASET,
     )
 
-    print("\n=== Feedback loop (prototype consultant) + ablations ===")
-    # use_llm_head is left at its default False. Setting it True swaps in the
-    # trained MLP head, which the loop then largely echoes -- see the module
-    # docstring.
-    train_feedback(DATASET, modes=["real", "random", "head_only"])
+    print("\n=== Feedback loop (trained-head consultant) + ablations ===")
+    train_feedback(DATASET, modes=["real", "random", "head_only"], use_llm_head=True)
 
     print("\n=== Ladder ===")
+    # NOT use_llm_head: in assemble_ladder that flag replaces the LLM RUNG with
+    # the trained head, which is a different rung (`head_alone`, 0.8321 on this
+    # dataset). The parity rule puts the head inside the loop as its consultant
+    # and leaves the LLM rung on the whitened prototype, which is what the
+    # contract records at 0.7353.
     assemble_ladder(DATASET)
 
     summary = json.loads(
