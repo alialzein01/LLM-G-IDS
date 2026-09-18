@@ -152,7 +152,9 @@ the numbers should be read.
     destination IP and attack class, so ground truth participates in defining what an edge is.
     Every number in this report is a controlled comparison between representations and
     mechanisms, and none is a deployment-valid detection estimate. This is the limitation that
-    most restricts what the work can claim.
+    most restricts what the work can claim. It is the sampling-bias pitfall
+    \citet{arp2022dosdonts} place first, arrived at through the aggregation key rather than
+    through the choice of data.
 
     \item \textbf{Only training-seed variance is measured.} The fold partition is fixed at the
     seed-42 split, so every reported standard deviation and every interval is a lower bound on
@@ -208,8 +210,11 @@ is confident.
 
 Deployment-valid graph construction is the prerequisite for any operational claim. It requires
 an aggregation key that does not read the label, which changes the edge set, the class
-distribution and the difficulty of the task all at once. That is a new set of experiments rather
-than a re-run of these.
+distribution and the difficulty of the task all at once. It also requires a split that respects
+the order in which traffic arrived, since a random partition over a fixed graph lets an edge be
+predicted from neighbours recorded after it, the spatial and temporal bias
+\citet{pendlebury2019tesseract} quantify for malware classifiers. That is a new set of
+experiments rather than a re-run of these.
 
 A stronger consultant is a reasonable third direction, with one caveat this work supplies:
 standalone accuracy is not the property that matters. Through the injection path on

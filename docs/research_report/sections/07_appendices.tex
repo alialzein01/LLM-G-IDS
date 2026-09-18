@@ -211,7 +211,10 @@ writes its own artifact:
 \label{app:repro}
 
 \paragraph{Environment.} Python 3.14.3 in a virtual environment built from
-\texttt{requirements.txt}. All runs export \texttt{OMP\_NUM\_THREADS=1}. Without that pin,
+\texttt{requirements.txt}. Message passing, the fold masks and the graph containers come from
+PyTorch Geometric \citep{fey2019pyg}. The stratified fold generator and every reported metric
+are scikit-learn's \citep{pedregosa2011sklearn}. The ZCA whitener is a local
+eigendecomposition rather than a library call. All runs export \texttt{OMP\_NUM\_THREADS=1}. Without that pin,
 pooled macro-F1 drifts by roughly 0.012 at a fixed seed, larger than several of the
 differences this report measures. One earlier finding in the project was retracted because
 of it.
