@@ -41,7 +41,7 @@
 443       # example port number in the encoding discussion
 
 # --- per-variant edge focus weights (method, table tab:focus) -----------------
-# src/models/gnn_classifier.py:22-24, VARIANT_FOCUS. Source-code constants, not
+# src/models/gnn_classifier.py:22-24, EDGE_FOCUS_WEIGHTS. Source-code constants, not
 # measurements. They were accepted until 2026-09-16 only because a bootstrap CI
 # bound of 0.01247 rendered as the percentage "1.25"; when that interval moved,
 # the coincidence went with it. Listed here so the table's provenance is the

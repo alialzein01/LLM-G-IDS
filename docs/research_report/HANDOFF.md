@@ -38,8 +38,9 @@ identity and no number here is a deployment estimate. Carries no results of its 
 
 ### §2 Related work
 Positions the work against graph-based IDS and against text-encoder approaches. No own
-numbers. One flagged term, RoGRAD's "robustness", is a quotation of another paper's claim and
-is exempted in-line.
+numbers. One flagged term, "robustness", is quoted from the title of Zhan et al.'s poster
+(`zhan2025agentgnn`) and is exempted in-line. Earlier versions of this file attributed that
+quotation to RoGRAD, which is a different paper; corrected 2026-09-18.
 
 ### §3 Method
 Architecture and protocol. Load-bearing constants: 10 node centralities, 5 edge attributes,

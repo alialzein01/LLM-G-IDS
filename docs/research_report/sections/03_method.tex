@@ -53,9 +53,11 @@ One property of this feature set should be stated outright.
 On NF-UNSW-NB15 the ``global'' variants are populated from the same computation as their
 local counterparts, so \texttt{global\_betweenness} and \texttt{global\_pagerank} are exact
 duplicates of \texttt{betweenness} and \texttt{pagerank}. The ten columns span eight distinct
-measures. On NF-ToN-IoT, whose centralities were computed upstream, the global variants
-differ from the local ones. We report ten input channels because that is what the model
-receives, but the effective rank of the node features is lower on NF-UNSW-NB15.
+measures, and one of those eight, \texttt{k\_truss}, takes the value 2.0 at every node on this
+graph, so seven of the ten channels actually vary. On NF-ToN-IoT, whose centralities were
+computed upstream, the global variants differ from the local ones and \texttt{k\_truss} varies.
+We report ten input channels because that is what the model receives, but the effective rank
+of the node features is lower on NF-UNSW-NB15.
 
 Each edge carries five attributes. Three are numeric: the number of constituent flows
 (\texttt{flow\_count}), their summed byte count (\texttt{total\_bytes}), and their mean
@@ -118,7 +120,8 @@ distinction is not cosmetic.
 
 Three encoders run in parallel: \emph{temporal}, \emph{content} and \emph{behavioural}.
 They are architecturally identical and differ only in a fixed diagonal reweighting of the
-encoded edge vector, given in Table~\ref{tab:focus}. The protocol weight is broadcast across
+encoded edge vector, given in Table~\ref{tab:focus}. These nine weights were fixed a priori and
+never swept. They are source-code constants, not selected values. The protocol weight is broadcast across
 all 4 protocol-embedding dimensions and the port weight across all 32, so each variant keeps
 the same relative emphasis it would have had on the five raw columns. The reweighted edge
 vector is used both inside the attention computation and in the edge representation that
@@ -175,7 +178,9 @@ directly supervised rather than letting the fusion layer absorb all gradient.
 
 The second modality describes each edge in controlled natural language. The continuous edge
 quantities are first discretised into five rank-based quantile bands, computed globally across
-all edges, and the band label rather than the raw number enters the sentence. A template then
+all edges, and the band label rather than the raw number enters the sentence. Those band edges
+are fitted before the cross-validation split, so they are transductive in the same way as the
+edge-encoding statistics above, and for the same reason: one fixed graph. A template then
 renders endpoints, connection frequency, transferred volume, per-flow byte magnitude,
 duration band, protocol name, and a coarse port role (web, remote-access, well-known,
 registered, or ephemeral) into one sentence per edge, of the form: \emph{``Observed traffic
@@ -198,9 +203,10 @@ scorer (described under the feedback stage below) assigns each edge to the neare
 mean in a fold-local whitened space. This is the ladder's semantic model and the
 semantic input to the fusion model, and it measures what the encoder alone knows. The \emph{trained
 head} route fits, within each fold, a small classifier on the training-fold embeddings: a
-per-fold standard scaler, then a 768--128--128--$C$ multilayer perceptron with ReLU and
-dropout $0.2$, trained with the same class-weighted focal loss, optimiser and early-stopping
-rule as the structural branch. Each fold's head is applied to every edge and its logits are
+per-fold standard scaler, then a 768--128--128--$C$ multilayer perceptron, where $C$ is the
+number of classes and equals ten on both graphs, with batch normalisation and ReLU in the
+projection, ReLU and dropout $0.2$ in the hidden layer, trained with the same class-weighted
+focal loss, optimiser and early-stopping rule as the structural branch. Each fold's head is applied to every edge and its logits are
 stored: on that fold's training and validation edges the logits are in-fold, on its test
 edges they are out-of-fold, so the pooled test score of the head is a legitimate out-of-fold
 number. That head is the consultant the feedback model uses. Evaluated on its own, it is
@@ -297,7 +303,10 @@ feedback model additionally trains a classification head on the semantic embeddi
 its consultant. The feedback model was first built with the prototype scorer as its consultant, on the
 argument that a consultant the feedback model already contains would only be echoed. That
 configuration, and five attempts to make its advice usable, are reported as negative results
-in Section~\ref{sec:results}. The trained head replaced it after those measurements.
+in Section~\ref{sec:results}. The trained head replaced it after those measurements. Both
+configurations are reported, at the same three seeds, at the same fold partition, and with the
+injection scale unchanged. Only the selected entropy percentile differs between them, at 31
+against 29 on NF-UNSW-NB15 and 25 against 16 on NF-ToN-IoT.
 
 \paragraph{Gating.} Being uncertain in the structural view does not make an edge a good
 candidate for semantic advice. Among the flagged edges we keep only the most confident half by
@@ -383,13 +392,6 @@ almost every port category at our scale. It is applied as published in \texttt{a
 and swept in \texttt{refit}. (D5) E-GraphSAGE's published Eq.~4 aggregates edge features alone,
 but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}_u \Vert
 \mathbf{e}_{uv}])$. We follow the code, since the published numbers came from it.
-
-One design variable is internal to the feedback model rather than a rung of the ladder: the identity of
-the semantic consultant. The feedback model was first built around the whitened prototype scorer, the same
-one the semantic model uses, and later around a per-fold classification head trained on
-the same frozen embeddings. Both versions are reported, at the same three seeds, at the same
-fold partition, and with the injection scale unchanged. Only the selected entropy percentile
-differs between them, at 31 against 29 on NF-UNSW-NB15 and 25 against 16 on NF-ToN-IoT.
 
 Two asymmetries remain and should be weighed when reading the comparison. Our rungs train
 under a focal objective with patience 40, whereas the baselines use class-weighted

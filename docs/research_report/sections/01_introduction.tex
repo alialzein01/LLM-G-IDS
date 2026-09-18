@@ -19,8 +19,10 @@ what an interaction represents. An intrusion detection system that sees only one
 these views is working with an incomplete account of the traffic.
 
 This report investigates whether structural and semantic evidence can be combined in a
-single edge-level intrusion detection framework using NF-UNSW-NB15 and NF-ToN-IoT. One
-experimental boundary must be stated from the outset: the current graph construction
+single edge-level intrusion detection framework, meaning that the unit being classified is an
+edge: one aggregated group of flows between a pair of hosts. The two datasets are
+NF-UNSW-NB15 and NF-ToN-IoT. One experimental boundary must be stated from the outset:
+the current graph construction
 aggregates flows by source IP, destination IP, and attack class. Ground-truth labels
 therefore participate in defining edge identity, even though the attack name is excluded
 from the model's input features and generated text. The
@@ -39,8 +41,8 @@ shared between them. Only two quantities selected on validation data differ.
 The two datasets were chosen because they occupy very different points on the
 class-imbalance axis. After aggregation, NF-UNSW-NB15 contains 656 edges, is 47.4\%
 benign, and has a most-to-least-frequent class ratio of $12.4{:}1$. Eight of its nine
-attack classes contain 40 edges and the ninth contains 25, so just one falls at or below
-that threshold. NF-ToN-IoT contains 2{,}127 edges, is 82.1\% benign, and has a most-to-least-frequent
+attack classes contain 40 edges and the ninth contains 25, so only one falls at or below
+35 edges. NF-ToN-IoT contains 2{,}127 edges, is 82.1\% benign, and has a most-to-least-frequent
 class ratio of $582{:}1$. Seven of its nine attack classes contain 35 edges or fewer. Its
 distribution is far more skewed. By the most-to-least class ratio, the two
 graphs differ by roughly a factor of 47 in imbalance severity.
@@ -57,8 +59,9 @@ The scoring protocol also differs in one necessary respect. Macro-F1 covers ten 
 NF-UNSW-NB15 and eight classes on NF-ToN-IoT, because two NF-ToN-IoT classes are too small
 to survive five-fold splitting. Their edges remain in the graph for message passing but
 are excluded from the metric. Because the class counts differ, absolute scores are not
-comparable across the two datasets. Only the shape of the model ladder is. This constraint
-applies throughout the report.
+comparable across the two datasets. Only the shape of the model ladder is comparable, that
+ladder being the four stages of this study placed in order, each compared against the one below
+it. This constraint applies throughout the report.
 
 \subsection{Why combine graph and language representations?}
 
@@ -79,7 +82,8 @@ BERT-class model adapted to cybersecurity text and evaluated by its authors on
 domain-specific representation and classification tasks~\citep{bayer2024cysecbert}. It is
 frozen and used purely as a sentence encoder. Throughout this report, this component is
 called the \emph{semantic branch}. That terminology distinguishes its representational
-role from that of a generative large language model.
+role from that of a generative large language model. Where the same component is evaluated on
+its own as one stage of the comparison, it is called the semantic model.
 
 Neither representation is assumed to win in every case; the design instead lets them
 challenge and complement one another. The parallel fusion stage runs
@@ -113,7 +117,7 @@ network-intrusion-detection instantiation, together with a diagnostic question a
 whether a constrained semantic consultant exploits a feedback channel that has the
 capacity to influence the next graph update. Within the literature reviewed here, we are
 not aware of prior work combining bidirectional iterative coupling between a graph model
-and a semantic branch, joint attention-based fusion for the final classification, and
+and a semantic branch, sample-adaptive gated fusion for the final classification, and
 edge-level network intrusion detection.
 
 \subsection{Research problem and questions}
@@ -134,7 +138,8 @@ Five research questions frame the study:
     evaluation protocol?
 
     \item[RQ2.] Does the fusion model score above both single-branch rungs on NF-UNSW-NB15 and
-    NF-ToN-IoT, and are those differences separated under the bootstrap protocol?
+    NF-ToN-IoT, and are those differences separated under the bootstrap protocol, meaning that
+    their intervals exclude zero?
 
     \item[RQ3.] Does uncertainty-guided semantic feedback add value beyond static fusion
     on NF-UNSW-NB15 and NF-ToN-IoT? If so, does the gain come from semantic re-entry into
@@ -179,9 +184,9 @@ stage under one consistent protocol. The work makes five contributions.
     reader can see how much of the result is the mechanism and how much is the consultant.
 
     \item It provides a controlled evaluation on NF-UNSW-NB15 and NF-ToN-IoT, including
-    unimodal baselines, fusion comparisons, uncertainty-selection ablations, trained-head
-    baselines, mechanism-isolation tests, and two published graph-based intrusion
-    detection architectures re-trained on the same representation. It reports both
+    unimodal baselines, fusion comparisons, uncertainty-selection ablations, a comparison
+    between the two consultants, mechanism-isolation tests, and two published graph-based
+    intrusion detection architectures re-trained on the same representation. It reports both
     positive and negative results to show which components carry the measured gain,
     including five measured attempts to make an embedding-only consultant's advice usable
     by the feedback channel, none of which succeeded.
@@ -197,19 +202,22 @@ intrusion detectors. It is an implementation and controlled evaluation of a part
 form of structural--semantic cooperation, together with evidence about its limits. The
 headline of that evidence is stated here so it is not mistaken for a footnote later. With a
 trained semantic consultant the feedback model is the highest rung on both datasets, separated
-from the GNN model, from the fusion model and from every faithful re-trained baseline. With
-the weaker consultant it was first built with, none of those comparisons is separated at all.
+from the GNN model, from the fusion model, from the semantic model and from every faithful
+re-trained baseline. With the weaker consultant it was first built with, neither the comparison
+against the GNN model nor the one against the fusion model is separated on either dataset, and
+the margin over E-GraphSAGE on NF-ToN-IoT disappears as well.
 And when final-output fusion is removed, so that semantic evidence can reach the classifier
 only by re-entering the graph, neither consultant produces a gain we could separate from zero.
-The channel is live and measurable, and what the re-entry itself adds is, on these graphs,
-nothing we could distinguish from nothing.
+The channel is live and measurable, but on these graphs what the re-entry itself adds is
+indistinguishable from adding nothing.
 Deployment-valid evaluation remains open and requires graph construction in which edge
 identity can be determined without access to the target class.
 
 \subsection{Report structure}
 
-The report is organised into five sections. This Introduction defines the problem,
-experimental scope, research questions, and contribution. Section~\ref{sec:related}
+The report is organised into six sections, followed by three appendices. This Introduction
+defines the problem, experimental scope, research questions, and contribution.
+Section~\ref{sec:related}
 reviews graph-based intrusion detection, cybersecurity language encoders,
 structural--semantic fusion, and iterative graph--language feedback, and positions the
 study against the closest prior mechanisms. Section~\ref{sec:method} describes the two
@@ -217,11 +225,13 @@ datasets, graph and text construction, the structural and semantic branches, the
 uncertainty-guided semantic feedback, the baseline protocol, and the shared evaluation
 procedure.
 
-The Results section reports the predefined model ladder, baseline comparisons, ablations,
-and mechanism-isolation measurements for both NF-UNSW-NB15 and NF-ToN-IoT, while keeping
-the different scored class sets explicit. The Discussion section interprets those
+Section~\ref{sec:results} reports the predefined model ladder, baseline comparisons,
+ablations, and mechanism-isolation measurements for both NF-UNSW-NB15 and NF-ToN-IoT, while
+keeping the different scored class sets explicit. Section~\ref{sec:discussion} interprets those
 measurements against the research questions, including the cross-dataset imbalance
 comparison and the distinction between a feedback channel having capacity and a
 constrained semantic consultant making use of that channel. It also returns to the
 controlled-protocol limitation and the work still required for deployment-valid
-intrusion detection.
+intrusion detection. Section~\ref{sec:conclusion} states what the study established, what it
+did not, and what remains open. The appendices hold the negative mechanism results in full,
+the supporting per-class and knob tables, and the reproducibility record.
