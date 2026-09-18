@@ -182,7 +182,7 @@ registered, or ephemeral) into one sentence per edge, of the form: \emph{``Obser
 from source \dots to destination \dots with \dots connection frequency, transferring \dots as
 \dots, \dots, over \dots, to a \dots port \dots''}
 
-Sentences are encoded by CySecBERT \citep{bayer2022cysecbert}, a BERT-class encoder
+Sentences are encoded by CySecBERT \citep{bayer2024cysecbert}, a BERT-class encoder
 \citep{devlin2019bert} domain-adapted to cybersecurity text. It is frozen throughout. No gradient reaches it. Inputs
 are tokenised with padding and truncation at 128 tokens, and the final hidden states are
 mean-pooled with padding positions masked out, giving one 768-dimensional vector per edge.

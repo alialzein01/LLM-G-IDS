@@ -76,7 +76,7 @@ A pretrained cybersecurity language encoder offers a complementary view. The sam
 aggregated flow can be written as a short, controlled sentence describing its endpoints,
 protocol, port, frequency, volume, and duration. The implementation uses CySecBERT, a
 BERT-class model adapted to cybersecurity text and evaluated by its authors on
-domain-specific representation and classification tasks~\citep{bayer2022cysecbert}. It is
+domain-specific representation and classification tasks~\citep{bayer2024cysecbert}. It is
 frozen and used purely as a sentence encoder. Throughout this report, this component is
 called the \emph{semantic branch}. That terminology distinguishes its representational
 role from that of a generative large language model.
@@ -103,7 +103,7 @@ example in misinformation detection~\citep{moorthy2025dualstream}. Work in netwo
 intrusion detection has also combined GNNs and generative language models for a different
 role: XG-NID performs intrusion classification with a heterogeneous GNN and uses an LLM
 after classification to generate explanations and remedial guidance
-\citep{farrukh2024xgnid}. DAS is the closest prior work to the feedback mechanism
+\citep{farrukh2025xgnid}. DAS is the closest prior work to the feedback mechanism
 considered here. It already implements a closed feedback loop between a frozen GNN and an
 LLM, feeds refined semantics back to update the same graph learner, and constructs node
 descriptions by expressing structural statistics in natural language. Its setting is

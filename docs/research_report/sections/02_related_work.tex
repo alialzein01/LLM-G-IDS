@@ -39,7 +39,7 @@ edge content has to remain numeric, or whether some of it can be represented sem
 \subsection{Language models over security text and network traffic}
 
 Cybersecurity language encoders provide one route to domain-specific semantics. CySecBERT
-is a BERT-class encoder adapted to cybersecurity text \citep{bayer2022cysecbert}. Its
+is a BERT-class encoder adapted to cybersecurity text \citep{bayer2024cysecbert}. Its
 relevance here is representational: a pretrained cybersecurity language encoder maps
 controlled security-related text into a dense embedding without requiring the graph encoder
 to interpret textual tokens itself.
@@ -97,7 +97,7 @@ textual descriptions restore \citep{lee2025cast}. The semantic representation is
 not a duplicate encoding of graph structure. BiGTex goes further and interleaves a two-way
 exchange: structural information enters the language model as a soft prompt, and text
 returns to the graph side through cross-attention with the query supplied from the graph
-side \citep{beiranvand2025bigtex}. Attention-based interaction differs from global
+side \citep{beiranvand2026bigtex}. Attention-based interaction differs from global
 interpolation because its interaction weights are derived from the representations of the
 current input.
 
@@ -124,7 +124,7 @@ Within the intrusion-detection works surveyed here, graph models and language mo
 combined sequentially rather than fused as two representations of the same edge-level
 decision. XG-NID is the clearest example. Its heterogeneous GNN performs the intrusion
 classification, and an LLM is used only after prediction, to produce human-readable
-explanations \citep{farrukh2024xgnid}. The system's ``dual modality'' refers to flow-level
+explanations \citep{farrukh2025xgnid}. The system's ``dual modality'' refers to flow-level
 and packet-level data inside the graph pipeline, not to graph and text embeddings fused for
 classification.
 
@@ -169,7 +169,7 @@ statistics into natural-language descriptions, already exist in the literature.
 LOGIN already couples uncertainty selection to language-model consultation. It uses
 MC-dropout variance to identify uncertain nodes, prompts the LLM with node text and one-hop
 topology, and receives a predicted label together with a free-text explanation
-\citep{qiao2024login}. Incorporation depends on correctness: if the LLM's label matches the
+\citep{qiao2025login}. Incorporation depends on correctness: if the LLM's label matches the
 ground-truth label, the explanation is appended to the node text and the augmented text is
 re-embedded. If the label is wrong, edges in the node's one-hop neighbourhood are pruned.
 The LLM remains outside autograd and edits the learning inputs between training rounds.
@@ -210,7 +210,7 @@ encoder whose embeddings are scored against class prototypes. Their feedback act
 semantic inputs or edit graph inputs. Here the accepted semantic signal modifies the edge
 representations consumed by the next graph update. These are differences of instantiation,
 not claims that the underlying ideas originated here
-\citep{qiao2024login,thapaliya2025das,loveland2025glance,wang2025rograd}.
+\citep{qiao2025login,thapaliya2025das,loveland2025glance,wang2025rograd}.
 
 Two signals travel in opposite directions in the resulting loop. The graph model's
 per-edge uncertainty determines \emph{which} edges are
@@ -229,7 +229,7 @@ Dual-Stream Graph-Augmented Transformer assigns per-input scalar modality weight
 parallel text and graph representations \citep{arevalo2017gmu,moorthy2025dualstream}.
 Representation-level graph--text interaction is likewise established, through
 self-attention, cross-attention, and interleaved exchange
-\citep{li2024ragformer,beiranvand2025bigtex,lee2025cast}. None of those mechanisms is a
+\citep{li2024ragformer,beiranvand2026bigtex,lee2025cast}. None of those mechanisms is a
 contribution claim here.
 
 Within the limits of the literature search represented by this survey, we are not aware of
@@ -242,7 +242,7 @@ it does not change the prior-art status of any individual component.
 That positioning leaves a narrower research question. Existing feedback work asks whether a
 language-model-driven refinement process improves the graph-learning task, with the model
 revising semantics, modifying inputs, or selectively augmenting graph elements
-\citep{qiao2024login,thapaliya2025das,loveland2025glance,wang2025rograd}. The present work
+\citep{qiao2025login,thapaliya2025das,loveland2025glance,wang2025rograd}. The present work
 instead instantiates the loop in network-flow intrusion detection with a deliberately more
 constrained consultant, and asks a diagnostic question: whether such a consultant exploits a
 feedback channel that has the capacity to influence subsequent graph updates. That question
