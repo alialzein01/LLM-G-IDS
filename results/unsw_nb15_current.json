@@ -611,6 +611,32 @@
           },
           "sign_stable_across_seeds": true,
           "separated": false
+        },
+        "loop_vs_llm": {
+          "two_level": {
+            "mean_diff": 0.028699386924385957,
+            "ci_low": -0.006061493154805198,
+            "ci_high": 0.0630898987511221,
+            "prob_positive": 0.9505,
+            "resampled": "edges_and_both_seeds_independently",
+            "n_seeds": 3,
+            "n_seed_pairs": 9
+          },
+          "seed_matched": {
+            "mean_diff": 0.02897819024357002,
+            "ci_low": -0.0012721710449719666,
+            "ci_high": 0.05815330557884024,
+            "prob_positive": 0.9695,
+            "resampled": "edges_only_seed_matched",
+            "n_seeds": 3
+          },
+          "per_seed_diff": {
+            "42": 0.028853247708495178,
+            "1": 0.03370954618802591,
+            "2": 0.024763283361985078
+          },
+          "sign_stable_across_seeds": true,
+          "separated": false
         }
       },
       "highest_mean_rung": "agaf",

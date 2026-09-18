@@ -332,7 +332,10 @@ Artifacts: `results/multiseed_ladder_v2_head.json`, `results/multiseed_v2/head/`
 > from the schema-3/5 contracts. It is preserved for provenance. The current contracts are
 > schema 4 (UNSW) / 6 (ToN), measured at 3 training seeds with the fold partition fixed; see
 > the **2026-09-06** section below and `results/multiseed_ladder_v2_legacy.json`. At 3 seeds
-> **nothing is separated on either dataset**; the UNSW loop is below AGAF at every seed and
+> **no comparison against a structural rung is separated on either dataset** (corrected
+> 2026-09-18: `loop_vs_llm` is separated on ToN at `+0.1727 [+0.1326, +0.2174]`, against a
+> rung scoring 0.2785; it was absent from the contract block before that date); the UNSW loop
+> is below AGAF at every seed and
 > the ToN "AGAF significantly below GNN (P=0.0005)" does not survive. Do not quote §1.1's
 > intervals or §1.2's reversal as current.
 

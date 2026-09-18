@@ -628,11 +628,37 @@
           },
           "sign_stable_across_seeds": false,
           "separated": false
+        },
+        "loop_vs_llm": {
+          "two_level": {
+            "mean_diff": 0.1727429741417014,
+            "ci_low": 0.1326482603243201,
+            "ci_high": 0.2173827867003795,
+            "prob_positive": 1.0,
+            "resampled": "edges_and_both_seeds_independently",
+            "n_seeds": 3,
+            "n_seed_pairs": 9
+          },
+          "seed_matched": {
+            "mean_diff": 0.17196547549614422,
+            "ci_low": 0.13774331415891036,
+            "ci_high": 0.20698290867594515,
+            "prob_positive": 1.0,
+            "resampled": "edges_only_seed_matched",
+            "n_seeds": 3
+          },
+          "per_seed_diff": {
+            "42": 0.1628455725166389,
+            "1": 0.17236591314690364,
+            "2": 0.18557423258923716
+          },
+          "sign_stable_across_seeds": true,
+          "separated": true
         }
       },
       "highest_mean_rung": "feedback",
       "mean_order": "llm 0.2785 < agaf 0.4102 < gnn 0.4336 < feedback 0.4521",
-      "nothing_separated": true,
+      "nothing_separated": false,
       "source": "results/multiseed_ladder_v2_legacy.json (condition A: canonical architecture at the selected per-dataset knobs)"
     },
     "results": {

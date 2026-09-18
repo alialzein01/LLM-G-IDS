@@ -153,7 +153,7 @@ headline must appear wherever accuracy does.
 | ID | Claim | Evidence | Status |
 |---|---|---|---|
 | D1 | The loop's consultant is a design variable, not a rung. It is reported under both the whitened prototype scorer and the per-fold trained head. | `consultant_decision`, both `*_current.json` | **PT** |
-| D2 | "The feedback loop is the strongest rung." | C3, C5, C6 | **PERMITTED with the trained head, on both datasets**; **FORBIDDEN** for the prototype consultant, where nothing is separated |
+| D2 | "The feedback loop is the strongest rung." | C3, C5, C6 | **PERMITTED with the trained head, on both datasets**; **FORBIDDEN** for the prototype consultant, where the loop is below AGAF at every UNSW seed and neither the AGAF nor the GNN comparison is separated on either dataset (2026-09-18: `loop_vs_llm` is separated on ToN alone, against the weakest rung) |
 | D3 | Wording that is true on both datasets | — | *"with the trained-head consultant the loop is separated above every other rung; with the prototype consultant no comparison is separated"* |
 | D4 | The 3-seed rung re-run is done. Fold-partition variance remains the open follow-up. | archive 2026-09-06 | **PT** — stated as a limitation in Part 5 |
 | D5 | The schema-3/5 AGAF and loop values do not reproduce under current code at seed 42 (GNN and LLM do, bit-exactly). Cause not established. | `supersedes.reason`, both contracts | **PT** — a reproducibility finding; do not guess the cause |

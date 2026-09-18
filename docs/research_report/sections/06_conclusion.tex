@@ -16,8 +16,10 @@ five-fold out-of-fold macro-F1, and compared with a bootstrap that resamples edg
 seed. A difference counts as separated only when its interval excludes zero.
 
 With the trained-head consultant the feedback model is separated above the fusion model, above the GNN model, above the semantic model and above every faithful re-trained baseline, on both
-datasets. With the prototype consultant, none of those comparisons is separated on either
-dataset. Changing the consultant, and nothing else about the architecture, moved the feedback model by
+datasets. With the prototype consultant, neither the comparison against the fusion model nor the
+one against the GNN model is separated on either dataset. The comparison against the semantic
+model is separated on NF-ToN-IoT alone, where that rung scores 0.2785 against the GNN model's
+0.4336. Changing the consultant, and nothing else about the architecture, moved the feedback model by
 $+0.0697$ and $+0.0523$.
 
 The second result explains the first. An oracle consultant, handed the true label through the

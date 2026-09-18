@@ -117,14 +117,19 @@ Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_comparisons}
-\caption{Every ladder comparison as an interval, under each consultant. A difference counts as separated only when the interval excludes zero, shown by a filled marker. The primary two-level procedure resamples edges and training seed; the seed-matched procedure resamples edges alone. Under the trained head every feedback model comparison clears zero on both datasets; under the prototype consultant none does. Colours follow the rung the comparison is about, with the prototype group in a lighter tint.}
+\caption{Every ladder comparison as an interval, under each consultant. A difference counts as separated only when the interval excludes zero, shown by a filled marker. The primary two-level procedure resamples edges and training seed; the seed-matched procedure resamples edges alone. Under the trained head every feedback model comparison clears zero on both datasets; under the prototype consultant only the comparison against the semantic model on NF-ToN-IoT does. Colours follow the rung the comparison is about, with the prototype group in a lighter tint.}
 \label{fig:comparisons}
 \end{figure}
 
-Figure~\ref{fig:comparisons} plots them. The table divides cleanly by consultant. Under the prototype scorer, \emph{nothing is separated
-on either dataset}. Every interval crosses zero, including the two where the feedback model carries the
-higher mean. In that configuration the answer to RQ3 is that the ladder is an ordering of
-means and no more.
+Figure~\ref{fig:comparisons} plots them. The table divides cleanly by consultant. Under the
+prototype scorer, no comparison between the feedback model and a structural rung is separated on
+either dataset. Every one of those intervals crosses zero, including the two where the feedback
+model carries the higher mean. The one prototype-consultant difference that is separated is the
+feedback model against the semantic model on NF-ToN-IoT, at $+0.1727$ [$+0.1326$, $+0.2174$],
+where the semantic model scores 0.2785 against the GNN model's 0.4336 and clearing it says
+nothing about the mechanism. On NF-UNSW-NB15 even that comparison crosses zero, at $+0.0287$
+[$-0.0061$, $+0.0631$]. In that configuration the answer to RQ3 is that the ladder is an
+ordering of means and no more.
 
 Under the trained head, every feedback model comparison is separated on both datasets: above the fusion model, above
 the GNN model and above the semantic model, with sign stable across all three seeds. These are

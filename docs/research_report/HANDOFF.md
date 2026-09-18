@@ -70,8 +70,12 @@ The section the report stands on. Eight subsections:
 The two results the report is built around:
 
 1. **Under the trained-head consultant every loop comparison is separated on both datasets;
-   under the prototype consultant nothing is separated at all.** That contrast, not the
-   ladder itself, is the finding.
+   under the prototype consultant no comparison against a structural rung is separated.**
+   That contrast, not the ladder itself, is the finding. Corrected 2026-09-18: the prototype
+   loop IS separated above the LLM rung on ToN, at `+0.1727 [+0.1326, +0.2174]`, where that
+   rung scores 0.2785 against the GNN's 0.4336. `loop_vs_llm` was absent from the superseded
+   contract block until it was declared on 2026-09-18, which is why the earlier phrasing
+   said "nothing".
 2. **With output fusion disabled, an oracle converts the feedback channel into a separated
    gain on both datasets and no consultant we could build does.** The binding constraint is
    the consultant, not the mechanism.

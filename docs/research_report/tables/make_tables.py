@@ -108,6 +108,7 @@ def table_comparisons() -> str:
             ("feedback $-$ fusion", head, "loop_vs_agaf", "trained head"),
             ("feedback $-$ GNN", proto, "loop_vs_gnn", "prototype"),
             ("feedback $-$ GNN", head, "loop_vs_gnn", "trained head"),
+            ("feedback $-$ semantic", proto, "loop_vs_llm", "prototype"),
             ("feedback $-$ semantic", head, "loop_vs_llm", "trained head"),
             ("fusion $-$ GNN", head, "agaf_vs_gnn", "either"),
         ],
@@ -116,6 +117,7 @@ def table_comparisons() -> str:
             ("feedback $-$ fusion", head, "loop_vs_agaf", "trained head"),
             ("feedback $-$ GNN", proto, "loop_vs_gnn", "prototype"),
             ("feedback $-$ GNN", head, "loop_vs_gnn", "trained head"),
+            ("feedback $-$ semantic", proto, "loop_vs_llm", "prototype"),
             ("feedback $-$ semantic", head, "loop_vs_llm", "trained head"),
             ("fusion $-$ GNN", head, "agaf_vs_gnn", "either"),
         ],
@@ -144,8 +146,9 @@ def table_comparisons() -> str:
     return wrap(
         "Rung comparisons, both bootstrap procedures, 2{,}000 iterations. \\emph{Sep} marks an "
         "interval that excludes zero. \\emph{Stable} reports whether the sign of the per-seed "
-        "difference is the same at all three seeds. \\emph{[GAP: the prototype-consultant "
-        "aggregate carries no feedback-model versus semantic-model comparison.]}",
+        "difference is the same at all three seeds. Each comparison is given at both "
+        "consultants, so a row's verdict can be read against the consultant that produced "
+        "it.",
         "tab:comparisons",
         body,
         size="footnotesize",
