@@ -49,10 +49,10 @@ This is review metadata, not a manuscript or independent scientific authority.
 | Introduction | complete | I1-I9, all approved 2026-09-18 | tectonic build clean, 0 overfull boxes, no undefined refs/citations; `check_report_numbers.py` exit 0, 0 unknown / 0 unverified / 0 banned; 2 pre-existing terminology warnings, both correct usage; 0 em dashes | none | done |
 | Related work | complete | R1-R9, all approved 2026-09-18 | build clean, 0 overfull, no undefined refs; PDF text re-extracted to confirm the restored sentence; audit exit 0, warn=0 for this section; 22/22 citation keys resolve; 0 em dashes | none in §2; R10 is a Positioning/Method wording question deferred to the Method audit | done |
 | Method | complete | M1-M8, all approved 2026-09-18 | build clean, 0 overfull, no undefined refs; audit exit 0; Table 2, GATv2 config, head shape and focal weighting checked against source; node-feature claims checked by loading both graphs | none; R10 resolved as M1 | done |
-| Results | not started | none | not checked | not assessed | audit next |
-| Discussion | not started | none | not checked | not assessed | after results |
-| Conclusion | not started | none | not checked | not assessed | after discussion |
-| Abstract/front matter | not started | none | not checked | none — the over-claim was fixed upstream in commit `3443016` | after narrative |
+| Results | complete | S1-S5, all approved 2026-09-18 | build clean, 0 overfull, audit exit 0; roughly forty numbers reproduced from artifacts, code or the graphs; new passage checked in the rendered PDF | none in the report; two problems live in other files, see below | done |
+| Discussion | complete | D1-D4, approved 2026-09-18 | build clean, 0 overfull, audit exit 0; every quoted value reproduced from the ladder, oracle and per-class artifacts | none | done |
+| Conclusion | complete | C1-C2, approved 2026-09-18 | build clean, 0 overfull, audit exit 0; no new numbers introduced | none | done |
+| Abstract/front matter | not started | none | not checked | none known; the over-claim was fixed upstream in commit `3443016` | audit next |
 | Appendices/whole-report review | not started | none | not checked | not assessed | final checks |
 
 ## Decisions and open questions
@@ -159,6 +159,77 @@ what verifies this.
 | 58.7% and 7.9% parallel-edge coverage | `known_ceilings.edges_indistinguishable_by_endpoints` | match |
 | k 29.0, scale 2.0, confidence 0.50, 14.5%, 3 iterations, churn 0.01 | `unsw_nb15_current.json:configuration` | match |
 | edge representation dimension 295 | 4x64 + 39 | match |
+
+### Results, approved and applied 2026-09-18
+
+Student instruction: "do all of them".
+
+| ID | What changed |
+|---|---|
+| S1 | The four captured-share percentages in §4.3 are computed against the headroom as a plain three-seed mean, +0.0345 and +0.1090, while the surrounding text quoted only the paired bootstrap means +0.0369 and +0.1354. The ToN denominator appeared nowhere in the report, so none of the four shares could be reproduced from the page. Both denominators are now stated where the shares are introduced, with one clause saying why they differ from the intervals |
+| S2 | Table 6 prints a cell where random advice beats no advice (NF-ToN-IoT, seed 42: 0.4002 against \texttt{head\_only}'s 0.3809) and the text passed over it. Now stated, with the observation that it is one cell of six and that both claims, real against random and real against off, hold at every seed |
+| S3 | `loop_vs_agaf`, a raw contract key, was left in the prose at §4.4 with no gloss anywhere in the report. Now reads as the feedback model against the fusion model |
+| S4 | §4.2's two rung lists are rankings; they now say so |
+| S5 | The decomposition caption said shares are of the gap to the feedback model, but the final row's share uses the smaller gap to the fusion model. Fixed in `tables/make_tables.py` and regenerated; only `tab_decomposition.tex` changed |
+
+**One self-correction.** The S1 edit first gave the ToN headroom as +0.1091. The exact value is
+0.109031, which rounds to +0.1090. The number audit passed the wrong value, which is a third
+instance of the audit accepting a token that no artifact supports at that precision.
+
+### Discussion, approved and applied 2026-09-18
+
+| ID | What changed |
+|---|---|
+| D1 | **The fifth home of the prototype over-claim.** Section 5.4 still said "Under the prototype consultant none of those comparisons is separated on either dataset", pointing back at a list that includes the semantic model and every faithful baseline. Wrong twice: the prototype feedback model is separated above the semantic model on NF-ToN-IoT, and above all six NF-UNSW-NB15 baselines and both NF-ToN-IoT TE-G-SAGE variants. Commit `3443016` fixed the abstract, 4.2, the figure caption and the conclusion; the introduction was fixed earlier in this review; this was the last one. A grep over all sections, `make_tables.py` and `make_plots.py` now returns nothing |
+| D2 | **RQ1 contradicted 4.2.** It said the experiment changed "only the classifier" and concluded the semantic rung's weakness "therefore traces to" the prototype scorer. Section 4.2 states that the entropy percentile moved with the consultant (31 to 29, 25 to 16) and explicitly refuses to attribute the lift to the consultant. RQ1 now restates the confound, cites 4.2, and gives the conclusion as consistent-with rather than established |
+| D3 | "It stays above the GNN model on both datasets" is an ordering of means, and under the prototype consultant it is not separated. Now says so |
+| D4 | Limitation 2's "the two comparisons this report calls not separated" now names them: the fusion model against the GNN model on each dataset |
+
+**What D2 costs.** RQ1's answer is weaker after this edit, and deliberately so. The strong version
+is recoverable only by an experiment this review does not run: the prototype configuration at
+k = 29 and k = 16, or the trained head at k = 31 and k = 25, so that the consultant is the only
+thing that moved.
+
+### Conclusion, approved and applied 2026-09-18
+
+| ID | What changed |
+|---|---|
+| C1 | The conclusion said the consultant changed "and nothing else about the architecture", which is literally true but left the conclusion more confident about attribution than 4.2 and the revised RQ1. It now says the entropy percentile was re-selected alongside the consultant, and that the lift is not attributed to either change alone |
+| C2 | Graph scale was absent from what the conclusion leaves open. It now names the 656 and 2,127 edge counts and the 12-to-40 edge classes beside the deployment limitation |
+
+**One self-correction.** The C1 edit first ended "The two changes are not separated from each
+other", which misuses *separated*, a term this report defines as an interval excluding zero.
+Replaced with "That lift is not attributed to either change alone" before the section was
+finalised.
+
+### Two problems found in Results that are NOT in the report
+
+The report is correct in both cases. Neither was changed, because contracts and `PROJECT_NOTES.md` are
+outside an editorial review.
+
+- **Knob-curve spans.** §4.8 gives 0.8238--0.8277 (UNSW top-k) and 0.5170--0.5232 (ToN top-k).
+  The `configuration.selection_curve_note` string in both `*_current.json` says 0.8241--0.8277
+  and 0.5168--0.5232, and `PROJECT_NOTES.md` repeats the contract. Recomputing the three-seed mean per
+  candidate from all twelve files in `results/knob_selection_head/` gives the report's values
+  exactly: UNSW top-k 0.8238--0.8277 argmax 29, scale 0.8252--0.8277 argmax 2.0; ToN top-k
+  0.5170--0.5232 argmax 16, scale 0.5196--0.5232 argmax 20.0. The note strings are wrong.
+- **`HANDOFF.md` §4 Gap A table is pre-regeneration.** It gives the consultant change as
+  +0.0702 [+0.0359, +0.1035] on UNSW and +0.0504 [-0.0091, +0.1091] on ToN.
+  `results/consultant_change_interval.json` and the report both give +0.0701 [+0.0353, +0.1057]
+  and +0.0511 [-0.0082, +0.1110]. §4b item 5 of the same file says every interval was
+  regenerated, so the handoff contradicts itself.
+
+### Verified against artifacts during the Results audit
+
+Reproduced exactly: both oracle gains and intervals, and the four captured shares, from the two
+`*_oracle_ceiling_v2_trained_head.json`; the seed-42 caveat (0.7522 against 0.7543, headroom
+-0.0021) from the same files' per-seed runs; both consultant-change intervals under both
+procedures from `consultant_change_interval.json`; every §4.5 complementarity figure from
+`consultant_complementarity.json`, which also records `seed = 42` as the text says; all thirteen
+per-class values checked from `multiseed_head_per_class.json`; the decomposition arithmetic and
+its four shares; the flagged and gated counts; the attention-injection intervals; the ablation
+table's six intervals and the real-minus-random minimum of 0.098 behind "at least 0.09". The
+62.8% in-degree-one figure was recomputed directly from the NF-ToN-IoT graph.
 
 ### Evidence questions raised in §1, both closed upstream during the review
 

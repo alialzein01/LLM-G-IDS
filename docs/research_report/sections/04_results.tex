@@ -66,9 +66,9 @@ them is the largest single effect measured in this work.
 \end{figure}
 
 Figure~\ref{fig:ladder} draws the same numbers. The three fixed rungs behave differently on
-the two graphs. On NF-UNSW-NB15 they run the fusion model,
-the GNN model, the semantic model. On NF-ToN-IoT they run the GNN model, the fusion model, the semantic model, so the fusion model
-falls below the rung it is meant to improve on. The semantic model is the weakest on both, and by
+the two graphs. Ranked by mean macro-F1, highest first, NF-UNSW-NB15 gives the fusion model,
+the GNN model, the semantic model. NF-ToN-IoT gives the GNN model, the fusion model, the
+semantic model, so the fusion model falls below the rung it is meant to improve on. The semantic model is the weakest on both, and by
 a much wider margin under NF-ToN-IoT's imbalance, where the prototype scorer reaches 0.2785
 against the GNN model's 0.4336.
 
@@ -166,7 +166,10 @@ canonical one, consulting the trained head. Table~\ref{tab:ablations} gives ever
 
 Feedback on scores above feedback off at every seed on both datasets, with every interval
 excluding zero. Random advice costs at least 0.09 macro-F1 against real advice at every seed, so the arm is
-sensitive to what the advice says and not merely to the presence of an extra tensor. This
+sensitive to what the advice says and not merely to the presence of an extra tensor. Random
+advice is not uniformly worse than none, however. On NF-ToN-IoT at seed 42 it reaches 0.4002
+against \texttt{head\_only}'s 0.3809, the one cell of six where that happens. The claims here
+are real advice against each of the other two arms, and both hold at every seed. This
 comparison cannot attribute the gain, because the real arm differs from
 \texttt{head\_only} in two ways at once: semantic evidence re-enters the edge representations,
 and semantic logits are fused at the output.
@@ -189,6 +192,9 @@ The oracle receives the true label at $\pm 4$ nats through the same projection e
 uses. It is a deliberate leak, a diagnostic only and never a performance figure. It gains
 $+0.0369$ [$+0.0097$, $+0.0618$] on NF-UNSW-NB15 and $+0.1354$ [$+0.0919$, $+0.1797$] on
 NF-ToN-IoT, both separated. The channel therefore has measurable capacity on both graphs.
+The shares quoted below are taken against the headroom as a plain three-seed mean, $+0.0345$ on
+NF-UNSW-NB15 and $+0.1090$ on NF-ToN-IoT. Those two values differ slightly from the point
+estimates just given, which are bootstrap means over resampled edges and seeds.
 
 Neither realistic consultant uses it. The embedding-only prototype captures $-4.5\%$ of the
 NF-UNSW-NB15 headroom and $11.9\%$ of the NF-ToN-IoT headroom, neither separated from zero. The
@@ -202,8 +208,8 @@ matching the advice's train-time and test-time reliability does not rescue it ei
 
 The NF-UNSW-NB15 headroom comes with a caveat. At seed 42 alone the oracle arm scores
 0.7522 against a control of 0.7543, a headroom of $-0.0021$, so a captured share is not
-computable there. The $+0.0345$ is a three-seed mean, and single-seed shares on NF-UNSW-NB15 are
-not reported.
+computable there. Because the $+0.0345$ is a mean over three seeds that do not agree in sign,
+single-seed shares on NF-UNSW-NB15 are not reported.
 
 Read together, the two experiments give RQ3 a split answer. Feedback plus fusion is separated
 from fusion alone at every seed on both datasets. The injection mechanism alone, driven by any
@@ -227,7 +233,8 @@ selector head's macro-F1 moved from 0.019--0.036 to 0.646--0.684, mean disagreem
 0.7610 in B and 0.7809 in C on NF-UNSW-NB15, and 0.4521, 0.4147 and 0.4630 on NF-ToN-IoT.
 Fixing both signals made the feedback model worse on both datasets. Condition C recovers, but its
 selection curves are flat, NF-UNSW-NB15's argmax landed on the boundary of the swept range at
-$k = 35$, and \texttt{loop\_vs\_agaf} includes zero in all three conditions.
+$k = 35$, and the feedback model against the fusion model includes zero in all three
+conditions.
 
 The same runs produced the clearest single diagnostic in the feedback work. The magnitude
 actually added to the 39-wide encoded edge vector, whose features have unit variance, was

@@ -414,7 +414,8 @@ def table_decomposition() -> str:
     )
     return wrap(
         "Decomposition of the NF-UNSW-NB15 gap against TE-G-SAGE. Point estimates only. "
-        "Shares are of the total gap to the feedback model.",
+        "Shares are of the total gap to the feedback model, except the final row, "
+        "whose share is of the smaller gap to the fusion model and names its own denominator.",
         "tab:decomposition",
         body,
     )

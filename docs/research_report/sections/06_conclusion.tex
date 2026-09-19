@@ -19,8 +19,9 @@ With the trained-head consultant the feedback model is separated above the fusio
 datasets. With the prototype consultant, neither the comparison against the fusion model nor the
 one against the GNN model is separated on either dataset. The comparison against the semantic
 model is separated on NF-ToN-IoT alone, where that rung scores 0.2785 against the GNN model's
-0.4336. Changing the consultant, and nothing else about the architecture, moved the feedback model by
-$+0.0697$ and $+0.0523$.
+0.4336. Changing the consultant, with the entropy percentile re-selected alongside it and
+nothing else about the architecture altered, moved the feedback model by $+0.0697$ and
+$+0.0523$. That lift is not attributed to either change alone.
 
 The second result explains the first. An oracle consultant, handed the true label through the
 same projection, converts the feedback channel into a separated gain on both datasets, so the
@@ -37,7 +38,8 @@ for two independent structural reasons on the two graphs.
 
 What none of this establishes is deployment performance. Edges are aggregated with the attack
 label in the grouping key, so these numbers compare representations and mechanisms under a
-controlled protocol. Removing that dependency is the prerequisite for any operational claim, and
+controlled protocol, on two graphs of 656 and 2{,}127 edges where several scored classes hold
+between 12 and 40. Removing that dependency is the prerequisite for any operational claim, and
 it changes the task rather than the code. Beyond it, what would matter is not a larger consultant
 but a better-calibrated one, with a trust parameter that responds when reliability changes. The
 oracle says the headroom is there. Nothing measured here has reached it.

@@ -8,10 +8,12 @@
 apart on NF-ToN-IoT. The GNN model reaches 0.7437 and 0.4336, the semantic model 0.7353 and
 0.2785. At face value that suggests the semantic view is nearly worthless under heavy imbalance.
 The consultant experiment shows the reading is wrong: holding the embeddings, the graph, the folds
-and the seeds fixed, and changing only the classifier placed on those embeddings, lifts the feedback model by
-$+0.0697$ and $+0.0523$. The semantic branch's weakness as a rung therefore traces to the whitened
-prototype scorer, not to the encoder underneath it. Neither modality is inherently weaker, and the
-read-out chosen over the semantic embeddings matters more than the choice between the two views.
+and the seeds fixed, and changing the classifier placed on those embeddings, lifts the feedback
+model by $+0.0697$ and $+0.0523$. As Section~\ref{sec:res-ladder} states, the entropy percentile
+was re-selected with the classifier, so that lift is not attributed to the consultant alone. It is
+consistent with the semantic branch's weakness as a rung lying in the whitened prototype scorer
+rather than in the encoder underneath it, and it is not evidence that either modality is
+inherently weaker than the other.
 
 \paragraph{RQ2.} No. The fusion model is not separated from the GNN model on either dataset:
 $+0.0370$ [$-0.0212$, $+0.0929$] on NF-UNSW-NB15 and $-0.0235$ [$-0.0910$, $+0.0602$] on
@@ -68,8 +70,9 @@ to learn from. The harm is not uniform: the fusion model is the only rung that l
 \texttt{password} from 0.0401 to 0.2996. The stage trades one set of rare classes for another.
 It does not fail outright.
 
-The feedback model does not show that trade, under either consultant. It stays above the GNN model on
-both datasets and keeps its position when the imbalance regime changes. Differing class counts
+The feedback model does not show that trade, under either consultant. It stays above the GNN
+model by mean on both datasets and keeps that position when the imbalance regime changes, though
+under the prototype consultant the difference is not separated. Differing class counts
 permit a comparison of shapes and not of levels, and on that comparison the property of
 collapsing under imbalance belongs to the fusion gate, not to the use of semantic evidence as
 such.
@@ -120,9 +123,10 @@ Two statements have to be held together. The trained-head configuration produces
 ladder steps this project has measured that survive training-seed variance. It produces them on
 two datasets, under one architecture, with the same folds and the same seeds. The feedback model is
 separated above the fusion model, above the GNN model and above the semantic model, and above every
-faithful re-trained baseline. Under the prototype consultant none of those comparisons is
-separated on either dataset, so the consultant is what turned an ordering of means into a
-result.
+faithful re-trained baseline. Under the prototype consultant neither the comparison against the
+fusion model nor the one against the GNN model is separated on either dataset, and on
+NF-ToN-IoT it is not separated from E-GraphSAGE either, so the consultant is what turned those
+orderings of means into results.
 
 What the configuration does not buy is a separated gain from the feedback mechanism itself.
 With output fusion disabled, so that advice can reach the classifier only by re-entering the
@@ -158,8 +162,9 @@ the numbers should be read.
 
     \item \textbf{Only training-seed variance is measured.} The fold partition is fixed at the
     seed-42 split, so every reported standard deviation and every interval is a lower bound on
-    total uncertainty. The two comparisons this report calls not separated are already
-    close to zero, and measuring partition variance could only widen them.
+    total uncertainty. The two ladder comparisons this report calls not separated, the fusion
+    model against the GNN model on each dataset, are already close to zero, and measuring
+    partition variance could only widen them.
 
     \item \textbf{The feedback model trains on advice more reliable than the advice it is scored on.} Each
     fold's head has fitted that fold's training labels, so on training edges its logits are
