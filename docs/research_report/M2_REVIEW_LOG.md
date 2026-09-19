@@ -53,7 +53,7 @@ This is review metadata, not a manuscript or independent scientific authority.
 | Discussion | complete | D1-D4, approved 2026-09-18 | build clean, 0 overfull, audit exit 0; every quoted value reproduced from the ladder, oracle and per-class artifacts | none | done |
 | Conclusion | complete | C1-C2, approved 2026-09-18 | build clean, 0 overfull, audit exit 0; no new numbers introduced | none | done |
 | Abstract/front matter | complete | A1 approved; AI statement left unchanged at the author's instruction | build clean, audit exit 0; cover, abstract and TOC inspected as rendered pages | none | done |
-| Appendices/whole-report review | appendices complete; whole-report pass not started | P1-P3, approved 2026-09-19 | build clean, audit exit 0; complementarity, A/B/C, magnitude and reliability values all reproduce; test suite run and the reported counts confirmed | none in the appendices | whole-report pass |
+| Appendices/whole-report review | complete | P1-P3 and W1-W3, approved 2026-09-19 | build clean, 0 overfull, audit exit 0, 174 tests / 359 subtests; 38/38 bibliography entries reconciled; no undefined or multiply-defined labels; every figure-transcribed value matched to its contract | none | done |
 
 ## Decisions and open questions
 
@@ -247,6 +247,31 @@ claim is verified rather than inherited.
 that value to `results.oracle_attention...mean_disagreement` in two oracle contracts. The real
 source is the reliability table in `docs/RESULTS_ARCHIVE.md:1021`. A passing audit says a token
 appears somewhere, not that it means what the sentence says.
+
+### Whole-report pass, 2026-09-19
+
+| ID | What changed |
+|---|---|
+| W1 | **The table of contents pointed at the wrong page for References**, 61 instead of 57. `\addcontentsline{toc}{section}{References}` sat after `\bibliography`, so it recorded the page the bibliography ended on. Moved above it, with a comment saying why. Every other entry, including all three appendices, was already correct |
+| W2 | The final reference spilled two lines onto a page of its own. `\setlength{\bibsep}{0.9ex}` pulls it back; the bibliography now ends cleanly on page 60 and the report is 68 pages rather than 69 |
+| W3 | Section 2.6 said the work "instantiates the loop". *Loop* is the old internal name for the feedback model. Now "that loop", which refers to the prior-work mechanism it is describing |
+
+**Checks run across the whole document**
+
+- Bibliography reconciled both ways: 38 entries defined, 38 cited, nothing orphaned or missing.
+- No undefined references and no multiply-defined labels.
+- RQ1 to RQ5 each appear in the introduction, the results and the discussion.
+- Superseded names are gone: no `AGAF`, no "semantic rung". "Graph encoder" survives three
+  times, all describing other people's systems, which is the documented rule.
+- Exactly one sentence repeats across sections, the headline in the abstract and the
+  conclusion. Deliberate.
+- **Every hand-transcribed figure value checked against its contract**: all ladder means,
+  standard deviations and per-seed values, and all 24 comparison intervals under both
+  consultants. Zero mismatches.
+- `OMP_NUM_THREADS=1 .venv/bin/python -m pytest tests/ -q`: 174 passed, 359 subtests passed.
+- Audit exit 0. Zero em dashes. Build clean, 0 overfull boxes.
+- Pages inspected as rendered images: cover, abstract, both table-of-contents pages, the eleven
+  figure pages, a wide-table results page, the appendix tables, and every bibliography page.
 
 ### Two problems found in Results that are NOT in the report
 

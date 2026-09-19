@@ -60,8 +60,13 @@
 
 \clearpage
 \bibliographystyle{plainnat}
-\bibliography{references}
+% The TOC entry goes BEFORE \bibliography, or it records the page the
+% bibliography ended on instead of the page it starts on.
 \addcontentsline{toc}{section}{References}
+% Slightly tighter entry spacing, so the last reference does not spill two
+% lines onto a page of its own.
+\setlength{\bibsep}{0.9ex}
+\bibliography{references}
 
 \clearpage
 \input{sections/07_appendices}
