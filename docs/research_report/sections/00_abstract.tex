@@ -8,7 +8,10 @@ as a label-free sentence read by a frozen cybersecurity language encoder. Four s
 compared on two NetFlow datasets whose class imbalance differs by roughly a factor of 47:
 each branch alone, a gated attention fusion model, and a feedback model that consults the semantic
 branch about high-entropy edges and returns its judgement into the edge representations. Everything is measured at three training seeds. A
-difference counts as separated only when a bootstrap over edges and seed excludes zero.
+difference counts as separated only when a bootstrap over edges and seed excludes zero. Edges
+are aggregated with the attack label in the grouping key, so every number here compares
+representations and mechanisms under a controlled protocol and none is a deployment-valid
+detection estimate.
 
 Two results carry the work. Given a classification head trained on the semantic embeddings as
 its consultant, the feedback model is separated above every other rung and above every faithful

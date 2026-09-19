@@ -52,8 +52,8 @@ This is review metadata, not a manuscript or independent scientific authority.
 | Results | complete | S1-S5, all approved 2026-09-18 | build clean, 0 overfull, audit exit 0; roughly forty numbers reproduced from artifacts, code or the graphs; new passage checked in the rendered PDF | none in the report; two problems live in other files, see below | done |
 | Discussion | complete | D1-D4, approved 2026-09-18 | build clean, 0 overfull, audit exit 0; every quoted value reproduced from the ladder, oracle and per-class artifacts | none | done |
 | Conclusion | complete | C1-C2, approved 2026-09-18 | build clean, 0 overfull, audit exit 0; no new numbers introduced | none | done |
-| Abstract/front matter | not started | none | not checked | none known; the over-claim was fixed upstream in commit `3443016` | audit next |
-| Appendices/whole-report review | not started | none | not checked | not assessed | final checks |
+| Abstract/front matter | complete | A1 approved; AI statement left unchanged at the author's instruction | build clean, audit exit 0; cover, abstract and TOC inspected as rendered pages | none | done |
+| Appendices/whole-report review | appendices complete; whole-report pass not started | P1-P3, approved 2026-09-19 | build clean, audit exit 0; complementarity, A/B/C, magnitude and reliability values all reproduce; test suite run and the reported counts confirmed | none in the appendices | whole-report pass |
 
 ## Decisions and open questions
 
@@ -201,6 +201,52 @@ thing that moved.
 other", which misuses *separated*, a term this report defines as an interval excluding zero.
 Replaced with "That lift is not attributed to either change alone" before the section was
 finalised.
+
+### Abstract, front matter and the first visual pass, 2026-09-19
+
+`poppler` was installed on 2026-09-19, so rendered pages could be inspected for the first time.
+
+| ID | What changed |
+|---|---|
+| A1 | The abstract was the only part of the report that never stated the scope limit. It now says edges are aggregated with the attack label in the grouping key and that no number is a deployment-valid estimate |
+| V1 | **Found only by looking at the page.** `fig_comparisons` carries a note rendered inside the image. It still read "There is no feedback-versus-semantic-model comparison for the prototype consultant" while the same figure, after commit `3443016` added the two rows, plots exactly that comparison in both panels. The note now states the real verdict: separated on NF-ToN-IoT, not on NF-UNSW-NB15. Fixed in `make_plots.py` and regenerated with `python make_plots.py comparisons`, so the other ten figures were untouched |
+| V2 | Figure 1 floated above the "3 Method" heading. Changed from `[tbp]` to `[!ht]`; it now sits under the paragraph that introduces it, still on page 17 |
+
+**Why V1 matters beyond itself.** It was the sixth home of the prototype separation claim and the
+only one that is not a `.tex` file. The compiler sees an image and `check_report_numbers.py`
+reads `.tex` sources, so no existing check could reach it. Every other figure's baked-in note was
+read for the same kind of staleness; `fig_ladder`'s even discloses the top-k confound correctly.
+
+**Author's decision:** the AI-use statement in `99_statements.tex` is to stay exactly as written.
+Raised because this review changed claims, not only prose; the author declined the change.
+
+**Deliberate, verified, not a finding:** `\reportsubtitle` is defined in `main.tex` and never
+printed. Commit `a4cd1d0` explains why: the faculty template has one title field and the
+registered title belongs in it unaltered.
+
+**Still open, cosmetic:** `\reportinstitutions` is defined and never used. The defence date
+prints as dotted rules by design; the author should confirm the faculty accepts that.
+
+**Pages inspected at this stage:** cover, abstract, table of contents, and the eleven figure
+pages, including a print-resolution zoom on the architecture diagram's smallest annotations and
+on the corrected note in Figure 6.
+
+### Appendices, approved and applied 2026-09-19
+
+| ID | What changed |
+|---|---|
+| P1 | **An arithmetic error.** A.3 said "on NF-ToN-IoT six of ten sit at or below 0.226". Seven values are at or below it; six are strictly below, and `password` sits exactly at 0.226. Changed to "below", and the six are now named. `RESULTS_ARCHIVE.md` carries the same slip and still says "at or below"; not corrected, it is a record |
+| P2 | Table 12 listed class indices 0-9 only, so a reader could not tell which attack classes the consultant is weak at, and the two datasets do not share a mapping. Rebuilt with each dataset's class names beside its values, in its own label-mapping order (`LABEL_MAPPING`, `graph_construction.py:39` for NF-ToN-IoT; the per-class artifact's `class_names` for NF-UNSW-NB15). No value changed |
+| P3 | Table 11 declared four columns and used three, leaving a stray `&` on every row |
+
+**Test suite run, 2026-09-19:** `OMP_NUM_THREADS=1 .venv/bin/python -m pytest tests/ -q` gives
+**174 passed, 359 subtests passed** in 133s. Appendix C states exactly those counts, so that
+claim is verified rather than inherited.
+
+**The audit's weakness, demonstrated again.** `check_report_numbers.py --explain 0.662` attributes
+that value to `results.oracle_attention...mean_disagreement` in two oracle contracts. The real
+source is the reliability table in `docs/RESULTS_ARCHIVE.md:1021`. A passing audit says a token
+appears somewhere, not that it means what the sentence says.
 
 ### Two problems found in Results that are NOT in the report
 

@@ -18,7 +18,7 @@ edge-level: a flow, or an aggregate of flows sharing a grouping key, is an edge,
 Figure~\ref{fig:architecture} shows the whole pipeline and the four points at which it is
 scored.
 
-\begin{figure}[tbp]
+\begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{fig_architecture}
 \caption{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback model. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}

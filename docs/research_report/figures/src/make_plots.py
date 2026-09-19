@@ -452,8 +452,8 @@ def fig_comparisons():
     fig.text(0.5, 0.075,
              "* On NF-UNSW-NB15, the fusion model minus the GNN model is separated under the "
              "seed-matched procedure and not once training-seed\nvariance is admitted; the "
-             "two-level result decides. There is no feedback-versus-semantic-model comparison "
-             "for the prototype consultant.",
+             "two-level result decides. Under the prototype consultant the feedback model "
+             "against the semantic model\nis separated on NF-ToN-IoT and not on NF-UNSW-NB15.",
              ha="center", va="bottom", fontsize=6.5, color="#444444")
     save(fig, "fig_comparisons")
 

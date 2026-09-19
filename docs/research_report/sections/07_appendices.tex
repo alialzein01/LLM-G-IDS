@@ -69,13 +69,13 @@ directly interpretable as a fraction of a standard deviation.
 \caption{Injected bias magnitude on flagged edges, per seed, by condition.}
 \label{tab:magnitudes}
 \small
-\begin{tabular}{llll}
+\begin{tabular}{lll}
 \toprule
-Condition & NF-UNSW-NB15 & NF-ToN-IoT & \\
+Condition & NF-UNSW-NB15 & NF-ToN-IoT \\
 \midrule
-A (canonical)        & 0.077 / 0.060 / 0.061 & 0.023 / 0.021 / 0.023 & \\
-B (signals fixed)    & 1.228 / 1.171 / 1.218 & 2.796 / 2.854 / 2.762 & \\
-C (B, re-selected)   & 1.103 / 1.100 / 1.158 & 2.845 / 2.893 / 2.992 & \\
+A (canonical)        & 0.077 / 0.060 / 0.061 & 0.023 / 0.021 / 0.023 \\
+B (signals fixed)    & 1.228 / 1.171 / 1.218 & 2.796 / 2.854 / 2.762 \\
+C (B, re-selected)   & 1.103 / 1.100 / 1.158 & 2.845 / 2.893 / 2.992 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -98,25 +98,35 @@ from training labels alone. Table~\ref{tab:reliability} gives them.
 \begin{table}[htbp]
 \centering
 \caption{Mean per-class precision of the prototype consultant on training edges, over five
-folds. Class indices follow the label mapping.}
+folds. Each dataset's classes are listed in its own label-mapping order.}
 \label{tab:reliability}
-\footnotesize
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lcccccccccc}
+\small
+\begin{tabular}{clclc}
 \toprule
-Dataset & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+ & \multicolumn{2}{c}{NF-UNSW-NB15} & \multicolumn{2}{c}{NF-ToN-IoT} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Index & class & precision & class & precision \\
 \midrule
-NF-UNSW-NB15 & 1.000 & 0.852 & 0.976 & 0.893 & 0.961 & 0.662 & 0.895 & 0.984 & 1.000 & 0.960 \\
-NF-ToN-IoT   & 1.000 & 0.071 & 0.179 & 0.021 & 0.570 & 0.740 & 0.226 & 0.020 & 0.095 & 0.089 \\
+0 & Normal         & 1.000 & Benign     & 1.000 \\
+1 & Analysis       & 0.852 & backdoor   & 0.071 \\
+2 & Backdoors      & 0.976 & ddos       & 0.179 \\
+3 & DoS            & 0.893 & dos        & 0.021 \\
+4 & Exploits       & 0.961 & injection  & 0.570 \\
+5 & Fuzzers        & 0.662 & mitm       & 0.740 \\
+6 & Generic        & 0.895 & password   & 0.226 \\
+7 & Reconnaissance & 0.984 & ransomware & 0.020 \\
+8 & Shellcode      & 1.000 & scanning   & 0.095 \\
+9 & Worms          & 0.960 & xss        & 0.089 \\
 \bottomrule
 \end{tabular}
-}
 \end{table}
 
 On NF-UNSW-NB15 six of ten classes sit at or above 0.9 and the minimum is 0.662, so
-reweighting has little to reorder. On NF-ToN-IoT six of ten sit at or below 0.226. That is the
-same weakness the isolation experiment measures as the binding constraint, now quantified per
-class.
+reweighting has little to reorder. On NF-ToN-IoT six of ten sit below 0.226: \texttt{ransomware}
+at 0.020, \texttt{dos} at 0.021, \texttt{backdoor} at 0.071, \texttt{xss} at 0.089,
+\texttt{scanning} at 0.095 and \texttt{ddos} at 0.179, with \texttt{password} a seventh sitting
+at 0.226 itself. That is the same weakness the isolation experiment measures as the binding
+constraint, now quantified per class.
 
 \subsection{The five treatments}
 \label{app:treatments}
