@@ -30,7 +30,7 @@
     "note": "seed 42 is the reproduction seed used by reproduce_ladder.py; training seeds 42/1/2 all share the seed-42 fold partition",
     "llm_rung_consultant": "whitened_prototype",
     "selection_curve_is_flat": true,
-    "selection_curve_note": "Both selection curves lie inside their own noise band (UNSW top_k 0.8241-0.8277 over 21 candidates, scale 0.8252-0.8277 over six; ToN 0.5168-0.5232 and 0.5196-0.5232). The argmax is not a tuned optimum; do not describe either knob as tuned.",
+    "selection_curve_note": "Both selection curves lie inside their own noise band (UNSW top_k 0.8238-0.8277 over 21 candidates, scale 0.8252-0.8277 over six; ToN 0.5170-0.5232 and 0.5196-0.5232). The argmax is not a tuned optimum; do not describe either knob as tuned.",
     "scale_on_range_boundary": false,
     "top_k_on_range_boundary": false
   },

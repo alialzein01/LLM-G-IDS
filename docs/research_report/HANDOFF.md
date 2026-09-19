@@ -127,8 +127,13 @@ is what validates the method.
 
 | Dataset | point | two-level | seed-matched | separated |
 |---|---:|---|---|---|
-| NF-UNSW-NB15 | +0.0697 | +0.0702 [+0.0359, +0.1035] | +0.0701 [+0.0401, +0.0994] | yes |
-| NF-ToN-IoT | +0.0523 | +0.0504 [−0.0091, +0.1091] | +0.0509 [+0.0022, +0.1013] | **no** |
+| NF-UNSW-NB15 | +0.0697 | +0.0701 [+0.0353, +0.1057] | +0.0701 [+0.0401, +0.0994] | yes |
+| NF-ToN-IoT | +0.0523 | +0.0511 [−0.0082, +0.1110] | +0.0509 [+0.0022, +0.1013] | **no** |
+
+*Two-level column updated 2026-09-19.* It carried the pre-regeneration intervals, which §4b
+item 5 of this same file says were replaced when the ladder code began drawing the two seeds
+independently. The values above are `results/consultant_change_interval.json` as committed, and
+are what §4.2 of the report prints. No verdict changed.
 
 This is not the flattering result. The report's largest single effect is separated on one
 dataset and not on the other, and NF-ToN-IoT behaves exactly like AGAF against the graph

@@ -273,10 +273,26 @@ appears somewhere, not that it means what the sentence says.
 - Pages inspected as rendered images: cover, abstract, both table-of-contents pages, the eleven
   figure pages, a wide-table results page, the appendix tables, and every bibliography page.
 
-### Two problems found in Results that are NOT in the report
+### Two problems found in Results that were NOT in the report — both fixed 2026-09-19
 
-The report is correct in both cases. Neither was changed, because contracts and `PROJECT_NOTES.md` are
-outside an editorial review.
+The report was correct in both cases. They were left alone during the section reviews because
+contracts and `PROJECT_NOTES.md` sit outside an editorial review, then fixed when the author said to
+continue fixing.
+
+**Fixed:** `configuration.selection_curve_note` in both `*_current.json` now reads
+0.8238--0.8277 and 0.5170--0.5232, which is what the twelve sweep files in
+`results/knob_selection_head/` give. `PROJECT_NOTES.md` corrected to match, with a dated note.
+`scripts/derive_report_numbers.py` had already recorded the disagreement in its `knob_curves`
+note; that text now records the correction instead, and `derived_numbers.json` was regenerated,
+with a diff confirming only the note string changed. No test reads this field, and
+`refresh_contracts.py --check` still reports contracts matching the aggregates.
+
+**Fixed:** `HANDOFF.md` §4's Gap A table now carries the committed intervals,
++0.0701 [+0.0353, +0.1057] and +0.0511 [-0.0082, +0.1110], with a dated line saying it had held
+the pre-regeneration values that §4b item 5 of the same file describes as replaced. No verdict
+changed.
+
+The original description of both problems follows.
 
 - **Knob-curve spans.** §4.8 gives 0.8238--0.8277 (UNSW top-k) and 0.5170--0.5232 (ToN top-k).
   The `configuration.selection_curve_note` string in both `*_current.json` says 0.8241--0.8277

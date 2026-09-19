@@ -98,10 +98,12 @@ def knob_curves() -> dict:
                 "source": f"results/knob_selection_head/{ds}/{knob}_seed*.json",
             }
     out["note"] = (
-        "Mean validation macro-F1 over selection seeds 42/1/2, per candidate. The "
-        "selection_curve_note string in the *_current.json contracts records "
-        "0.8241-0.8277 (UNSW top_k) and 0.5168-0.5232 (ToN top_k); recomputed from "
-        "the sweep artifacts the endpoints are 0.8238-0.8277 and 0.5170-0.5232."
+        "Mean validation macro-F1 over selection seeds 42/1/2, per candidate. These "
+        "endpoints are recomputed from the sweep artifacts and agree with the "
+        "selection_curve_note string in the *_current.json contracts. Until "
+        "2026-09-19 that string read 0.8241-0.8277 (UNSW top_k) and 0.5168-0.5232 "
+        "(ToN top_k), which the sweeps do not support; it was corrected to "
+        "0.8238-0.8277 and 0.5170-0.5232."
     )
     return out
 
