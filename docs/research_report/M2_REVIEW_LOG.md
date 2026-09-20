@@ -334,10 +334,42 @@ Twelve further papers read. One error, significant enough to move a paragraph.
 
 **Coverage after two passes: 18 verified, 4 errors found and fixed.**
 
-**Still unread, 19 citations, all lower risk:** BSTFNet, CPS-IDS, GCN-2-Former, TESSERACT,
-Sommer, Arp et al., Scarfone, CySecBERT, the two dataset papers, NetFlow standardisation, and
-the standard tooling citations (GraphSAGE, GAT, BERT, AdamW, PyTorch Geometric, scikit-learn,
-focal loss, Efron).
+### Third citation pass, 2026-09-20 — coverage now complete
+
+The remaining nineteen were checked. One small mismatch, corrected.
+
+| ID | What changed |
+|---|---|
+| C5 | §2.1 said "Intrusion detection is conventionally divided into signature-based and anomaly-based approaches" and cited NIST SP 800-94. That guide names **three** primary classes of detection methodology: "signature-based, anomaly-based, and stateful protocol analysis". The sentence now names all three and says the first two are the ones that can be posed over a flow graph |
+
+**Verified correct in this pass**
+
+| Source | Claim | Verdict |
+|---|---|---|
+| Arp et al. | "the sampling-bias pitfall they place first" | correct; P1 is Sampling Bias in the paper's own numbering |
+| Arp et al. | the report's protocol addresses inappropriate performance claims and selection after seeing numbers | correct in substance; the paper's P7 is "inappropriate measures" and P3 is "data snooping" |
+| TESSERACT | spatial and temporal bias inflate reported scores | verbatim in the abstract |
+| Sommer and Paxson | the gap between a controlled comparison and an operational detector | fair characterisation of the paper's thesis |
+| NIST SP 800-94 | alert validation, false-positive identification, threat prioritisation as part of monitoring | supported; "validate that an alert is accurate and not a false positive", "prioritize threats" |
+| CySecBERT | BERT-class, domain-adapted, evaluated on domain-specific representation and classification tasks | confirmed, 15 domain tasks plus SuperGLUE |
+| BSTFNet | applies ET-BERT to packet-level traffic with a spatiotemporal branch | confirmed; its module is built on "the ET-BERT pre-trained model ... 12 Transformer blocks" |
+| CPS-IDS | gated fusion between a DeBERTa payload branch and a statistical branch, no graph encoder | confirmed, including the "Gated Fusion Mechanism" |
+| GCN-2-Former | GCN plus temporal transformer, fused by global average pooling and concatenation | confirmed; GAP on both branches, then "spliced" |
+| UNSW-NB15 | normal activity mixed with contemporary attacks, Cyber Range Lab | correct; the paper says a hybrid of real modern normal activities and synthetic contemporary attack behaviours, generated in the Cyber Range Lab of the ACCS at UNSW Canberra |
+| TON_IoT | NF-ToN-IoT derives from TON_IoT, IoT telemetry setting | correct; the cited paper is the Network TON_IoT datasets paper |
+| NetFlow variants | both datasets used in NetFlow-standardised form | correct by definition of the cited paper |
+
+**Standard method and tooling citations, used for what they are and not separately fetched:**
+GraphSAGE (sample-and-aggregate), GAT, BERT, AdamW, PyTorch Geometric, scikit-learn, focal
+loss, and Efron's bootstrap. Each is cited for the method it introduced.
+
+**Final coverage: all 38 bibliography entries accounted for. 30 verified against the source,
+8 standard tooling citations accepted at face value. Five citation errors found and fixed
+across three passes.**
+
+**Two small imprecisions reported and left unfixed at the author's discretion:** LOGIN prunes
+edges below a similarity threshold rather than wholesale, and Sentence-BERT compared three
+pooling strategies rather than "the two common choices".
 
 **Two small imprecisions reported and left unfixed at the author's discretion:** LOGIN prunes
 edges below a similarity threshold rather than wholesale, and Sentence-BERT compared three
