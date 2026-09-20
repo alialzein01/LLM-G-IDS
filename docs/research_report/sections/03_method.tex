@@ -194,8 +194,9 @@ mean-pooled with padding positions masked out, giving one 768-dimensional vector
 Mean pooling over token states is the pooling \citet{reimers2019sbert} report as the
 stronger of the two common choices for a sentence vector, and we did not compare it against
 the first-token alternative on this data.
-We use it strictly as a sentence encoder. It is not prompted, not asked to reason, and not
-generative. We avoid describing it as an LLM for that reason.
+CySecBERT is a pretrained language model, and we use it strictly as a sentence encoder: it is
+not prompted, not asked to reason, and not generative. Where this report says \emph{language
+model} it means that pretrained encoder, not a generative one.
 
 The embedding is consumed in two ways, and the distinction matters for everything that
 follows. The \emph{embedding-only} route fits no classifier on it: a whitened prototype
