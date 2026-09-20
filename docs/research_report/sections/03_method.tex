@@ -200,8 +200,15 @@ generative. We avoid describing it as an LLM for that reason.
 The embedding is consumed in two ways, and the distinction matters for everything that
 follows. The \emph{embedding-only} route fits no classifier on it: a whitened prototype
 scorer (described under the feedback stage below) assigns each edge to the nearest class
-mean in a fold-local whitened space. This is the ladder's semantic model and the
-semantic input to the fusion model, and it measures what the encoder alone knows. The \emph{trained
+mean in a fold-local whitened space. This is the ladder's semantic model, and it measures what
+the encoder alone knows; the fusion model takes the same embedding with no scorer on top. The prototype
+is the semantic model because it fits nothing, not because it is cheap. A nearest-neighbour
+readout over the training-fold embeddings would cost nothing extra on graphs of 656 and
+2{,}127 edges, but its answer for an edge would depend on which training edges happen to lie
+closest to it and on a neighbourhood size that would itself need selecting. Ten class means
+add no classifier of their own, so the score reports how well the frozen encoder separates the
+classes, which is also why the semantic model's score does not vary with the training seed in
+Section~\ref{sec:results}. The \emph{trained
 head} route fits, within each fold, a small classifier on the training-fold embeddings: a
 per-fold standard scaler, then a 768--128--128--$C$ multilayer perceptron, where $C$ is the
 number of classes and equals ten on both graphs, with batch normalisation and ReLU in the

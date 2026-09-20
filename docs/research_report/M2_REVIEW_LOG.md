@@ -456,3 +456,32 @@ Performed for the introduction, related work and method, 2026-09-18:
   papers themselves were not read**, so the faithfulness of each description of prior work is
   not verified, only the keys and the internal consistency.
 - Whole-report final checks are still outstanding and belong at the end of the review.
+
+## 2026-09-20 — §3 method: why the prototype is the semantic model
+
+Student-requested addition, no audit checkpoint (explicit instruction: "add that
+speed-vs-parameter-free clarification to the report"). Prompted by an outside reader who argued
+the prototype should be justified as cheaper than a nearest-neighbour readout.
+
+- **Change.** `03_method.tex`, embedding-only paragraph (after "it measures what the encoder alone
+  knows"): four sentences stating the prototype is the semantic model because it fits no
+  classifier, not because it is cheap; that a nearest-neighbour readout costs nothing extra at
+  656 / 2,127 edges but depends on particular training edges and a neighbourhood size that would
+  need selecting; and that the seed-invariance of the semantic score follows from the same fact.
+- **Evidence.** Edge counts: `03_method.tex` L39 (already audited). Seed-invariance:
+  `results/multiseed_ladder_v2_head.json` `unsw_nb15/rungs/llm/std` = 0.0 and
+  `ton_iot/rungs/llm/std` = 0.0. No new numbers introduced.
+- **Deliberately not done.** No kNN experiment; the rung is frozen in the report and the defence
+  deck, and a kNN readout would still differ from the loop's consultant.
+- **Verification.** `tectonic main.tex --outdir build`: no overfull boxes, no undefined
+  references. `scripts/check_report_numbers.py`: exit 0, 0 unknown, 0 banned; the 4 terminology
+  warnings pre-date this edit (`03_method` L198 is the sentence that says CySecBERT is not an
+  LLM). Rendered page 22 (`pdftoppm`, now installed) inspected: paragraph flows, no overflow.
+- **Second change, applied on the student's instruction.** Same paragraph, "This is the ladder's
+  semantic model and the semantic input to the fusion model": a reader took "This" as the
+  prototype scorer, but L290 states the fusion model does not use the scorer and consumes the
+  768-d embedding directly. Reworded to "This is the ladder's semantic model, and it measures
+  what the encoder alone knows; the fusion model takes the same embedding with no scorer on
+  top." Consistent with §3.6 and with `PROJECT_NOTES.md` (AGAF consumes the standardised 768-d
+  embedding directly). Rebuilt: tectonic exit 0, 0 overfull boxes, no undefined references;
+  number audit exit 0 unchanged; page 22 re-rendered and inspected, no overflow.
