@@ -236,7 +236,7 @@ temperature 1.0 into weights $(\alpha_{g}, \alpha_{l})$ that convexly combine th
 \alpha_{g}(e) + \alpha_{l}(e) = 1 .
 \]
 
-The weights are per-edge, so the balance between structure and semantics is free to vary
+The weights are per-edge, so the weighting between structure and semantics is free to vary
 across the graph rather than being fixed at concatenation time. A two-layer MLP over
 $\mathbf{f}_{e}$ produces class logits. Both inputs are standardised before entering the
 module. The scalers are held in the trainer and persisted separately, so the module's

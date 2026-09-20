@@ -273,6 +273,46 @@ appears somewhere, not that it means what the sentence says.
 - Pages inspected as rendered images: cover, abstract, both table-of-contents pages, the eleven
   figure pages, a wide-table results page, the appendix tables, and every bibliography page.
 
+### Citation verification, 2026-09-20
+
+Six of roughly twenty-six substantive citations were read against the actual papers, chosen
+because the report's argument leans on them. Three problems were found and fixed.
+
+| ID | What changed |
+|---|---|
+| C1 | **Factual error.** §2.5 said LOGIN prompts the LLM with "node text and one-hop topology". The paper prompts with the node's own text and a description of its **two-hop** neighbourhood (`qiao2025login`, §5.4: "its original text $s_n$, the two-hop neighborhood $N_2(n)$ description, and the neighbor labels"). Corrected |
+| C2 | **Two passages were verbatim from DAS and unquoted.** "the refined semantics are fed back to update the same graph learner" is twelve consecutive words from the DAS v1 abstract; "refinement loop monotonically decreases a task-adaptive surrogate objective" is eight words from its Appendix B. Both reworded in §2.5, and the introduction's shorter version of the same sentence with them |
+| C3 | §2.5 and §1 described DAS's setting as "general text-rich graphs". Its abstract says it is evaluated "on both text-rich and text-free graphs", and its gains concentrate on structure-dominated ones. The structural-statistics-as-sentence device the report credits DAS with is what DAS uses for its **text-free** graphs. Both passages now say so |
+
+**Similarity check.** An n-gram comparison between the report and the four papers downloaded in
+full (DAS, E-GraphSAGE, LOGIN, Sentence-BERT) found two distinct 8-word overlaps before the fix,
+both from DAS. After the fix, and after rewording one coincidental 7-word collocation that
+appeared in §2.3 and §3.6 ("the balance between structure and semantics is"), **zero overlaps of
+seven words or more remain** against those four sources.
+
+**Verified correct, quoting the source**
+
+| Claim | Source | Verdict |
+|---|---|---|
+| E-GraphSAGE classifies an edge from the concatenation of its two endpoint embeddings | Eq. 5: "the edge embeddings ... are calculated as the concatenation of the node embeddings of nodes u and v" | correct |
+| Its published Eq. 4 aggregates edge features | "our newly proposed neighborhood aggregator function creates the aggregated embeddings of the sampled neighborhood edges" | correct |
+| Node features initialised to ones | "We use the vector $x_v = \{1,...,1\}$ to initialise the node features" | correct, matches the contract's `node_init` |
+| LOGIN uses MC-dropout variance to find uncertain nodes | §5.2, "Monte Carlo dropout variational inference", "the variance of the predictions" | correct |
+| Right: explanation appended to node text and re-embedded | §5.5.1, "we append the explanation $e_n$ ... to its original text $s_n$" and Eq. 9 | correct |
+| Wrong: edges pruned | §5.5.2, "we prune edges based on node similarity scores" | correct in substance; the report omits that pruning is by a similarity threshold rather than wholesale |
+| DAS: closed feedback loop, fixed GNN, implicit supervision | v1 abstract, verbatim | correct |
+| DAS: Majorization--Minimization, monotonic decrease | Appendix B and Theorem B.2 (Monotonic Descent) | correct |
+| DAS: five structural statistics | §3, "degree, betweenness, closeness, clustering coefficient, and square clustering coefficient" | correct, exact list |
+| DAS is named DAS in v1 and GES after the April-2026 revision | v1 abstract names DAS; the current arXiv version names GES | the bib note is correct |
+| RoGRAD claims priority for iterative refinement | abstract: "the first iterative paradigm", "transforms LLM augmentation for graphs from static signal injection into dynamic refinement" | correct |
+| Sentence-BERT reports MEAN as the stronger pooling | Table 6: MEAN 80.78 / 87.44, CLS 79.80 / 86.62, MAX 79.07 / 69.92; "The default configuration is MEAN" | correct in substance; the report says "the two common choices" where three were evaluated |
+
+**Not verified.** Twenty substantive citations remain unread, among them GLANCE, BiGTex, CAST,
+DET, GL-Fusion, GMLM, BertGCN, GMU, RAGFormer, XG-NID, TE-G-SAGE, GCN-2-Former, CPS-IDS,
+BSTFNet, GATv2, TESSERACT and Sommer. Two small imprecisions found above were reported to the
+author and left unfixed at this stage: LOGIN's similarity-thresholded pruning, and Sentence-BERT
+comparing three pooling strategies rather than two.
+
 ### Two problems found in Results that were NOT in the report — both fixed 2026-09-19
 
 The report was correct in both cases. They were left alone during the section reviews because

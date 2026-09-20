@@ -117,7 +117,7 @@ meet: after separate encoding, inside a dedicated attention mechanism, or repeat
 throughout the encoder. The other is whether the relative influence of the modalities is
 globally fixed or varies with the sample. The fusion stage built in this report belongs to the
 second family. A gate reads both projected representations and emits a pair of weights that sum
-to one, so the balance between structure and semantics is decided separately for every edge
+to one, so the weighting between structure and semantics is decided separately for every edge
 rather than by a single coefficient shared across the dataset. The second distinction becomes
 sharper on moving
 from general graph--text systems to intrusion detection, where the available GNN--language
@@ -163,20 +163,22 @@ on. They are prior work and are not claimed here as contributions.
 
 DAS is the closest prior work to the feedback mechanism used in this report. It implements
 an explicit closed feedback loop between a frozen GNN and an LLM: GNN predictions provide
-implicit supervision that steers semantic refinement, and the refined semantics are fed back
-to update the same graph learner \citep{thapaliya2025das}. DAS also constructs node
-descriptions by expressing structural statistics in natural language, using degree,
-betweenness, closeness, clustering coefficient and square clustering coefficient, and
-gives a Majorization--Minimization argument, the technique of repeatedly minimising an easier
-upper bound in place of a hard objective, under which its refinement loop monotonically
-decreases a task-adaptive surrogate objective. Its setting is node-level, over general
-text-rich graphs. Closed graph--language feedback, and the conversion of structural
+implicit supervision that steers semantic refinement, and the revised semantics then re-enter
+the same graph learner \citep{thapaliya2025das}. DAS also writes each node's structural
+statistics out as a sentence, using degree, betweenness, closeness, clustering coefficient and
+square clustering coefficient, and gives a Majorization--Minimization argument, the technique of
+repeatedly minimising an easier upper bound in place of a hard objective, under which repeated
+refinement never increases the surrogate objective it defines for the task. Its setting is
+node-level, and it is evaluated on graphs that carry node text and on graphs that do not, where
+that structural sentence is what supplies the missing text. Its reported gains concentrate on
+the structure-dominated graphs. Closed graph--language feedback, and the conversion of structural
 statistics into natural-language descriptions, already exist in the literature.
 
 LOGIN already couples uncertainty selection to language-model consultation. It uses
 MC-dropout variance, the spread of predictions obtained by running the network several times
-with dropout left switched on, to identify uncertain nodes. It then prompts the LLM with node
-text and one-hop topology and receives a predicted label together with a free-text explanation
+with dropout left switched on, to identify uncertain nodes. It then prompts the LLM with the
+node's own text and a description of its two-hop neighbourhood, and receives a predicted label
+together with a free-text explanation
 \citep{qiao2025login}. Incorporation depends on correctness: if the LLM's label matches the
 ground-truth label, the explanation is appended to the node text and the augmented text is
 re-embedded. If the label is wrong, edges in the node's one-hop neighbourhood are pruned.
