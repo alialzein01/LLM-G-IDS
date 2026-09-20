@@ -71,15 +71,11 @@ whether the fusion rule assigns the same modality weighting to every sample or a
 weighting to the input. The second axis is the more important one here. Four recurring
 families cover the relevant design space.
 
-The simplest family is late fusion with a fixed interface between branches. GMLM uses
-separate graph and language towers, concatenates their representations, and passes the
-result to an MLP \citep{sinha2025gmlm}. Its own comparison explicitly distinguishes this
-design from cross-attention, gating, and learned modality weights. BertGCN gives an even
-cleaner example of fixed weighting: its final prediction linearly interpolates a GCN
-prediction and a BERT prediction using a global hyperparameter \citep{lin2021bertgcn}. Every
-sample receives the same interpolation coefficient. These methods keep the encoders modular,
-but the fusion rule never decides that one modality should matter more for one input and
-less for another.
+The simplest family fixes the interface between the branches in advance. BertGCN is the
+clearest example: its final prediction linearly interpolates a GCN prediction and a BERT
+prediction using a single global hyperparameter \citep{lin2021bertgcn}. Every sample receives
+the same interpolation coefficient. Such designs keep the encoders modular, but the fusion
+rule never decides that one modality should matter more for one input and less for another.
 
 A second family introduces input-dependent gates. The Gated Multimodal Unit uses
 multiplicative gates to determine how each modality contributes to the fused activation
@@ -99,9 +95,12 @@ textual descriptions restore \citep{lee2025cast}. The semantic representation is
 not a duplicate encoding of graph structure. BiGTex goes further and interleaves a two-way
 exchange: structural information enters the language model as a soft prompt, and text
 returns to the graph side through cross-attention with the query supplied from the graph
-side \citep{beiranvand2026bigtex}. Attention-based interaction differs from global
-interpolation because its interaction weights are derived from the representations of the
-current input.
+side \citep{beiranvand2026bigtex}. GMLM runs the exchange in both directions at once: the
+language embeddings attend to the graph embeddings and the graph embeddings attend to the
+language embeddings, and the two attended results are concatenated before classification, a
+design its authors set explicitly against simple concatenation \citep{sinha2025gmlm}.
+Attention-based interaction differs from global interpolation because its interaction weights
+are derived from the representations of the current input.
 
 The fourth family removes a distinct late-fusion stage altogether by interleaving structural
 and semantic processing throughout the encoder. DET uses exactly the terms ``structural

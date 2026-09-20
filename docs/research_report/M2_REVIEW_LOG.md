@@ -307,11 +307,41 @@ seven words or more remain** against those four sources.
 | RoGRAD claims priority for iterative refinement | abstract: "the first iterative paradigm", "transforms LLM augmentation for graphs from static signal injection into dynamic refinement" | correct |
 | Sentence-BERT reports MEAN as the stronger pooling | Table 6: MEAN 80.78 / 87.44, CLS 79.80 / 86.62, MAX 79.07 / 69.92; "The default configuration is MEAN" | correct in substance; the report says "the two common choices" where three were evaluated |
 
-**Not verified.** Twenty substantive citations remain unread, among them GLANCE, BiGTex, CAST,
-DET, GL-Fusion, GMLM, BertGCN, GMU, RAGFormer, XG-NID, TE-G-SAGE, GCN-2-Former, CPS-IDS,
-BSTFNet, GATv2, TESSERACT and Sommer. Two small imprecisions found above were reported to the
-author and left unfixed at this stage: LOGIN's similarity-thresholded pruning, and Sentence-BERT
-comparing three pooling strategies rather than two.
+### Second citation pass, 2026-09-20
+
+Twelve further papers read. One error, significant enough to move a paragraph.
+
+| ID | What changed |
+|---|---|
+| C4 | **GMLM was the lead example of the wrong family, and the claim about it was backwards.** §2.3 said GMLM "uses separate graph and language towers, concatenates their representations, and passes the result to an MLP" and that "its own comparison explicitly distinguishes this design from cross-attention, gating, and learned modality weights". The paper's third stated contribution is "a bi-directional cross-attention fusion module that moves beyond simple concatenation", and its methods section repeats "we move beyond simple concatenation and employ a bi-directional cross-attention mechanism". It runs Graph-to-Text and Text-to-Graph attention and concatenates the two *attended* results. GMLM moved to the third family beside RAGFormer, CAST and BiGTex, described as its authors describe it; the first family now rests on BertGCN, which the text already called the cleaner example. The four-family structure and this report's own placement in the second family are unchanged |
+
+**Verified correct in this pass, against the source**
+
+| Paper | Claim | Verdict |
+|---|---|---|
+| GLANCE | lightweight router, advantage-based objective because LLM calls are non-differentiable, gains on heterophilous nodes | all three verbatim in the abstract |
+| BertGCN | final prediction interpolates GCN and BERT with one global hyperparameter | exact: $Z = \lambda Z_{GCN} + (1-\lambda) Z_{BERT}$, "$\lambda$ controls the tradeoff" |
+| GMU | multiplicative gates decide how modalities influence the activation | verbatim |
+| RAGFormer | stacks the branch embeddings as a token sequence, self-attention with a residual | verbatim: "stack all node embeddings ... into a sequence", "a self-attention layer followed by a residual connection" |
+| CAST | cross-attention, materials property prediction, graphs lose global structure that text restores | confirmed |
+| BiGTex | GNN embeddings enter the LLM as soft prompts; text returns by cross-attention with the graph as query | all three confirmed, including "the graph embedding serves as the query" |
+| DET | uses the terms "structural encoder" and "semantic encoder"; argues against late fusion | confirmed; it contrasts itself with methods that "concatenate the output embeddings of different encoding layers" |
+| GL-Fusion | message passing folded into every transformer layer, no separate fusion module | confirmed |
+| Dual-Stream | trainable scoring function emitting a scalar weight per modality per input | confirmed: "a trainable feedforward attention scoring function" |
+| XG-NID | LLM used only after classification; "dual modality" means flow-level and packet-level | both confirmed |
+| GATv2 | GAT's attention ranking is unconditioned on the query node | verbatim, "static attention" |
+| TE-G-SAGE | edge-aware GraphSAGE with SHAP, chronological evaluation | confirmed |
+
+**Coverage after two passes: 18 verified, 4 errors found and fixed.**
+
+**Still unread, 19 citations, all lower risk:** BSTFNet, CPS-IDS, GCN-2-Former, TESSERACT,
+Sommer, Arp et al., Scarfone, CySecBERT, the two dataset papers, NetFlow standardisation, and
+the standard tooling citations (GraphSAGE, GAT, BERT, AdamW, PyTorch Geometric, scikit-learn,
+focal loss, Efron).
+
+**Two small imprecisions reported and left unfixed at the author's discretion:** LOGIN prunes
+edges below a similarity threshold rather than wholesale, and Sentence-BERT compared three
+pooling strategies rather than "the two common choices".
 
 ### Two problems found in Results that were NOT in the report — both fixed 2026-09-19
 
