@@ -1,0 +1,24 @@
+{
+  "hardware": "Apple M1 Pro, 8 cores, MPS",
+  "model": "markusbayer/CySecBERT",
+  "model_load_seconds": 3.2,
+  "batch_size": 32,
+  "max_length": 128,
+  "datasets": {
+    "unsw_nb15": {
+      "n_edges": 656,
+      "encode_seconds": 3.83,
+      "edges_per_second": 171.2,
+      "ms_per_edge": 5.841,
+      "fusion_train_5fold_seconds": 6.4
+    },
+    "ton_iot": {
+      "n_edges": 2127,
+      "encode_seconds": 13.28,
+      "edges_per_second": 160.2,
+      "ms_per_edge": 6.241,
+      "fusion_train_5fold_seconds": 17.3
+    }
+  },
+  "timing_note": "Encoding is a forward pass per edge and is the dominant per-edge cost. Training times are for one five-fold run of the fusion stage at one seed, on the same machine, and are offline costs paid once."
+}

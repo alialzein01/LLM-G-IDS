@@ -110,7 +110,7 @@ so nobody has to discover them.
 | 5 | AGAF is not separated from the graph encoder on either dataset | §4.2, reported as a negative result rather than omitted |
 | 6 | The graphs are small: 656 and 2,127 edges | §3.2 and §5. Classes of 12 to 40 edges move substantially on one edge, and the report says so beside every per-class claim |
 | 7 | The margin against E-GraphSAGE on UNSW looks like an architectural win | §4.6 and Figure 7. It is a representation effect, decomposed: ~45% tuning, ~30% node features, ~25% architecture |
-| 8 | `head_alone` is not reported as a rung | Deliberate scope decision, recorded in `CLAIM_EVIDENCE_MAP.md` §B′ row B5. See §5 below |
+| 8 | `head_alone` is reported in prose, not as a rung | Decision reversed 2026-09-21; §4.2 and §5.4. See §5 below |
 
 ---
 
@@ -198,14 +198,16 @@ Two defects were found while closing these, neither of them in the audit's list:
 
 ## 5. Scope decisions a reader might mistake for omissions
 
-**`head_alone` is not a rung.** The trained head standing alone scores 0.8374 on UNSW and
-0.5081 on ToN, above the loop's 0.8341 and 0.5044 on both, and the loop is *not* separated
-from it (−0.0030 and −0.0028, sign unstable across seeds). The report's ladder is graph
-encoder, semantic rung, AGAF, loop. It reports the mechanism's effect inside the loop rather
-than the head as a comparative rung. This is a deliberate scope decision taken on 2026-09-11,
-recorded in `CLAIM_EVIDENCE_MAP.md` §B′ row B5 as **NOT REPORTED**, not an oversight and not a
-suppressed negative. Note that `PROJECT_NOTES.md` still carries the older instruction to report
-`head_alone` in every table; that file is the project's working rule sheet, not the report.
+**`head_alone` is reported, in prose, and is still not a rung.** The trained head standing
+alone scores 0.8374 on UNSW and 0.5081 on ToN, above the loop's 0.8341 and 0.5044 on both, and
+the loop is *not* separated from it (−0.0032 and −0.0032, sign unstable across seeds). The
+2026-09-11 decision to leave this out of the report was reversed on 2026-09-21: §4.2 now gives
+the head's standalone scores, its separated margin over the GNN model, and the non-separation
+against the loop, and §5.4 reads it as the isolation experiment seen from the other side. The
+ladder is unchanged — graph encoder, semantic rung, AGAF, loop — because the head is a
+component the loop contains, not a parallel stage. `PROJECT_NOTES.md`'s standing instruction to report
+`head_alone` alongside the loop's gains is therefore now consistent with the report as well as
+with internal analysis.
 
 **Fold-partition variance is not measured anywhere.** One partition, generated at seed 42 and
 held fixed, so the seed-matched bootstrap is a paired comparison. Every error bar in the

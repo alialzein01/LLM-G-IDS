@@ -19,6 +19,11 @@
 \usepackage[hidelinks]{hyperref}
 
 \graphicspath{{figures/}}
+% Let a tall figure share a page with text instead of taking a page of its own.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
 \onehalfspacing
 \setlength{\parindent}{1.25em}
 \setlength{\parskip}{0.25em}
@@ -35,6 +40,9 @@
 \begin{document}
 
 \input{sections/00_titlepages}
+
+\input{sections/00_dedication}
+\clearpage
 
 \input{sections/00_abstract}
 \clearpage

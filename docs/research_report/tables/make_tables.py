@@ -290,7 +290,12 @@ def table_mechanism() -> str:
     return wrap(
         "Mechanism in isolation, output fusion disabled in every arm. Means are over three "
         "seeds; intervals are paired over the fifteen (seed, fold) pairs. Captured share is the "
-        "arm's gain as a fraction of the oracle's.",
+        "arm's gain as a fraction of the oracle's. The two rightmost rows are computed from the "
+        "\\emph{mean} column of this table, headroom as oracle minus control and each share as "
+        "that arm's mean minus control over the same denominator; the interval column beside it "
+        "reports a paired bootstrap mean over resampled (seed, fold) pairs, which is a different "
+        "estimator. Dividing an interval column entry by the headroom therefore does not "
+        "reproduce the share printed below it.",
         "tab:mechanism",
         body,
         size="footnotesize",

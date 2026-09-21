@@ -61,7 +61,7 @@ them is the largest single effect measured in this work.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_ladder}
-\caption{The four rungs on both datasets, with the feedback model drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic model is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant feedback model; the arrow between the two feedback model bars carries an interval, given in the text. The two panels have independent y-axes and their absolute heights are not comparable.}
+\caption{The four rungs on both datasets, with the feedback model drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic model is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant feedback model; the arrow between the two feedback model bars carries an interval, given in the text. The two panels have independent y-axes that do not start at zero, and their absolute heights are not comparable.}
 \label{fig:ladder}
 \end{figure}
 
@@ -86,10 +86,10 @@ research questions are about.
 
 \input{tables/tab_metrics}
 
-\begin{figure}[tbp]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{fig_metrics}
-\caption{Macro-F1 and accuracy for the four rungs, both datasets. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. Every panel has its own y-axis. The accuracy panels span a far narrower range than the macro-F1 panels, and on NF-ToN-IoT that is the benign majority showing through.}
+\caption{Macro-F1 and accuracy for the four rungs, both datasets. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. Every panel has its own y-axis and none starts at zero. The accuracy panels span a far narrower range than the macro-F1 panels, and on NF-ToN-IoT that is the benign majority showing through.}
 \label{fig:metrics}
 \end{figure}
 
@@ -109,6 +109,17 @@ zero, at $+0.0509$ [$+0.0022$, $+0.1013$]. That is the same pattern the fusion m
 training-seed variance is admitted. The
 interval measures the change as a whole. It does not attribute it to the consultant, because
 the entropy percentile moved with it.
+
+Because the consultant turned out to carry the change, it was also scored standing alone. The
+trained head reaches $0.8374 \pm 0.0048$ on NF-UNSW-NB15 and $0.5081 \pm 0.0073$ on NF-ToN-IoT.
+It is separated above the GNN model on both, at $+0.0946$ [$+0.0403$, $+0.1470$] and $+0.0725$
+[$+0.0127$, $+0.1313$]. The feedback model is \emph{not} separated from it: $-0.0032$
+[$-0.0228$, $+0.0128$] on NF-UNSW-NB15 and $-0.0032$ [$-0.0342$, $+0.0299$] on NF-ToN-IoT, the
+sign is unstable across the three seeds, and the head carries the higher mean on both. We report
+this because the consultant experiment is the central manipulation of this study and a reader
+cannot weigh it without knowing where the consultant sits on its own. It is not tabulated as a
+rung, because it is a component the feedback model contains rather than a parallel stage of the
+ladder, and Section~\ref{sec:disc-contribution} reads it against the isolation experiment.
 
 Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into intervals.
 
@@ -215,6 +226,15 @@ Read together, the two experiments give RQ3 a split answer. Feedback plus fusion
 from fusion alone at every seed on both datasets. The injection mechanism alone, driven by any
 consultant we can actually build, is not separated from doing nothing.
 
+That null is not an inert channel. Churn, the fraction of edges whose predicted class changes
+between consecutive passes, measured in the canonical feedback model over every edge in the graph,
+training edges included, is 0.1372 on NF-UNSW-NB15 and 0.1246 on NF-ToN-IoT as three-seed means,
+with per-seed values from 0.0938 to 0.1675 and from 0.1070 to 0.1402. The injection path is
+alive and moves predictions on every pass. What it does not do is move the pooled score away from
+control once output fusion is removed. The churn figures are in
+\texttt{results/feedback\_churn.json}, and Section~\ref{sec:res-attention} contrasts them with the
+attention variant, whose churn is exactly zero.
+
 \subsection{Five attempts on the embedding-only consultant}
 \label{sec:res-prototype}
 
@@ -276,8 +296,9 @@ five.
 \subsection{Attention injection}
 \label{sec:res-attention}
 
-The alternative injection design biases graph attention rather than the edge representation. It
-produces churn of exactly 0.0000 in every configuration tested, including when handed the true
+Where the edge channel of Section~\ref{sec:res-ablations} changes roughly one prediction in eight
+between passes, the alternative injection design, which biases graph attention rather than the
+edge representation, produces churn of exactly 0.0000 in every configuration tested, including when handed the true
 label at $\pm 4$ nats. Not one prediction changes. Table~\ref{tab:mechanism} confirms it a third
 time under the current encoding: the oracle attention arm is $-0.0007$ [$-0.0211$, $+0.0180$] on
 NF-UNSW-NB15 and $+0.0114$ [$-0.0083$, $+0.0307$] on NF-ToN-IoT, neither separated from zero.
@@ -381,14 +402,14 @@ Performance falls with support on both datasets, and it falls much faster on NF-
 the four smallest classes hold 12 to 25 edges and no rung reaches 0.35 on three of them.
 Figure~\ref{fig:perclass} then gives the differences the Discussion argues about.
 
-\begin{figure}[tbp]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{fig_perclass_levels}
 \caption{Per-class F1 for the four rungs, both datasets, with classes ordered by edge count and the count under each label. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition. No per-class value carries an interval, and on the smallest classes a single edge moves F1 substantially.}
 \label{fig:perclasslevels}
 \end{figure}
 
-\begin{figure}[tbp]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{fig_perclass}
 \caption{Per-class differences between the feedback model and the two rungs below it, three-seed means, with class sizes in brackets. The scale is centred at zero and a black outline marks a loss. No per-class difference carries an interval, and on classes of 12 to 40 edges a single edge moves F1 substantially.}

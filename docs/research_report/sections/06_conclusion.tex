@@ -32,7 +32,10 @@ separated from doing nothing. The binding constraint is the consultant, not the 
 it.
 
 Two findings stand on their own. The fusion model is not separated from the GNN model
-on either dataset and falls below it under heavy imbalance. The alternative injection design,
+on either dataset and falls below it under heavy imbalance. The feedback model shows no such
+trade: it holds the top position in both regimes, and against the GNN model its largest per-class
+gains fall in classes of 13 to 40 edges, though no per-class difference carries an interval. The
+alternative injection design,
 which biases graph attention instead of the edge representation, changes no prediction at all,
 for two independent structural reasons on the two graphs.
 

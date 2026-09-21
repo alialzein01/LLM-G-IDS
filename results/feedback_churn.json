@@ -1,0 +1,42 @@
+{
+  "description": "Per-pass predicted-class churn of the edge-injection feedback mechanism, trained-head consultant, real advice. Churn is measured between consecutive loop passes, so it is the injection path's own footprint and does not include output fusion. Source traces: tmp/multiseed_v2/head/<dataset>_seed<seed>/feedback_trace_real.json",
+  "consultant": "trained_head",
+  "advice_mode": "real",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "contrast": {
+    "attention_injection_churn": 0.0,
+    "note": "The attention-bias variant produces churn of exactly 0.0000. The edge-injection mechanism does not. The two must not be quoted interchangeably."
+  },
+  "datasets": {
+    "unsw_nb15": {
+      "mean_churn_per_seed": {
+        "42": 0.15030487552285193,
+        "1": 0.1675135460164812,
+        "2": 0.09375000046566129
+      },
+      "mean_churn_3seed": 0.1371894740016648,
+      "min_churn": 0.09375000046566129,
+      "max_churn": 0.1675135460164812,
+      "flips_wrong_to_correct": 1001,
+      "flips_correct_to_wrong": 66,
+      "flip_note": "Summed over folds and iterations; an edge that changes class twice is counted twice. Direction only, not a clean per-edge count."
+    },
+    "ton_iot": {
+      "mean_churn_per_seed": {
+        "42": 0.1265632338821888,
+        "1": 0.10700517110526561,
+        "2": 0.14015044867992402
+      },
+      "mean_churn_3seed": 0.12457295122245947,
+      "min_churn": 0.10700517110526561,
+      "max_churn": 0.14015044867992402,
+      "flips_wrong_to_correct": 3168,
+      "flips_correct_to_wrong": 195,
+      "flip_note": "Summed over folds and iterations; an edge that changes class twice is counted twice. Direction only, not a clean per-edge count."
+    }
+  }
+}

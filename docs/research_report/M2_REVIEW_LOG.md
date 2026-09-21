@@ -5,16 +5,14 @@ This is review metadata, not a manuscript or independent scientific authority.
 ## Current checkpoint
 
 - Report root and manuscript: `docs/research_report/`, `main.tex`
-- Updated: 2026-09-18
-- Current section and state: Method — complete
-- Next action: audit Results (`sections/04_results.tex`), then pause at its discussion
-  checkpoint. Results is the longest section and the one every claim rests on.
-- Reviewed state: git `3443016` plus uncommitted edits to sections 1-3. Hashes after revision:
-  `01_introduction.tex` `c575f5bb4ae12bdaaabeacc67255e5462235425ee128cd4ce1429daa52ed1b66`,
-  `02_related_work.tex` `1bc62a03bcf270461c6b190f2126a4010aa795bb4666d423f3d91beca7401d43`,
-  `03_method.tex` `761c1235543d487c4f7fb6050bfe8336e6958ae778a22950e5e55de955f09cdd`.
-  Commits `cf62461`, `376ca41`, `3443016` landed mid-review and are accounted for below.
-  `HANDOFF.md` and `number_allowlist.txt` also carry small corrections from this review.
+- Updated: 2026-09-22
+- Current section and state: whole-report story and figure pass — revised and verified
+- Next action: ST4 (head-alone qualifier beside the loop's gain in abstract, §1.3, §5.4 ¶1,
+  conclusion) and ST7 (§5.6/§5.7 overlap) are still pending the student's decision; everything
+  else in the 2026-09-22 entry is applied.
+- Reviewed state: git `5fa41ed` plus uncommitted edits dated 2026-09-21 (head_alone reported in
+  prose, fusion-gate rewrite, churn paragraph, cost paragraph, §5.7, dedication, war statement).
+  Hashes (sha256, first 16): `00_abstract.tex` 60abb97706f7e824; `01_introduction.tex` 11b44115a8690c7d; `03_method.tex` c22b7a20c9129dab; `04_results.tex` 5039c7bd003dd38e; `05_discussion.tex` cdc24ccc45c20bbb; `06_conclusion.tex` 626d6bcfab2b5fa2; `07_appendices.tex` 44c4ef9cdca09414; `99_statements.tex` fc2b029451cfdfef.
 
 ## Writing profile and scope
 
@@ -24,9 +22,10 @@ This is review metadata, not a manuscript or independent scientific authority.
 - Agreed editorial scope: explain and reorganise; discuss major structural changes first.
 - Evidence scope: targeted checks against `results/*.json` and `dataset_stats.json`; no experimental reruns.
 - Current project scope decisions:
-  - `head_alone` is deliberately NOT a comparative rung in the report
-    (author's decision 2026-09-11; `CLAIM_EVIDENCE_MAP.md` §B′ row B5; `HANDOFF.md` §5).
-    `PROJECT_NOTES.md` still carries the opposite rule for internal analysis; the report is the exception.
+  - `head_alone` is reported in prose (§4.2, §5.4) but is still not a ladder rung
+    (decision of 2026-09-11 reversed 2026-09-21; `CLAIM_EVIDENCE_MAP.md` §B′ row B5 now REPORTED;
+    `HANDOFF.md` §5). `PROJECT_NOTES.md`'s rule, report `head_alone` wherever the loop's gain is
+    stated, now applies to the report as well.
   - Report stage names: GNN model / semantic model / fusion model / feedback model.
     Artifact keys keep the older names (`agaf_vs_gnn`, `loop_vs_agaf`). Do not rename keys.
   - "selected", never "tuned", for `top_k_percent` and `injection_scale`.
@@ -485,3 +484,71 @@ the prototype should be justified as cheaper than a nearest-neighbour readout.
   top." Consistent with §3.6 and with `PROJECT_NOTES.md` (AGAF consumes the standardised 768-d
   embedding directly). Rebuilt: tectonic exit 0, 0 overfull boxes, no undefined references;
   number audit exit 0 unchanged; page 22 re-rendered and inspected, no overflow.
+
+## 2026-09-22 — Story and figure pass (audited, awaiting feedback)
+
+Student's brief: a story that holds, focused on the mechanism and what was tried, convincing,
+with severe imbalance as the strongest point; review the figures visually. This pass covers the
+uncommitted 2026-09-21 additions, which no earlier section audit saw, plus all eleven rendered
+figure pages (`pdftoppm`, 100 dpi, with 220 dpi crops of Figure 3 and two footnotes).
+
+**Verified, no change needed**
+
+| Addition | Checked against | Result |
+|---|---|---|
+| §3.6 fusion rewrite (per-dimension sigmoid gate over [g, l, \|g−l\|, g⊙l]; feature-wise softmax attention; gate-entropy term 0.01; 128-unit MLP, dropout 0.2) | `src/models/fusion_classifier.py:90-114,150-170`, `train_fusion.py:46-50,103,110-121` (`FUSION_MODE="feature_gate"`, `AGAFFusionEdgeClassifier`, `FEATURE_ATTENTION_ENTROPY_LAMBDA=0.0`) | exact match; omitting the attention-entropy term is correct because its weight is zero |
+| §4.2 head-alone paragraph (0.8374±0.0048, 0.5081±0.0073; +0.0946 [+0.0403,+0.1470], +0.0725 [+0.0127,+0.1313]; −0.0032 [−0.0228,+0.0128], −0.0032 [−0.0342,+0.0299]; sign unstable) | `multiseed_ladder_v2_head.json` rungs.head_alone; both contracts `multi_seed.comparisons.{feedback_vs_head_alone,head_alone_vs_gnn}` | exact match |
+| Appendix cost paragraph | `results/encoding_cost.json` | exact match, all ten values |
+| §1 addition (58.7% / 7.9%, 49/656, 1,501/2,127) | verified in earlier audits | match |
+| Figure 2 caption ratios 582:1, 145.5:1, 12.4:1 | 1746/3, 1746/12, 311/25 | arithmetic correct |
+| §4.5 churn means and flip totals | `results/feedback_churn.json`; recomputed from the six `tmp/multiseed_v2/head/*/feedback_trace_real.json` | values reproduce exactly, but see ST1: the flips are not what the sentence says they are |
+
+**Findings** (see the audit delivered in chat for the proposed wording)
+
+| ID | Priority | Where | Issue |
+|---|---|---|---|
+| ST1 | necessary | §4.5 first paragraph (churn) | `wrong_to_correct`/`correct_to_wrong` are computed on test edges against the loop's **first pass** (`train_feedback.py:_build_iteration_rows`), not between consecutive passes; that first pass is not a classifier (test macro-F1 averages 0.1575 on UNSW and 0.1077 on ToN across the 15 fold-runs; min 0.0074 / 0.0018). Summing over iterations double-counts an edge that stays corrected. Churn (`feedback_classifier.py:1343`) is over all edges, including training edges where the consultant's advice is in-fold. The artifact's own `flip_note` misdescribes the double counting. Proposed: keep churn as "not inert" with the all-edges caveat, drop the flip sentences and "moves them the right way", relocate to §4.3 |
+| ST2 | necessary | abstract, conclusion | Imbalance appears only as setup; no imbalance result is stated in either. Add one supported sentence to each |
+| ST3 | necessary | §1 (and everywhere "factor of 47") | 582:1 uses two classes the metric excludes; over scored classes the ratio is 145.5:1 (≈12× UNSW). Only Figure 2's caption discloses it. State both once in §1 |
+| ST4 | necessary (PROJECT_NOTES.md rule, 2026-09-21) | abstract, §1.3 headline, §5.4 ¶1, conclusion ¶3 | The loop's separated gain is stated without the head-alone qualifier beside it |
+| ST5 | optional | §5.2 | Three supported imbalance observations unused: oracle headroom 3× larger on ToN (+0.1090 vs +0.0345); the imbalance design choices (focal loss, inverse-frequency weights, macro-F1, oversampling measured harmful) never gathered; prototype collapse consistent with a class mean from 12–35 edges in whitened 768-d (ToN contract limitation 2), as "consistent with" only |
+| ST6 | optional | §4.5 heading | Subsection titled "Attention injection" opens with edge injection; resolved by ST1's relocation |
+| ST7 | optional | §5.6 / §5.7 | Deployment-valid aggregation listed in both; cross-reference instead of repeating |
+| FG1 | necessary | Figure 3 caption and legend | The traced edge ("entropy 1.42 nats", "consultant says Backdoors") reads as measured; it is illustrative and must say so |
+| FG2 | optional | Figures 4, 6, 7, 9, 10, 11 | In-figure footnotes at 6.5 pt (`make_plots.py`), below the brief's 9 pt; most content is already in the captions |
+| FG3 | necessary (layout) | pages 34, 46, 47 | Figures 5, 10, 11 each alone on a page that is 40–50% blank; `[tbp]` → `[!htbp]` or reduced height; 10 and 11 could share a page |
+| FG4 | optional | Figures 4, 5 | Truncated y-axes (0.2 and ~0.7) not declared in captions |
+
+Figures 1, 2, 6, 7, 8, 9 inspected and found consistent with their captions and with the
+contracts (values re-checked in the 2026-09-19 pass; nothing in them changed since).
+Build state: 71 pages, 0 overfull boxes, 4 pre-existing underfull warnings.
+
+### Applied 2026-09-22
+
+Student instruction: "for the figures i need all to be clean. for the story findings, we need to
+make the imbalance story stronger, and all we need for the churn story is to state that churn > 0
+and it is alive." Read as: ST1 (reduced to alive/churn>0), ST2, ST3, ST5, FG1–FG4. ST4 and ST7
+not approved and not applied; ST6 fell away with ST1's relocation.
+
+| ID | What changed |
+|---|---|
+| ST1 | §4.5's flip paragraph removed. One paragraph added to §4.3 after the split RQ3 answer: churn defined, stated as measured over every edge including training edges, 0.1372 / 0.1246 with per-seed ranges, "alive and moves predictions on every pass", and the contrast that the pooled score does not move once output fusion is removed. §4.5's attention paragraph opens with "Where the edge channel ... changes roughly one prediction in eight between passes". No flip counts anywhere. `results/feedback_churn.json` untouched; its `flip_note` still misdescribes the counting (noted, not fixed) |
+| ST2 | Abstract: one sentence on the heavier regime (fusion below GNN as an ordering of means; feedback top on both, largest per-class gains over the GNN model in the smallest classes). Conclusion: "The feedback model shows no such trade ... classes of 13 to 40 edges, though no per-class difference carries an interval" |
+| ST3 | §1: the 47 ratio is now stated to count the two excluded classes; scored-class ratio 145.5:1, roughly twelve times; the benign share and the ≤35-edge class counts given as the descriptors that do not depend on the choice |
+| ST5 | §5.2, end of subsection: the three imbalance design choices (macro-F1, focal loss with inverse-frequency weights, oversampling measured harmful, all from §3.9/§4.2); oracle headroom +0.1090 vs +0.0345 as three-seed means; prototype collapse (0.2785 vs 0.4336; 0.7353 vs 0.7437) stated as *consistent with* the scorer rather than the encoder breaking. First placed mid-subsection, then moved to the end because it separated "that trade" from its referent |
+| FG1 | Figure 3 caption and in-figure legend now say the trace is one illustrative edge whose values are not measurements; `fig_loop_flow.tex` recompiled |
+| FG2 | `make_plots.py` footnotes 6.5→7.5 pt, in-axis callouts 6.5/6.8→7 pt; all six data figures regenerated |
+| FG3 | `main.tex`: `\topfraction` 0.85, `\bottomfraction` 0.6, `\textfraction` 0.1, `\floatpagefraction` 0.75; Figures 5, 10, 11 to `[!htbp]`; heights 5.2→4.6, 5.6→5.0, 4.3→3.9 in. All three now share a page with text (PDF pages 34, 46, 47) |
+| FG4 | Figure 4 and 5 captions state that the y-axes do not start at zero |
+
+**Self-corrections during FG3.** Raising the per-class tick labels to 7 pt made "Reconnaissance"
+collide with its neighbours, and rotating them made it worse and pushed the legend into the
+panel title. Tick labels returned to 6.5 pt unrotated, legend anchor raised, height 5.0 in;
+re-rendered and clean.
+
+**Checks.** `tectonic`: 71 pages, 0 overfull boxes, 4 pre-existing underfull warnings in the
+bibliography and appendix. `check_report_numbers.py`: exit 0, 0 unknown, 0 unverified, 0 banned,
+3 pre-existing terminology warnings. 0 em dashes. Rendered and inspected: all eleven figure pages
+after regeneration (Figure 10 three times), the abstract, introduction pages 5–6, §4.3, §5.2
+pages 49–50, the conclusion, and a 30-dpi ink scan of every page, which found only the
+by-design section tails (PDF pages 48, 56, 58) and front matter below 5% coverage.

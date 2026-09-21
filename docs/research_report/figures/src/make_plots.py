@@ -126,7 +126,7 @@ def fig_ladder():
         # the semantic model is deterministic, so it gets a note, not a zero bar
         ax.annotate("deterministic,\nstd 0.0000", xy=(1, vals[1]),
                     xytext=(1, vals[1] + (ylim[1] - ylim[0]) * 0.035),
-                    ha="center", va="bottom", fontsize=6.5, color="#555555")
+                    ha="center", va="bottom", fontsize=7, color="#555555")
 
         # the consultant change, drawn between the two feedback model bars
         span = ylim[1] - ylim[0]
@@ -144,7 +144,7 @@ def fig_ladder():
              "Open circles are the three individual seeds. The consultant change is separated on "
              "NF-UNSW-NB15 and not on NF-ToN-IoT;\nthe two feedback model versions also differ in their "
              "selected top-k (31 to 29, and 25 to 16). The two panels have independent y-axes.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_ladder")
 
 
@@ -189,7 +189,7 @@ def fig_imbalance():
                           lw=0.6))
 
     axes[1].annotate("excluded from the metric,\nkept in the graph for\nmessage passing",
-                     xy=(4, 1.0), xytext=(18, 2.3), fontsize=6.5,
+                     xy=(4, 1.0), xytext=(18, 2.3), fontsize=7,
                      color="#444444", ha="left", va="center",
                      arrowprops=dict(arrowstyle="-", lw=0.5, color="#888888"))
 
@@ -262,7 +262,7 @@ def fig_mechanism():
              "Output fusion is disabled in every arm, so this measures the injection path "
              "alone. Only the oracle converts the\nchannel; on NF-ToN-IoT the trained-head "
              "consultant is separated in the wrong direction.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_mechanism")
 
 
@@ -305,7 +305,7 @@ def fig_decomposition():
     fig.text(0.5, 0.018,
              "Point estimates only; every level is a three-seed mean and no step carries "
              "an interval or a separation claim.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_decomposition")
 
 
@@ -332,7 +332,7 @@ def fig_perclass():
         rows.append([a, b]); labels.append(f"{name}  ({n})")
     M = np.array(rows)
 
-    fig, ax = plt.subplots(figsize=(6.1, 4.3))
+    fig, ax = plt.subplots(figsize=(6.1, 3.9))
     im = ax.imshow(M, cmap="RdBu_r", vmin=-0.22, vmax=0.22, aspect="auto")
     ax.set_xticks([0, 1])
     ax.set_xticklabels([f"feedback {MINUS} fusion", f"feedback {MINUS} GNN"])
@@ -367,7 +367,7 @@ def fig_perclass():
              "Three-seed means. Class sizes in brackets. A black outline marks a loss. "
              "No per-class difference carries an interval,\nand on classes of 12 to 40 "
              "edges a single edge moves F1 substantially.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_perclass")
 
 
@@ -424,7 +424,7 @@ def fig_comparisons():
                          (2.58, "prototype consultant"),
                          (0.58, "consultant-independent")):
             ax.text(0.012, yh, name, transform=ax.get_yaxis_transform(),
-                    fontsize=6.8, color="#555555", va="bottom", ha="left")
+                    fontsize=7, color="#555555", va="bottom", ha="left")
         ax.set_yticks(range(n))
         ax.set_yticklabels([r[1] for r in rows][::-1])
         ax.set_ylim(-0.6, n - 0.05)
@@ -454,7 +454,7 @@ def fig_comparisons():
              "seed-matched procedure and not once training-seed\nvariance is admitted; the "
              "two-level result decides. Under the prototype consultant the feedback model "
              "against the semantic model\nis separated on NF-ToN-IoT and not on NF-UNSW-NB15.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_comparisons")
 
 
@@ -474,7 +474,7 @@ def fig_metrics():
     metrics = [("macro_f1", "pooled out-of-fold macro-F1"),
                ("accuracy", "accuracy")]
 
-    fig, axes = plt.subplots(2, 2, figsize=(6.1, 5.2))
+    fig, axes = plt.subplots(2, 2, figsize=(6.1, 4.6))
     for row, (key, title) in enumerate(DATASET_TITLES):
         block = head[key]["rungs"]
         for col, (metric, ylabel) in enumerate(metrics):
@@ -525,7 +525,7 @@ def fig_metrics():
              "the three seeds. The semantic model is deterministic and has none.\nEvery panel has "
              "its own y-axis. On NF-ToN-IoT the benign class holds 82% of scored edges, so "
              "accuracy stays high\nfor every graph rung while macro-F1 separates them.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_metrics")
 
 
@@ -543,7 +543,7 @@ def fig_perclass_levels():
     rungs = [("gnn", "GNN model", C_GRAPH), ("llm", "semantic model", C_SEM),
              ("agaf", "fusion model", C_FUSE), ("loop", "feedback model", C_LOOP)]
 
-    fig, axes = plt.subplots(2, 1, figsize=(6.1, 5.6))
+    fig, axes = plt.subplots(2, 1, figsize=(6.1, 5.0))
     for ax, (key, title) in zip(axes, DATASET_TITLES):
         block = per_class[key]
         counts = block["class_counts"]
@@ -572,14 +572,14 @@ def fig_perclass_levels():
         tidy(ax)
 
     axes[0].legend(ncol=4, fontsize=7.5, frameon=False,
-                   loc="upper center", bbox_to_anchor=(0.5, 1.30))
-    fig.tight_layout(rect=(0, 0.075, 1, 0.945))
+                   loc="upper center", bbox_to_anchor=(0.5, 1.42))
+    fig.tight_layout(rect=(0, 0.075, 1, 0.93))
     fig.text(0.5, 0.012,
              "Three-seed means with training-seed standard deviations; classes are ordered by "
              "edge count, given under each label.\nThe feedback model consults the trained head. "
              "No per-class difference carries an interval, and on the smallest classes\na single "
              "edge moves F1 substantially.",
-             ha="center", va="bottom", fontsize=6.5, color="#444444")
+             ha="center", va="bottom", fontsize=7.5, color="#444444")
     save(fig, "fig_perclass_levels")
 
 

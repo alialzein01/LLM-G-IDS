@@ -55,7 +55,7 @@ to our node features, and roughly 25\% to the architecture. Measured to the fusi
 architectural share is 15.1\%. A large headline margin against a published number is mostly a
 statement about the representation both models were given.
 
-\subsection{Imbalance is the axis the two datasets differ on}
+\subsection{Imbalance is the axis the two datasets were chosen to differ on}
 \label{sec:disc-imbalance}
 
 The two graphs were chosen to differ by roughly a factor of 47 in most-to-least-frequent class
@@ -76,6 +76,33 @@ under the prototype consultant the difference is not separated. Differing class 
 permit a comparison of shapes and not of levels, and on that comparison the property of
 collapsing under imbalance belongs to the fusion gate, not to the use of semantic evidence as
 such.
+
+That attribution names the regime the two graphs were selected to differ on, and it is the
+weaker of the two claims available. The graphs also differ structurally, as
+Section~\ref{sec:introduction} records and Section~\ref{sec:res-attention} uses, so with two
+datasets imbalance cannot be isolated from repeated address pairs or from density. What the
+comparison establishes is that the fusion gate is the stage whose behaviour inverts between
+the two regimes; which of the differences between them drives that inversion is not settled
+here.
+
+Three choices in the protocol exist because of that regime, and they should be read as part of
+the design rather than as defaults. Macro-F1 is the headline metric because it gives a 12-edge
+class the same weight as a 1{,}746-edge one. The objective is focal loss with inverse-frequency
+class weights fitted on the training fold, as Section~\ref{sec:method-protocol} states. And
+oversampling was measured rather than assumed: combined with those weights it double-corrects the
+imbalance and collapses the fusion stage, so it is off.
+
+Two further measurements sit on the same axis. The channel has more to give where the imbalance
+is heavier: as three-seed means, an always-correct consultant recovers $+0.1090$ through the
+injection path on NF-ToN-IoT against $+0.0345$ on NF-UNSW-NB15, roughly three times as much, so
+the edges the GNN model gets wrong under the heavier regime are ones a correct semantic
+judgement would fix. And the semantic model, which is far below the GNN model on NF-ToN-IoT at
+0.2785 against 0.4336 and close to it on NF-UNSW-NB15 at 0.7353 against 0.7437, fits nothing but
+a class mean in a fold-local whitened 768-dimensional space, and on NF-ToN-IoT seven of the
+classes it must locate hold 35 edges or fewer. That is consistent with the prototype scorer,
+rather than the encoder beneath it, being what the imbalance breaks, which is what the
+consultant experiment of Section~\ref{sec:res-ladder} found from the other direction. It is
+stated as consistent with, not as a cause, for the reason the paragraph above gives.
 
 \subsection{Where the feedback model's gain comes from}
 \label{sec:disc-echo}
@@ -127,6 +154,14 @@ faithful re-trained baseline. Under the prototype consultant neither the compari
 fusion model nor the one against the GNN model is separated on either dataset, and on
 NF-ToN-IoT it is not separated from E-GraphSAGE either, so the consultant is what turned those
 orderings of means into results.
+
+The consultant standing alone says the same thing from the other side. It is not separated from
+the full feedback model on either dataset, and carries the higher mean on both. That is what the
+isolation experiment predicts: if the injection path contributes nothing separated from zero,
+then the system cannot hold a separated margin over the component that supplies its semantic
+evidence. Two independent measurements therefore point at the same place. Replacing a scorer
+that fits nothing with one trained on the same frozen embeddings is what moved the ladder; the
+mechanism built around that consultant is not.
 
 What the configuration does not buy is a separated gain from the feedback mechanism itself.
 With output fusion disabled, so that advice can reach the classifier only by re-entering the
@@ -233,3 +268,26 @@ and not in content. Conditioning the advice on the graph model's top candidates 
 change the result, and it was excluded by design so that the semantic branch's contribution could
 be attributed to it alone. A future system that removes that constraint is testing a different
 question, and it should say so.
+
+\subsection{Scope, and the experiments this work did not reach}
+\label{sec:disc-scope}
+
+Several items in Section~\ref{sec:disc-limitations} are bounded by the time available rather
+than by anything about the method, and naming them as planned work is more useful than listing
+them as regrets. Four are immediate and each is already specified precisely enough to be picked
+up without re-deriving anything.
+
+Measuring fold-partition variance means repeating the whole ladder at several partition seeds,
+which multiplies every run reported here by the number of partitions; it is the only way to turn
+the $\pm$ values in Section~\ref{sec:results} from a lower bound into an estimate of total
+uncertainty. Re-seeding the consultant alongside the training seed would widen those intervals
+honestly, and is the single change that would most improve the evidence behind the separated
+comparisons. Measuring how much message passing contributes on NF-ToN-IoT, where 62.8\% of edges
+end at a destination of in-degree one, would establish whether the structural branch is doing
+graph work on that dataset or behaving as an edge-feature model with extra steps; the comparison
+is a run of the same encoder with message passing disabled. And the deployment-valid aggregation
+key discussed above changes the task rather than the code, which is why it is a programme rather
+than a patch.
+
+None of the four is blocked by anything other than time. They are the next steps of this work,
+not gaps in it, and they are recorded here in the order we would run them.

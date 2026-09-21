@@ -76,7 +76,7 @@ Figure~\ref{fig:imbalance} gives the resulting class sizes on both graphs.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_imbalance}
-\caption{Class sizes on a logarithmic axis, largest first. NF-UNSW-NB15 has one class at or below 35 edges; NF-ToN-IoT has seven. The two smallest NF-ToN-IoT classes stay in the graph for message passing and are excluded from the metric. The two graphs differ by roughly a factor of 47 in the ratio of the largest class to the smallest scored class.}
+\caption{Class sizes on a logarithmic axis, largest first. NF-UNSW-NB15 has one class at or below 35 edges; NF-ToN-IoT has seven. The two smallest NF-ToN-IoT classes stay in the graph for message passing and are excluded from the metric. The two graphs differ by roughly a factor of 47 in the ratio of the largest class to the smallest class present in the graph, 582:1 against 12.4:1. Measured over the classes the metric scores, those ratios are 145.5:1 and 12.4:1.}
 \label{fig:imbalance}
 \end{figure}
 
@@ -234,19 +234,39 @@ of it.
 \label{sec:method-fusion}
 
 The fusion model projects each modality into a shared 128-dimensional space through a linear layer, batch
-normalisation and ReLU, so 64 to 128 for the structural embedding and 768 to 128 for the semantic
-one. A gate consumes the concatenated projections and emits two logits, softmaxed at
-temperature 1.0 into weights $(\alpha_{g}, \alpha_{l})$ that convexly combine them:
+normalisation and ReLU, so 64 to 128 for the structural embedding $\mathbf{g}_{e}$ and 768 to 128
+for the semantic one $\mathbf{l}_{e}$. A gate then decides the balance between them, not as one
+weight per edge but as one weight per dimension. It reads both projections together with their
+elementwise absolute difference and product, and emits a 128-dimensional vector
+of independent sigmoid weights $\boldsymbol{\gamma}_{e} \in (0,1)^{128}$ that combines the two
+views channel by channel:
 
 \[
-\mathbf{f}_{e} = \alpha_{g}(e)\,\mathbf{g}_{e} + \alpha_{l}(e)\,\mathbf{l}_{e},
+\mathbf{f}_{e}
+= \boldsymbol{\gamma}_{e} \odot \mathbf{g}_{e}
++ \left(\mathbf{1} - \boldsymbol{\gamma}_{e}\right) \odot \mathbf{l}_{e},
 \qquad
-\alpha_{g}(e) + \alpha_{l}(e) = 1 .
+\boldsymbol{\gamma}_{e} = \sigma\!\left(
+W\left[\,\mathbf{g}_{e},\; \mathbf{l}_{e},\;
+\left|\mathbf{g}_{e}-\mathbf{l}_{e}\right|,\;
+\mathbf{g}_{e}\odot\mathbf{l}_{e}\,\right]\right) .
 \]
 
-The weights are per-edge, so the weighting between structure and semantics is free to vary
-across the graph rather than being fixed at concatenation time. A two-layer MLP over
-$\mathbf{f}_{e}$ produces class logits. Both inputs are standardised before entering the
+This is the gated multimodal unit's feature-wise form \citep{arevalo2017gmu} rather than a single
+scalar blend: the weights are per-edge \emph{and} per-dimension, so an edge can take some channels
+from structure and others from semantics instead of choosing one modality wholesale. Where this
+report quotes a gate value it is $\overline{\gamma}_{e}$, the mean over the 128 channels, read as
+the share given to the structural branch.
+
+A second, feature-wise attention step follows. A linear map over $\mathbf{f}_{e}$ is softmaxed
+across its own 128 dimensions and multiplied back into it, reweighting the fused vector's channels
+against one another before classification. A two-layer MLP over the result, with a 128-unit hidden
+layer, ReLU and dropout $0.2$, produces class logits.
+
+The objective adds one term to the focal loss of Section~\ref{sec:method-protocol}. The mean
+binary entropy of the gate on training edges is subtracted with weight $0.01$, which rewards
+gates that stay away from $0$ and $1$ and so discourages the module from collapsing onto one
+modality before it has a reason to. Both inputs are standardised before entering the
 module. The scalers are held in the trainer and persisted separately, so the module's
 \texttt{state\_dict} stays free of fitted statistics.
 
@@ -275,7 +295,7 @@ Figure~\ref{fig:loopflow} gives the stage as it runs.
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_loop_flow}
-\caption{One pass of the feedback model. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce.}
+\caption{One pass of the feedback model. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce. The vermillion trace follows one illustrative edge; its entropy, gate outcome and consultant verdict are not measurements.}
 \label{fig:loopflow}
 \end{figure}
 

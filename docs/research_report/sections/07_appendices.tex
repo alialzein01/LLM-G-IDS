@@ -229,6 +229,19 @@ pooled macro-F1 drifts by roughly 0.012 at a fixed seed, larger than several of 
 differences this report measures. One earlier finding in the project was retracted because
 of it.
 
+\paragraph{Computational cost.} Everything in this report was produced on one Apple M1 Pro
+laptop with 8 cores, using the MPS backend for semantic encoding and CPU for everything else.
+The semantic branch is the only per-edge cost that would follow the system into deployment,
+since it runs one frozen forward pass for each edge: at batch size 32 and a 128-token limit it
+encodes 171.2 edges per second on NF-UNSW-NB15 and 160.2 on NF-ToN-IoT, so 5.841 and 6.241
+milliseconds per edge, and all 656 and 2{,}127 edges in 3.83 and 13.28 seconds. Loading the
+encoder costs a further 3.2 seconds once per process. Training is an offline cost paid once:
+one five-fold run of the fusion stage at one seed takes 6.4 seconds on NF-UNSW-NB15 and 17.3
+on NF-ToN-IoT. These are graphs of a few hundred to a few thousand edges, so the figures say
+nothing about how the encoder would scale to per-flow traffic volumes; they establish that
+nothing in this study was compute-bound. Measurements are in
+\texttt{results/encoding\_cost.json}.
+
 \paragraph{Seeds and folds.} Three training seeds, 42, 1 and 2. The stratified five-fold
 partition is generated once at seed 42 and held fixed across all three, so the pooled
 out-of-fold edge set is identical between seeds and the seed-matched bootstrap is a paired

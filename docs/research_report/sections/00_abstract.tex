@@ -15,7 +15,10 @@ detection estimate.
 
 Two results carry the work. Given a classification head trained on the semantic embeddings as
 its consultant, the feedback model as a complete system is separated above every other rung
-and above every faithful re-trained baseline, on both datasets. Given the weaker
+and above every faithful re-trained baseline, on both datasets. The heavier imbalance regime is
+where the ladder changes shape: there the fusion model falls below the GNN model, as an ordering
+of means, while the feedback model keeps the top position on both graphs and takes its largest
+per-class gains over the GNN model in the smallest classes. Given the weaker
 embedding-only consultant it was first built with, no comparison against a structural rung is
 separated. With output fusion disabled, an oracle
 consultant converts the feedback channel into a separated gain on both datasets and no

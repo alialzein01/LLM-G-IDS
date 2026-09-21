@@ -45,12 +45,22 @@ attack classes contain 40 edges and the ninth contains 25, so only one falls at 
 35 edges. NF-ToN-IoT contains 2{,}127 edges, is 82.1\% benign, and has a most-to-least-frequent
 class ratio of $582{:}1$. Seven of its nine attack classes contain 35 edges or fewer. Its
 distribution is far more skewed. By the most-to-least class ratio, the two
-graphs differ by roughly a factor of 47 in imbalance severity.
+graphs differ by roughly a factor of 47 in imbalance severity. That ratio counts the two
+NF-ToN-IoT classes the metric excludes, \texttt{dos} and \texttt{ransomware}; over the classes
+the metric scores it is $145.5{:}1$, still roughly twelve times NF-UNSW-NB15's. The model faces
+the whole graph, so this report quotes the graph-level ratio, and the two descriptors that do not
+depend on that choice point the same way: 82.1\% of NF-ToN-IoT's edges are benign against
+47.4\%, and seven of its nine attack classes hold 35 edges or fewer against one.
 
 That difference is the methodological reason for using two datasets. A single dataset
 cannot separate a property of the architecture from a property of the class distribution
 that architecture happened to face. Holding the architecture fixed while changing the
 imbalance regime by roughly $47\times$ makes that distinction experimentally addressable.
+The two graphs are not matched on everything else, and we do not claim they are. They also
+differ in the share of edges that repeat an ordered address pair, 58.7\% against 7.9\%, and
+in size and density, at 49 nodes and 656 edges against 1{,}501 and 2{,}127. Two datasets
+cannot separate those axes from imbalance, and Section~\ref{sec:res-attention} uses them in
+their own right.
 RQ4 already asks how class imbalance affects fusion and feedback, and the two-dataset design
 gives that question two substantially different regimes to compare. No stage is assumed in
 advance to be sensitive or insensitive to that change.
