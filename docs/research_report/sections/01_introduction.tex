@@ -1,6 +1,8 @@
 \section{Introduction and Context}
 \label{sec:introduction}
 
+This section first introduces the intrusion-detection problem and the scope of the study. It then explains why graph and language representations are combined, states the research questions and contributions, and finally outlines the report.
+
 Intrusion detection is an operational problem as well as a classification problem.
 Missed attacks can leave harmful activity unchallenged, while false alarms consume
 analyst attention and make genuine incidents harder to prioritise. Practical guidance
@@ -18,17 +20,7 @@ combinations, traffic magnitudes, and recurring behavioural descriptions can sug
 what an interaction represents. An intrusion detection system that sees only one of
 these views is working with an incomplete account of the traffic.
 
-This report investigates whether structural and semantic evidence can be combined in a
-single edge-level intrusion detection framework, meaning that the unit being classified is an
-edge: one aggregated group of flows between a pair of hosts. The two datasets are
-NF-UNSW-NB15 and NF-ToN-IoT. One experimental boundary must be stated from the outset:
-the current graph construction
-aggregates flows by source IP, destination IP, and attack class. Ground-truth labels
-therefore participate in defining edge identity, even though the attack name is excluded
-from the model's input features and generated text. The
-resulting scores compare representations and interaction mechanisms under a controlled
-protocol, but they are not deployment-valid estimates of detection performance on unseen,
-unlabelled traffic.
+This report investigates whether structural and semantic evidence can be combined in a single edge-level intrusion detection framework. Each classified edge represents an aggregated group of flows between hosts. We evaluate the same pipeline on NF-UNSW-NB15 and NF-ToN-IoT. The scores are controlled comparisons under the graph-construction assumptions explained in Section~\ref{sec:method-graph}; they are not deployment estimates.
 
 NF-UNSW-NB15 derives from UNSW-NB15, whose original benchmark was created from a mixture
 of normal activity and contemporary attacks in the UNSW Canberra Cyber Range
@@ -181,8 +173,7 @@ stage under one consistent protocol. The work makes five contributions.
     aggregated by source IP, destination IP, and attack class, with centrality-based node
     features and statistical edge attributes.
 
-    \item It constructs a corresponding internal knowledge representation and serialises
-    each edge as controlled natural language. The text supplied to the encoder is kept
+    \item It serialises each edge as a controlled-language description using a fixed sentence template. The text supplied to the encoder is kept
     label-free by an explicit validation guard, preventing the semantic branch from seeing
     the target attack name or a synonymous relation label.
 
@@ -207,21 +198,9 @@ stage under one consistent protocol. The work makes five contributions.
     faces.
 \end{enumerate}
 
-The contribution is not presented as a universal improvement over existing
-intrusion detectors. It is an implementation and controlled evaluation of a particular
-form of structural--semantic cooperation, together with evidence about its limits. The
-headline of that evidence is stated here so it is not mistaken for a footnote later. With a
-trained semantic consultant the feedback model is the highest rung on both datasets, separated
-from the GNN model, from the fusion model, from the semantic model and from every faithful
-re-trained baseline. With the weaker consultant it was first built with, neither the comparison
-against the GNN model nor the one against the fusion model is separated on either dataset, and
-the margin over E-GraphSAGE on NF-ToN-IoT disappears as well.
-And when final-output fusion is removed, so that semantic evidence can reach the classifier
-only by re-entering the graph, neither consultant produces a gain we could separate from zero.
-The channel is live and measurable, but on these graphs what the re-entry itself adds is
-indistinguishable from adding nothing.
-Deployment-valid evaluation remains open and requires graph construction in which edge
-identity can be determined without access to the target class.
+The central result is that a strong semantic classifier explains much of the complete system's performance, while an added benefit from feedback injection remains unestablished. The trained-head feedback configuration is separated above the GNN, semantic and fusion stages and the faithful re-trained baselines on both datasets. However, the trained head alone has a slightly higher mean macro-F1 on both, with no separated difference from feedback. The prototype-feedback configuration does not establish a gain over either structural stage. Changing the consultant also changed the consultation percentile, so the increase between configurations cannot be assigned to the consultant alone.
+
+The mechanism tests make this distinction explicit. With output fusion disabled, neither realistic consultant gives a separated improvement through injection at the earlier consultation settings tested; the trained head produces a separated loss on NF-ToN-IoT. An oracle with access to the true label does improve through the same path. Thus the channel can carry useful information, but the tested consultants do not establish an injection benefit. The contribution is the implementation and controlled evaluation of this design, including these negative results and the limits of their interpretation.
 
 \subsection{Report structure}
 

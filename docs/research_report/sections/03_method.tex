@@ -1,6 +1,8 @@
 \section{Method}
 \label{sec:method}
 
+This section first describes the datasets, graph construction and feature encoding. It then explains the structural and semantic branches, how their representations are fused, and how semantic advice enters the feedback model. Finally, it presents the baseline settings and the common training and evaluation protocol.
+
 \subsection{Datasets and Common Processing Pipeline}
 
 We evaluate on NF-UNSW-NB15 and NF-ToN-IoT, the NetFlow-standardised variants of their
@@ -21,12 +23,13 @@ scored.
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{fig_architecture}
-\caption{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback model. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
+\caption[Pipeline architecture and evaluated stages]{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback model. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
 \label{fig:architecture}
 \end{figure}
 
 
 \subsection{Directed Multigraph Construction}
+\label{sec:method-graph}
 
 Flows are aggregated into a directed multigraph keyed on
 
@@ -40,14 +43,14 @@ NF-UNSW-NB15 yields 49 nodes and 656 edges, NF-ToN-IoT 1{,}501 nodes and 2{,}127
 
 Each node carries ten centrality columns: betweenness, PageRank, degree, closeness,
 eigenvector, $k$-core, $k$-truss, global betweenness, global PageRank, and modularity
-vitality. These are computed on an unweighted IP-to-IP graph with self-loops removed.
+vitality. For NF-UNSW-NB15, we compute these on an unweighted IP-to-IP graph with self-loops removed; NF-ToN-IoT supplies the columns in the source CSV. The following computation details describe our NF-UNSW-NB15 preprocessing.
 Betweenness (normalised), PageRank, closeness and eigenvector centrality are computed on the
 directed graph. Degree is \emph{in-degree} centrality, and $k$-core and $k$-truss are computed on
 the undirected projection. Modularity vitality is the leave-one-node-out drop in modularity
 under a greedy modularity partition of the undirected projection. Eigenvector centrality and
 the truss decomposition fall back to constants when they fail to converge. A node's feature
 vector is the mean of these values over all incident edges, taking the node in both its
-source and destination roles.
+source and destination roles. In the processed graphs, each measure has the same value for an IP across its incident edges, apart from floating-point rounding. Averaging therefore recovers that value and reconciles the source-role and destination-role columns; it does not combine changing per-flow centralities.
 
 One property of this feature set should be stated outright.
 On NF-UNSW-NB15 the ``global'' variants are populated from the same computation as their
@@ -64,19 +67,14 @@ Each edge carries five attributes. Three are numeric: the number of constituent 
 duration (\texttt{avg\_duration}). Two are categorical: the modal protocol and the modal
 port, with ties broken toward the smaller value.
 
-Because attack type is part of the aggregation key, the label participates in defining edge
-identity. This is a property of the protocol, not a bookkeeping detail. Two flows between the
-same IP pair that differ only in their label become two distinct edges, and a deployed system
-observing unlabelled traffic could not perform this separation. The scores reported in this
-work therefore compare representations and mechanisms under a controlled protocol. They are
-not deployment-valid detection estimates, and we do not present them as such.
+Attack type is part of the aggregation key, so the true label helps determine which flows form an edge. Two flows between the same hosts can become separate edges solely because their labels differ. A detector receiving unlabelled traffic could not construct those edges in that way. These results therefore compare representations and mechanisms under a controlled protocol, rather than estimate deployment performance \citep{sommer2010closedworld,arp2022dosdonts}. A deployment-valid version would need a label-independent grouping rule, for example endpoints and a time window, with a defined evaluation target when an aggregate contains mixed traffic. Features would need to use only information available at prediction time, and evaluation would need to respect traffic order \citep{pendlebury2019tesseract}. These changes would alter the graph and task, so all models would have to be trained and evaluated again.
 Figure~\ref{fig:imbalance} gives the resulting class sizes on both graphs.
 
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_imbalance}
-\caption{Class sizes on a logarithmic axis, largest first. NF-UNSW-NB15 has one class at or below 35 edges; NF-ToN-IoT has seven. The two smallest NF-ToN-IoT classes stay in the graph for message passing and are excluded from the metric. The two graphs differ by roughly a factor of 47 in the ratio of the largest class to the smallest class present in the graph, 582:1 against 12.4:1. Measured over the classes the metric scores, those ratios are 145.5:1 and 12.4:1.}
+\caption[Class sizes on the two aggregated graphs]{Class sizes on a logarithmic axis, largest first. NF-UNSW-NB15 has one class at or below 35 edges; NF-ToN-IoT has seven. The two smallest NF-ToN-IoT classes stay in the graph for message passing and are excluded from the metric. The two graphs differ by roughly a factor of 47 in the ratio of the largest class to the smallest class present in the graph, 582:1 against 12.4:1. Measured over the classes the metric scores, those ratios are 145.5:1 and 12.4:1.}
 \label{fig:imbalance}
 \end{figure}
 
@@ -120,8 +118,7 @@ distinction is not cosmetic.
 
 Three encoders run in parallel: \emph{temporal}, \emph{content} and \emph{behavioural}.
 They are architecturally identical and differ only in a fixed diagonal reweighting of the
-encoded edge vector, given in Table~\ref{tab:focus}. These nine weights were fixed a priori and
-never swept. They are source-code constants, not selected values. The protocol weight is broadcast across
+encoded edge vector, given in Table~\ref{tab:focus}. These weights were fixed a priori and never swept. No ablation was run to establish whether the three weighted branches improve on a single unweighted branch. They are source-code constants, not selected values. The protocol weight is broadcast across
 all 4 protocol-embedding dimensions and the port weight across all 32, so each variant keeps
 the same relative emphasis it would have had on the five raw columns. The reweighted edge
 vector is used both inside the attention computation and in the edge representation that
@@ -129,7 +126,7 @@ follows, so a variant's emphasis shapes its message passing as well as its reado
 
 \begin{table}[t]
 \centering
-\caption{Per-variant edge focus weights. Applied as a fixed diagonal scaling of the encoded
+\caption[Per-variant edge focus weights]{Per-variant edge focus weights. Applied as a fixed diagonal scaling of the encoded
 edge vector. The protocol and port weights are broadcast across their embedding blocks.}
 \label{tab:focus}
 \begin{tabular}{lccccc}
@@ -198,31 +195,11 @@ CySecBERT is a pretrained language model, and we use it strictly as a sentence e
 not prompted, not asked to reason, and not generative. Where this report says \emph{language
 model} it means that pretrained encoder, not a generative one.
 
-The embedding is consumed in two ways, and the distinction matters for everything that
-follows. The \emph{embedding-only} route fits no classifier on it: a whitened prototype
-scorer (described under the feedback stage below) assigns each edge to the nearest class
-mean in a fold-local whitened space. This is the ladder's semantic model, and it measures what
-the encoder alone knows; the fusion model takes the same embedding with no scorer on top. The prototype
-is the semantic model because it fits nothing, not because it is cheap. A nearest-neighbour
-readout over the training-fold embeddings would cost nothing extra on graphs of 656 and
-2{,}127 edges, but its answer for an edge would depend on which training edges happen to lie
-closest to it and on a neighbourhood size that would itself need selecting. Ten class means
-add no classifier of their own, so the score reports how well the frozen encoder separates the
-classes, which is also why the semantic model's score does not vary with the training seed in
-Section~\ref{sec:results}. The \emph{trained
-head} route fits, within each fold, a small classifier on the training-fold embeddings: a
-per-fold standard scaler, then a 768--128--128--$C$ multilayer perceptron, where $C$ is the
-number of classes and equals ten on both graphs, with batch normalisation and ReLU in the
-projection, ReLU and dropout $0.2$ in the hidden layer, trained with the same class-weighted
-focal loss, optimiser and early-stopping rule as the structural branch. Each fold's head is applied to every edge and its logits are
-stored: on that fold's training and validation edges the logits are in-fold, on its test
-edges they are out-of-fold, so the pooled test score of the head is a legitimate out-of-fold
-number. That head is the consultant the feedback model uses. Evaluated on its own, it is
-also the strongest single-modality baseline in this study, and this report treats it as the
-consultant rather than as a rung of the ladder. A cross-fitted variant, in which training-edge logits come from an inner
-cross-validation so that the feedback model trains on advice no more reliable than the advice it is
-scored with, was implemented and measured. It scored lower on both datasets and is reported
-in Section~\ref{sec:results}. The in-fold head is retained.
+We evaluate two ways of classifying the same frozen embeddings. The \emph{prototype scorer} first estimates a whitening transform from the training-fold embeddings, then computes a mean embedding for each class using its training labels. It assigns an edge to the closest class prototype by cosine similarity. This is the semantic stage in the four-stage comparison. It uses labelled examples to estimate prototypes, but does not train a neural classification head or update CySecBERT. Its score measures the embeddings together with this particular readout, not the encoder in isolation. The fusion model uses the embeddings directly, without this scorer.
+
+The \emph{trained head} learns a classification function from those embeddings. Within each fold, a standard scaler is fitted on the training embeddings and a 768--128--128--$C$ multilayer perceptron predicts the classes, where $C$ is ten on both graphs. The projection uses batch normalisation and ReLU; the hidden layer uses ReLU and dropout $0.2$. Training uses the class-weighted focal loss, AdamW optimiser and early-stopping settings in Section~\ref{sec:method-protocol}. CySecBERT stays frozen. The head is evaluated on held-out edges and also supplies the feedback model's semantic advice. We report its standalone performance as a component comparison, without adding a stage to the four-stage ladder.
+
+The prototype gives a simple reference for reading the embeddings. We introduced the trained head after the prototype-feedback treatments in Section~\ref{sec:res-prototype} failed to establish the intended gain. Training a head allows the decision boundaries to adapt to the labelled task instead of classifying solely by distance to a class average. The results support this choice as a stronger semantic consultant, but do not establish that the surrounding feedback mechanism improves on it. Each fold's stored head predictions cover all edges: training edges receive in-fold advice, while test edges receive advice from a head that has not trained on their labels. A cross-fitted variant replaces training advice with inner held-out predictions; its diagnostic results are reported separately in Appendix~\ref{app:isolation-detail}.
 
 Label freedom is enforced in code, not by convention. Before any sentence reaches the encoder,
 an assertion scans every generated sentence for every attack term present in the dataset and
@@ -270,15 +247,14 @@ modality before it has a reason to. Both inputs are standardised before entering
 module. The scalers are held in the trainer and persisted separately, so the module's
 \texttt{state\_dict} stays free of fitted statistics.
 
-One constraint on this stage is load-bearing. The fusion model consumes \emph{per-fold
+The structural embeddings supplied to this stage require particular care. The fusion model consumes \emph{per-fold
 out-of-fold} structural embeddings only, never embeddings from a GNN fitted on all edges. Such a
 model has already seen the test edges' labels, and those labels would reach the fusion
 classifier through its own input features, which is a leak no split downstream of it could
 detect. Earlier runs in this project used exactly that, and the reproduction entry point now
 enforces the out-of-fold rule.
 
-What the construction guarantees is worth stating precisely, because it is weaker than
-\emph{never}. For each held-out fold, the embeddings of that fold's \emph{test} edges come from
+The guarantee has a limit. For each held-out fold, the embeddings of that fold's \emph{test} edges come from
 a GNN that never saw their labels. The embeddings of its \emph{training} edges come from the
 other folds' GNNs, each of which was fitted on a partition that includes some of the held-out
 fold, so the fusion classifier is fitted on features that are one step removed from the test
@@ -288,14 +264,13 @@ remove even that step and was not run.
 
 \subsection{Uncertainty-Guided Semantic Feedback}
 
-The feedback stage routes semantic information to the edges the structural model is least sure
-about, and only there.
+The feedback stage has two routes for semantic information. The injection route selects uncertain edges, reads the consultant's class predictions and adds a learned projection of that advice to their edge features before another graph pass. The output-fusion route combines semantic and structural predictions at the final classifier. The isolation experiment disables output fusion so that injection can be measured separately.
 Figure~\ref{fig:loopflow} gives the stage as it runs.
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_loop_flow}
-\caption{One pass of the feedback model. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce. The vermillion trace follows one illustrative edge; its entropy, gate outcome and consultant verdict are not measurements.}
+\caption[Selection, injection and output fusion in the feedback model]{One pass of the feedback model. The solid path is the injection mechanism under test: the consultant's judgement is projected into the 39-wide encoded edge vector and the graph is run again. The dashed path is output fusion, which reaches the final classifier without passing through the graph, and which the isolation experiment of Section~\ref{sec:res-ablations} disables. The percentages are the selected entropy thresholds and the effective consultation rates they produce. The vermillion trace follows one illustrative edge; its entropy, gate outcome and consultant verdict are not measurements.}
 \label{fig:loopflow}
 \end{figure}
 
@@ -325,16 +300,7 @@ same fold-local transform and scored by cosine similarity against the prototypes
 is not incidental: an earlier L2-normalise-average-renormalise scheme collapsed per-class
 spread until random and real advice became indistinguishable.
 
-The rule that keeps the comparison fair applies everywhere: every
-rung uses the same encoder, the same graph, the same folds and the same training seeds. The
-feedback model additionally trains a classification head on the semantic embeddings, and that head is
-its consultant. The feedback model was first built with the prototype scorer as its consultant, on the
-argument that a consultant the feedback model already contains would only be echoed. That
-configuration, and five attempts to make its advice usable, are reported as negative results
-in Section~\ref{sec:results}. The trained head replaced it after those measurements. Both
-configurations are reported, at the same three seeds, at the same fold partition, and with the
-injection scale unchanged. Only the selected entropy percentile differs between them, at 31
-against 29 on NF-UNSW-NB15 and 25 against 16 on NF-ToN-IoT.
+Both consultant configurations use the same graph, frozen semantic encoder, folds and feedback training seeds. The original configuration uses prototypes; the final one uses the trained head. Their injection scales are unchanged, but the selected consultation percentiles differ: 31 versus 29 on NF-UNSW-NB15 and 25 versus 16 on NF-ToN-IoT. Consequently, their score difference measures a configuration change, not a controlled change of consultant alone. The stored trained-head advice was generated at seed 42 and reused for every feedback training seed, so feedback's reported seed spread does not include variation from retraining the consultant.
 
 \paragraph{Gating.} Being uncertain in the structural view does not make an edge a good
 candidate for semantic advice. Among the flagged edges we keep only the most confident half by
@@ -371,9 +337,7 @@ last iteration. The refined edge embedding and the consultant's logits are each 
 maximum probability of both the graph head and the consultant, so it can route towards
 whichever view is confident on that edge. A two-layer classifier over the gated concatenation
 produces a correction, and the final logits are that correction plus the gated residual
-$(1-g_e)\,\mathbf{z}^{\text{gnn}}_e + g_e\,\mathbf{z}^{\text{head}}_e$. The consultant's
-own judgement is a floor the feedback model can fall back to on edges where the graph view is
-unsure. This stage has the same projection width as the fusion model, so the feedback model and the fusion model differ in
+$(1-g_e)\,\mathbf{z}^{\text{gnn}}_e + g_e\,\mathbf{z}^{\text{head}}_e$. This gives the classifier direct access to the consultant's judgement as well as the refined graph representation; it does not guarantee a minimum score. This stage has the same projection width as the fusion model, so the feedback model and the fusion model differ in
 where semantics enter (inside the graph update, or only at the output) and not in fusion
 capacity. Switching the stage off, together with the injection, yields the \texttt{head\_only}
 control used throughout Section~\ref{sec:results}: the same network, trained in the same
@@ -398,8 +362,7 @@ its own published featurisation rather than ours. E-GraphSAGE standard-scales al
 TE-G-SAGE applies log1p, standard scaling, correlation pruning at 0.995, and one-hot
 categoricals with rare-category folding.
 
-Each baseline is run in three configurations. \texttt{as\_published} reproduces the released
-implementation. \texttt{refit} re-selects capacity and schedule on our validation folds only.
+Each baseline is run in three configurations. \texttt{as\_published} uses the released architectural settings, with the protocol changes listed below. \texttt{refit} selects hyperparameters on our validation folds only.
 \texttt{plus\_node\_features} is deliberately non-faithful: it hands the baseline our ten
 centrality node features, isolating how much of any gap is representation rather than
 architecture. We label it as non-faithful wherever it appears. It is not E-GraphSAGE and it is
@@ -420,6 +383,10 @@ almost every port category at our scale. It is applied as published in \texttt{a
 and swept in \texttt{refit}. (D5) E-GraphSAGE's published Eq.~4 aggregates edge features alone,
 but the authors' released code builds the message as $W_{\text{msg}}([\mathbf{h}_u \Vert
 \mathbf{e}_{uv}])$. We follow the code, since the published numbers came from it.
+
+Table~\ref{tab:baseline-settings} lists the settings stored with the reported runs. The refit values come from validation-only searches. Adding our node features keeps the refit settings and changes only the node inputs.
+
+\input{tables/tab_baseline_settings}
 
 Two asymmetries remain and should be weighed when reading the comparison. Our rungs train
 under a focal objective with patience 40, whereas the baselines use class-weighted

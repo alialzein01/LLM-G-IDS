@@ -1,29 +1,10 @@
 \begin{abstract}
 \noindent
-Intrusion detection can be posed as a graph problem, where flows between hosts carry structure
-worth learning, or as a language problem, where a flow can be described in words a pretrained
-encoder understands. This report builds one edge-level pipeline that does both. Flows are
-aggregated into a directed multigraph over IP addresses. Each edge is encoded twice: once structurally by a graph attention network, and once
-as a label-free sentence read by a frozen cybersecurity language encoder. Four stages are
-compared on two NetFlow datasets whose class imbalance differs by roughly a factor of 47:
-each branch alone, a gated attention fusion model, and a feedback model that consults the semantic
-branch about high-entropy edges and returns its judgement into the edge representations. Everything is measured at three training seeds. A
-difference counts as separated only when a bootstrap over edges and seed excludes zero. Edges
-are aggregated with the attack label in the grouping key, so every number here compares
-representations and mechanisms under a controlled protocol and none is a deployment-valid
-detection estimate.
+A trained classifier on frozen language embeddings provides strong semantic predictions for this intrusion-detection pipeline. Combining that classifier with graph feedback does not establish an improvement over the classifier alone. These are the main findings of this study of structural and semantic information in network traffic.
 
-Two results carry the work. Given a classification head trained on the semantic embeddings as
-its consultant, the feedback model as a complete system is separated above every other rung
-and above every faithful re-trained baseline, on both datasets. The heavier imbalance regime is
-where the ladder changes shape: there the fusion model falls below the GNN model, as an ordering
-of means, while the feedback model keeps the top position on both graphs and takes its largest
-per-class gains over the GNN model in the smallest classes. Given the weaker
-embedding-only consultant it was first built with, no comparison against a structural rung is
-separated. With output fusion disabled, an oracle
-consultant converts the feedback channel into a separated gain on both datasets and no
-consultant we could build does. The binding constraint is the consultant, not the mechanism
-around it.
+The pipeline represents IP addresses as nodes and aggregated flows as directed edges. A graph attention network learns from communication structure and edge attributes. A frozen cybersecurity language encoder, CySecBERT, encodes a short templated description of each edge. We compare a GNN model, a semantic prototype model, a fusion model and a feedback model on NF-UNSW-NB15 and NF-ToN-IoT. The feedback model is evaluated with both a prototype consultant and a trained classification head. Scores use pooled out-of-fold predictions at three training seeds and a fixed fold partition. Bootstrap intervals distinguish supported differences from orderings of average scores.
+
+With the trained head, the complete feedback model scores above the GNN, semantic and fusion stages by separated margins on both datasets, but its own consultant has slightly higher mean macro-F1 and their difference is not separated. Tests with output fusion disabled find no separated injection gain from either realistic consultant at the earlier consultation settings tested. On NF-ToN-IoT, trained-head injection produces a separated loss. An oracle supplied with true labels does improve through that channel. The evidence therefore supports the value of the trained semantic classifier, while an added benefit from injection remains unestablished. Fusion alone is not separated from the GNN on either dataset. All findings concern controlled comparisons on label-conditioned graphs; the deployment limitation is explained in Section~\ref{sec:method-graph}.
 \end{abstract}
 
 \vspace{1em}

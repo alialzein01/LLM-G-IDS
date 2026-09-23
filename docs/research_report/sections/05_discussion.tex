@@ -1,293 +1,89 @@
 \section{Discussion}
 \label{sec:discussion}
 
+This section first answers the research questions and compares the patterns observed on the two datasets. It then examines what the consultant and feedback mechanism contribute, states the limitations, and finally identifies the experiments needed to resolve the remaining questions.
+
 \subsection{Answers to the research questions}
 \label{sec:disc-rqs}
 
-\paragraph{RQ1.} Measured on their own, the two branches are close on NF-UNSW-NB15 and far
-apart on NF-ToN-IoT. The GNN model reaches 0.7437 and 0.4336, the semantic model 0.7353 and
-0.2785. At face value that suggests the semantic view is nearly worthless under heavy imbalance.
-The consultant experiment shows the reading is wrong: holding the embeddings, the graph, the folds
-and the seeds fixed, and changing the classifier placed on those embeddings, lifts the feedback
-model by $+0.0697$ and $+0.0523$. As Section~\ref{sec:res-ladder} states, the entropy percentile
-was re-selected with the classifier, so that lift is not attributed to the consultant alone. It is
-consistent with the semantic branch's weakness as a rung lying in the whitened prototype scorer
-rather than in the encoder underneath it, and it is not evidence that either modality is
-inherently weaker than the other.
+\paragraph{RQ1.} The GNN and prototype semantic model are close on NF-UNSW-NB15, at 0.7437 and 0.7353, but farther apart on NF-ToN-IoT, at 0.4336 and 0.2785. This does not establish that the semantic embeddings contain little useful information. A trained head on the same frozen embeddings reaches 0.8374 and 0.5081. The choice of classifier therefore matters when judging the semantic branch. Table~\ref{tab:metrics} reports the head separately from the four-stage ladder.
 
-\paragraph{RQ2.} No. The fusion model is not separated from the GNN model on either dataset:
-$+0.0370$ [$-0.0212$, $+0.0929$] on NF-UNSW-NB15 and $-0.0235$ [$-0.0910$, $+0.0602$] on
-NF-ToN-IoT. The point estimates even disagree in sign. Under the seed-matched procedure the
-NF-UNSW-NB15 difference is separated, and stating that is more useful than hiding it, because it
-locates the uncertainty precisely. At a fixed pair of training seeds the fusion stage looks like an
-improvement. Admit training-seed variance and it stops looking like one. Under the rule fixed
-before the runs, gated attention fusion does not deliver a separated gain over the structural
-branch it fuses.
+\paragraph{RQ2.} Fusion does not establish a gain over the GNN on either dataset. The two-level differences are $+0.0370$ $[-0.0212, +0.0929]$ on NF-UNSW-NB15 and $-0.0235$ $[-0.0910, +0.0602]$ on NF-ToN-IoT. The NF-UNSW-NB15 difference is separated under the secondary seed-matched procedure, but not when the primary procedure includes independent training-seed variation. Under the decision rule fixed before the runs, the answer is negative on both datasets.
 
-\paragraph{RQ3.} The answer splits, and the split is the finding. With the mechanism as a whole,
-feedback adds something: real advice is above \texttt{head\_only} at every seed on both datasets,
-with every interval excluding zero. With the mechanism isolated, by disabling output fusion so
-advice can only arrive through the injection path, it adds nothing that survives a bootstrap. The
-embedding-only consultant is at $-0.0046$ and $+0.0099$ against control, and the trained head is
-at $+0.0007$ and $-0.0378$, the last of those a separated regression. The ladder-level ablation
-measures fusion and injection together. The isolation experiment shows which of the two carries
-it. The feedback model's advantage over feedback-off is consistent with semantic evidence being available at
-the classifier at all, not with the re-entry path being what converts it.
+\paragraph{RQ3.} The complete trained-head feedback model improves over the graph-only control and the fusion stage, but not over the trained semantic head alone by a separated margin. With output fusion disabled, the prototype's differences against control are $-0.0046$ and $+0.0099$, neither separated. The trained head gives $+0.0007$ on NF-UNSW-NB15, also not separated, and a separated loss of $-0.0378$ on NF-ToN-IoT. This isolation experiment used earlier consultation percentiles, so it does not directly quantify injection at the final settings. Together, the experiments show the value of semantic predictions in the complete model but leave an additional injection benefit unestablished.
 
-\paragraph{RQ4.} Three of the four factors measured bind. Topology decides whether the
-attention variant can work at all: 58.7\% of NF-UNSW-NB15 edges share an address pair, 62.8\% of
-NF-ToN-IoT edges have a destination of in-degree one, and in both regimes the injected bias cannot
-change a prediction. Repeated endpoint pairs also set a ceiling for any architecture that
-classifies edges from their endpoints alone, which is why E-GraphSAGE scores 0.1194 where
-385 of 656 edges are indistinguishable and 0.4141 where only 167 of 2{,}127 are. Class imbalance
-decides whether fusion survives, as discussed below. The fourth factor is consultant strength,
-and the mechanism turned out to depend on it entirely.
+\paragraph{RQ4.} Model behaviour changes across the two graphs, but the cause cannot be assigned to imbalance alone. The graphs also differ in size, density and repeated endpoint pairs. Topology constrains attention injection: parallel edges share endpoint representations, while an incoming neighbourhood of one makes its attention weight fixed. Consultant choice also matters, as the prototype and trained head behave differently on the uncertain edges. The per-class results show where fusion gains and loses; they do not isolate why those changes occur.
 
-\paragraph{RQ5.} Against published architectures re-trained on the same rows, folds and metric,
-the feedback model with its trained-head consultant is separated above every faithful configuration on
-both datasets. With the prototype consultant it is not separated from E-GraphSAGE on
-NF-ToN-IoT. The other rungs are weaker still. On NF-ToN-IoT neither the GNN model nor the fusion model is
-separated from E-GraphSAGE as published. On NF-UNSW-NB15 neither the GNN model nor the
-semantic model is separated from TE-G-SAGE carrying our node features. The decomposition says how
-much of the margin is architectural. Of the gap between TE-G-SAGE as published and our feedback model rung on
-NF-UNSW-NB15, roughly 45\% is attributable to tuning the graph scale and schedule, roughly 30\%
-to our node features, and roughly 25\% to the architecture. Measured to the fusion model instead the
-architectural share is 15.1\%. A large headline margin against a published number is mostly a
-statement about the representation both models were given.
+\paragraph{RQ5.} Trained-head feedback is separated above the faithful re-trained baselines on both datasets, while its difference from the head alone is not separated. These are comparisons on our aggregated representation, not against published benchmark scores. On NF-ToN-IoT, the GNN and fusion stages are not separated from E-GraphSAGE with its published settings. On NF-UNSW-NB15, the point-estimate decomposition associates roughly 45\% of the gap from TE-G-SAGE to feedback with validation selection, 30\% with node features and 25\% with the remaining model change. Those increments have no confidence intervals and should not be read as a general architectural ranking.
 
-\subsection{Imbalance is the axis the two datasets were chosen to differ on}
+\subsection{Patterns across the two imbalance regimes}
 \label{sec:disc-imbalance}
 
-The two graphs were chosen to differ by roughly a factor of 47 in most-to-least-frequent class
-ratio, drawn in Figure~\ref{fig:imbalance}, and that difference is where the ladder changes
-shape. The fusion model is the stage that does not survive it, sitting above the GNN model on
-NF-UNSW-NB15 and below it on NF-ToN-IoT. The per-class table
-shows the damage concentrated in classes the GNN model already handles well:
-\texttt{mitm} falls from 0.8838 to 0.7082 and \texttt{xss} from 0.3728 to 0.0844. A gate that
-learns per-edge modality weights has to learn them from the same scarce rare-class edges it is
-meant to help, and on a graph where seven attack classes hold 35 edges or fewer there is little
-to learn from. The harm is not uniform: the fusion model is the only rung that lifts
-\texttt{password} from 0.0401 to 0.2996. The stage trades one set of rare classes for another.
-It does not fail outright.
+The datasets were selected to represent different class distributions. Figure~\ref{fig:imbalance} shows the graph-level imbalance and distinguishes it from imbalance among the evaluated classes. Fusion has a higher mean macro-F1 than the GNN on NF-UNSW-NB15 and a lower mean on NF-ToN-IoT. Neither difference is separated under the primary bootstrap. The comparison establishes this change in ordering, but two datasets cannot isolate imbalance from their other differences.
 
-The feedback model does not show that trade, under either consultant. It stays above the GNN
-model by mean on both datasets and keeps that position when the imbalance regime changes, though
-under the prototype consultant the difference is not separated. Differing class counts
-permit a comparison of shapes and not of levels, and on that comparison the property of
-collapsing under imbalance belongs to the fusion gate, not to the use of semantic evidence as
-such.
+The NF-ToN-IoT class results show a trade-off. Fusion raises \texttt{password} from the GNN's 0.0401 to 0.2996, while \texttt{mitm} falls from 0.8838 to 0.7082 and \texttt{xss} from 0.3728 to 0.0844. Explaining the net loss would require further controlled tests. We therefore do not attribute it to a particular gate behaviour or to imbalance alone. Small class counts also make these point estimates sensitive to a few predictions.
 
-That attribution names the regime the two graphs were selected to differ on, and it is the
-weaker of the two claims available. The graphs also differ structurally, as
-Section~\ref{sec:introduction} records and Section~\ref{sec:res-attention} uses, so with two
-datasets imbalance cannot be isolated from repeated address pairs or from density. What the
-comparison establishes is that the fusion gate is the stage whose behaviour inverts between
-the two regimes; which of the differences between them drives that inversion is not settled
-here.
+Macro-F1 and class-weighted focal loss address the imbalance in different ways: the metric gives each evaluated class equal importance, while the loss changes the training emphasis. Additional oversampling was measured and was harmful when combined with the existing class weights, so it is disabled. These choices do not eliminate the uncertainty associated with rare classes.
 
-Three choices in the protocol exist because of that regime, and they should be read as part of
-the design rather than as defaults. Macro-F1 is the headline metric because it gives a 12-edge
-class the same weight as a 1{,}746-edge one. The objective is focal loss with inverse-frequency
-class weights fitted on the training fold, as Section~\ref{sec:method-protocol} states. And
-oversampling was measured rather than assumed: combined with those weights it double-corrects the
-imbalance and collapses the fusion stage, so it is off.
-
-Two further measurements sit on the same axis. The channel has more to give where the imbalance
-is heavier: as three-seed means, an always-correct consultant recovers $+0.1090$ through the
-injection path on NF-ToN-IoT against $+0.0345$ on NF-UNSW-NB15, roughly three times as much, so
-the edges the GNN model gets wrong under the heavier regime are ones a correct semantic
-judgement would fix. And the semantic model, which is far below the GNN model on NF-ToN-IoT at
-0.2785 against 0.4336 and close to it on NF-UNSW-NB15 at 0.7353 against 0.7437, fits nothing but
-a class mean in a fold-local whitened 768-dimensional space, and on NF-ToN-IoT seven of the
-classes it must locate hold 35 edges or fewer. That is consistent with the prototype scorer,
-rather than the encoder beneath it, being what the imbalance breaks, which is what the
-consultant experiment of Section~\ref{sec:res-ladder} found from the other direction. It is
-stated as consistent with, not as a cause, for the reason the paragraph above gives.
+The prototype's low NF-ToN-IoT score is also insufficient evidence of an encoder limitation. The trained head performs better on the same frozen embeddings, showing that the readout affects the result. However, no experiment adapted CySecBERT to the templated flow descriptions. The effects of the readout, data imbalance and encoder adaptation have therefore not been fully separated.
 
 \subsection{Where the feedback model's gain comes from}
 \label{sec:disc-echo}
 
-The feedback model is separated above the three other rungs, and the isolation experiment says the
-separation is not produced by the part of the design the work set out to test. Four
-observations bear on that, and they point the same way.
+The feedback model has two semantic routes. Injection changes the edge representation before another graph pass. Output fusion gives the final classifier direct access to the semantic predictions. A gain from the complete model cannot, by itself, tell us which route helps. The trained head alone has a slightly higher mean macro-F1 than feedback on both datasets, with no separated difference between them.
 
-First, the feedback model reaches the classifier by two routes and only one of them is the feedback
-mechanism. Output fusion places the consultant's logits into the final classifier directly. The
-injection path modifies the edge representations the next graph pass consumes.
-Table~\ref{tab:mechanism} disables the first and measures the second, and with either consultant
-the second contributes nothing separated from zero.
+The isolation diagnostic in Table~\ref{tab:mechanism} disables output fusion. An oracle with access to the true label improves through edge injection on both graphs, demonstrating that this route can change accuracy under the tested conditions. Neither realistic consultant produces a separated improvement there. The trained head even produces a separated loss on NF-ToN-IoT. This is evidence that a stronger standalone classifier need not supply better advice for injection.
 
-Second, only advice that is always right converts. The oracle, handed the true label through
-the same learned projection every other arm uses, gains $+0.0369$ and $+0.1354$, both separated.
-Its advantage is not the format of the vector it presents: handing a realistic consultant that
-exact format made things worse, and drove the injected magnitude down from
-0.0767 to 0.0183 on NF-UNSW-NB15. The projection is learned, so it responds to a saturated
-input by injecting less.
+The prototype treatments offer further diagnostic evidence. Changing selection, temperature, reliability weighting, advice format and cross-fitting did not establish the intended improvement. In the format experiment, larger input logits led to smaller injected magnitudes. Cross-fitting changed injected magnitudes more than the learned trust scalar. Appendix~\ref{app:negative} records these measurements and their single-seed or multi-seed scope. They motivate investigating how advice is used, without proving that every alternative mechanism would fail.
 
-Third, the feedback model does not learn a trust it could calibrate. Cross-fitted advice is honestly less
-reliable than in-fold advice, and substituting it moved the learned trust scalar by at most
-0.0205 across four settings, the wrong way in one of them. What moved instead was the
-injected magnitude, from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The parameter that is
-supposed to represent how much the feedback model believes its consultant is not doing that job.
-
-Fourth, five treatments failed from five different directions. Supervising the selector head,
-calibrating the consultant's temperature, weighting advice by measured per-class reliability,
-saturating the advice format, and matching the advice's train-time and test-time reliability
-were each tried and each reverted. Selection, weighting, format and reliability matching are
-the obvious levers, and none of them is the binding one. Changing the consultant itself did
-work: the sixth attempt, and the only successful one.
-
-One diagnostic from the earlier configuration sharpens the point. Under the prototype
-consultant the magnitude actually injected into unit-variance features was 0.077 and 0.023. The
-mechanism was, in effect, switched off, and the ladder measured at the time was measuring
-fusion while describing feedback. That is why this report separates the two paths everywhere,
-and why the isolation experiment, not the ladder, answers RQ3.
+The most direct conclusion is that the complete system benefits from strong semantic predictions, while the experiments do not establish a further gain from injection. Because the isolation diagnostic used earlier consultation percentiles, a matched diagnostic at the final settings would be needed to attribute the final system's performance more precisely. The head-alone comparison remains the direct check on whether the full system adds measurable value beyond its consultant.
 
 \subsection{What the configuration buys, and what it does not}
 \label{sec:disc-contribution}
 
-Two statements have to be held together. The trained-head configuration produces the first
-ladder steps this project has measured that survive training-seed variance. It produces them on
-two datasets, under one architecture, with the same folds and the same seeds. The feedback model is
-separated above the fusion model, above the GNN model and above the semantic model, and above every
-faithful re-trained baseline. Under the prototype consultant neither the comparison against the
-fusion model nor the one against the GNN model is separated on either dataset, and on
-NF-ToN-IoT it is not separated from E-GraphSAGE either, so the consultant is what turned those
-orderings of means into results.
+The trained-head configuration gives separated improvements over the GNN, semantic and fusion stages and the faithful re-trained baselines on both datasets. It does not establish an improvement over the trained head alone. This distinction explains why the report includes both a four-stage architectural comparison and a separate component comparison. Omitting the consultant's standalone result would make the feedback stage appear to add more than the measurements support.
 
-The consultant standing alone says the same thing from the other side. It is not separated from
-the full feedback model on either dataset, and carries the higher mean on both. That is what the
-isolation experiment predicts: if the injection path contributes nothing separated from zero,
-then the system cannot hold a separated margin over the component that supplies its semantic
-evidence. Two independent measurements therefore point at the same place. Replacing a scorer
-that fits nothing with one trained on the same frozen embeddings is what moved the ladder; the
-mechanism built around that consultant is not.
+The choice of trained head is supported by its stronger standalone predictions and its higher accuracy on the consulted edges. Earlier prototype treatments failed to establish the intended gain, which motivated this change. However, the consultant and consultation percentile changed together, and the difference between the two feedback configurations is separated only on NF-UNSW-NB15 under the primary procedure. We can justify the choice without claiming that the experiments isolate its causal effect or establish a feedback gain over its own component.
 
-What the configuration does not buy is a separated gain from the feedback mechanism itself.
-With output fusion disabled, so that advice can reach the classifier only by re-entering the
-edge representations, neither consultant is separated from doing nothing, and on NF-ToN-IoT the
-stronger one is separated in the wrong direction. The system works. The part of it this work
-set out to test does not carry the result.
+The contribution is the implementation and evaluation of an edge-level structural--semantic system, including tests that distinguish a useful consultant from a useful injection mechanism. The underlying ideas of graph--language feedback, uncertainty-based consultation and learned routing come from the prior work reviewed in Section~\ref{sec:related}. The measurements here establish both positive comparisons and limits on what can be credited to the feedback mechanism.
 
-The contribution, stated narrowly, is instantiation plus measurement. DAS reports
-consistent gains from a closed feedback loop between a frozen graph model and a language model,
-at node level on text-rich graphs. This work instantiates the same shape of mechanism at edge
-level on network-flow graphs, with a deliberately constrained consultant that sees one edge's
-text and nothing else, and finds that the refinement result does not transfer. It then isolates
-why, and that isolation is the part that generalises: the channel has demonstrable capacity, an
-oracle converts it on both datasets, and no consultant we were able to build does. LOGIN, GLANCE
-and RoGRAD each establish a component of the design (uncertainty-driven consultation, learned
-routing and iterative refinement respectively), and none of them is claimed here as novel. What
-is new is the measurement, in a setting where the answer turns out to be negative.
-
-\subsection{Limitations, read as findings}
+\subsection{Limitations}
 \label{sec:disc-limitations}
 
-Most of the eight limitations below are results in their own right, and all of them affect how
-the numbers should be read.
+The following limitations determine how broadly the results can be interpreted.
 
 \begin{enumerate}
-    \item \textbf{Edge identity depends on the label.} Flows are aggregated by source IP,
-    destination IP and attack class, so ground truth participates in defining what an edge is.
-    Every number in this report is a controlled comparison between representations and
-    mechanisms, and none is a deployment-valid detection estimate. This is the limitation that
-    most restricts what the work can claim. It is the sampling-bias pitfall
-    \citet{arp2022dosdonts} place first, arrived at through the aggregation key rather than
-    through the choice of data.
+    \item \textbf{Controlled graph construction.} The deployment restriction and the changes needed to address it are developed in Section~\ref{sec:method-graph}. The present results must be interpreted within that scope.
 
-    \item \textbf{Only training-seed variance is measured.} The fold partition is fixed at the
-    seed-42 split, so every reported standard deviation and every interval is a lower bound on
-    total uncertainty. The two ladder comparisons this report calls not separated, the fusion
-    model against the GNN model on each dataset, are already close to zero, and measuring
-    partition variance could only widen them.
+    \item \textbf{A fixed fold partition and small classes.} Training seeds vary, but the fold partition does not. The reported uncertainty therefore excludes partition variation. Several evaluated classes contain only 12--40 edges, and no per-class difference has a confidence interval.
 
-    \item \textbf{The feedback model trains on advice more reliable than the advice it is scored on.} Each
-    fold's head has fitted that fold's training labels, so on training edges its logits are
-    in-fold. Cross-fitting removes the asymmetry and makes the feedback model worse on both datasets, so
-    the effect is not a simple optimism bias that honest advice would fix.
+    \item \textbf{Training advice differs from test advice.} Each fold's semantic head has seen its training-edge labels, so its advice on those edges is in-fold. The reported cross-fitting diagnostics do not establish a reliable remedy. Their settings and evidence are recorded in Appendix~\ref{app:negative}.
 
-    \item \textbf{Neither knob is tuned.} Both selection curves lie inside their own noise band,
-    and NF-ToN-IoT's injection scale selected on the upper boundary of the swept range, so the
-    sweep cannot say whether an optimum lies outside it. The word used throughout is selected.
+    \item \textbf{Flat selection curves and a boundary value.} The feedback settings are selected from curves that are flat relative to training variation. NF-ToN-IoT's scale is at the upper search boundary. Performance outside the tested range is unknown.
 
-    \item \textbf{One consultant file sits inside the feedback model at all three seeds.} The trained head
-    was built once, at seed 42, and the feedback model consults that same file at every training seed. Its
-    advice is identical across the three runs. The feedback model's reported standard deviation,
-    0.0042 and 0.0080, excludes consultant variance entirely and is narrower than a fully
-    re-seeded pipeline would give.
+    \item \textbf{Fixed consultant advice across feedback seeds.} Feedback training reuses the seed-42 head predictions. Its reported standard deviation excludes the variation that would arise from retraining its consultant. A fully re-seeded pipeline was not measured.
 
-    \item \textbf{The isolation experiment's pairs are not independent.} Its intervals are
-    computed over fifteen (seed, fold) pairs, and the five folds within a seed share a training
-    run. The effective sample size is smaller than fifteen, so those intervals are optimistic in
-    the same direction for every arm.
+    \item \textbf{Scope of the isolation experiment.} Its consultation percentiles differ from the final configuration. Its paired intervals also use fifteen (seed, fold) pairs, which are not independent because their training sets overlap. These diagnostics should not be treated as a matched decomposition of the final model.
 
-    \item \textbf{E-GraphSAGE is within noise of our structural rungs on NF-ToN-IoT.} Neither the
-    GNN model nor the fusion model is separated from it there. Only the two rungs that use a trained
-    semantic consultant clear it, and only at the second consultant. The honest summary of RQ5 is
-    that our structural pipeline matches a published architecture on that graph rather than
-    improving on it.
+    \item \textbf{Baseline representation and scoring differences.} E-GraphSAGE is not separated from our GNN or fusion stage on NF-ToN-IoT. The reported fusion and baseline runs also allowed predictions of excluded classes. Appendix~\ref{app:baseline-detail} bounds the possible cost; the code was corrected without replacing the reported measurements.
 
-    \item \textbf{Two NF-ToN-IoT stages were scored under a looser rule than the rest.} The
-    fusion model and the re-trained baselines could predict the two classes the metric excludes
-    and lose a scored edge that way. The GNN, semantic and feedback models could not. Section
-    \ref{sec:res-baselines} bounds the cost by crediting every such prediction with the true
-    label, and the bound stays below the feedback model everywhere except E-GraphSAGE with our
-    node features at one seed, where the comparison is already not separated. The code now masks
-    those classes at every stage, so the asymmetry is confined to the runs reported here.
+    \item \textbf{An unadapted semantic encoder.} CySecBERT remains frozen, and no fine-tuned or domain-adapted version was evaluated on the flow templates. The current results cannot determine what such adaptation would add.
+
+    \item \textbf{Unisolated structural contributions.} No run disables message passing, no flat classifier is evaluated on the same edge and centrality features, and no ablation compares the three weighted branches with one unweighted branch. The value of these structural design choices is therefore not established separately.
 \end{enumerate}
 
 \subsection{What follows from this}
 \label{sec:disc-future}
 
-Three directions follow directly from this, along with one non-direction worth recording.
+The first experimental priority is a matched comparison of the trained head alone, output fusion without injection, and the complete feedback model at the final consultation settings. It should vary the consultant's training seed as well as the feedback model's seed. This would directly test whether the added mechanism contributes beyond access to strong semantic predictions.
 
-Trust is the parameter to work on next. The feedback model has a scalar meant to represent how much to
-believe the consultant, and it does not respond to a large, deliberate change in the
-consultant's reliability. Constraining that scalar, supervising it against measured per-edge
-reliability, or replacing it with a per-edge quantity are all reachable experiments. The
-oracle result says there is something to win if the consultant can be made trustworthy where it
-is confident.
+A second direction is the reliability of advice on the edges selected for consultation. The oracle diagnostic shows that correct advice can help through the channel, but the trained-head diagnostic shows that stronger overall classification need not improve injection. A per-edge reliability estimate or a supervised trust function could be tested against the existing scalar, with all comparisons using the same settings and controls.
 
-Deployment-valid graph construction is the prerequisite for any operational claim. It requires
-an aggregation key that does not read the label, which changes the edge set, the class
-distribution and the difficulty of the task all at once. It also requires a split that respects
-the order in which traffic arrived, since a random partition over a fixed graph lets an edge be
-predicted from neighbours recorded after it, the spatial and temporal bias
-\citet{pendlebury2019tesseract} quantify for malware classifiers. That is a new set of
-experiments rather than a re-run of these.
-
-A stronger consultant is a reasonable third direction, with one caveat this work supplies:
-standalone accuracy is not the property that matters. Through the injection path on
-NF-ToN-IoT the stronger consultant is the worse one, at $-0.0378$ against control where the
-weaker one sits at $+0.0099$. Calibration on the flagged subset, not accuracy over the whole
-graph, is what a replacement consultant would have to improve.
-
-The non-direction is advice that depends on the graph model's current belief. The consultant here
-sees one edge's text and nothing else, which is what makes the coupling bidirectional in routing
-and not in content. Conditioning the advice on the graph model's top candidates would very likely
-change the result, and it was excluded by design so that the semantic branch's contribution could
-be attributed to it alone. A future system that removes that constraint is testing a different
-question, and it should say so.
+Deployment-valid evaluation requires the graph and temporal protocol changes described in Section~\ref{sec:method-graph}. It is a separate experiment on a changed task. Advice conditioned on the graph model's current predictions would also change the question: the present consultant reads only an edge's text, and its advice does not change when the graph model changes its belief.
 
 \subsection{Scope, and the experiments this work did not reach}
 \label{sec:disc-scope}
 
-Several items in Section~\ref{sec:disc-limitations} are bounded by the time available rather
-than by anything about the method, and naming them as planned work is more useful than listing
-them as regrets. Four are immediate and each is already specified precisely enough to be picked
-up without re-deriving anything.
+The remaining experiments include repeating the evaluation with new fold partitions, extending the boundary-selected scale range, and adapting the frozen encoder to the flow descriptions. None was run for the results reported here. Their absence is a limit on the evidence, rather than a reason to assume that they would improve the scores.
 
-Measuring fold-partition variance means repeating the whole ladder at several partition seeds,
-which multiplies every run reported here by the number of partitions; it is the only way to turn
-the $\pm$ values in Section~\ref{sec:results} from a lower bound into an estimate of total
-uncertainty. Re-seeding the consultant alongside the training seed would widen those intervals
-honestly, and is the single change that would most improve the evidence behind the separated
-comparisons. Measuring how much message passing contributes on NF-ToN-IoT, where 62.8\% of edges
-end at a destination of in-degree one, would establish whether the structural branch is doing
-graph work on that dataset or behaving as an edge-feature model with extra steps; the comparison
-is a run of the same encoder with message passing disabled. And the deployment-valid aggregation
-key discussed above changes the task rather than the code, which is why it is a programme rather
-than a patch.
-
-None of the four is blocked by anything other than time. They are the next steps of this work,
-not gaps in it, and they are recorded here in the order we would run them.
+The structural branch needs its own controls. Disabling message passing and fitting a flat classifier to the same aggregated edge attributes and endpoint centralities would test whether graph propagation adds useful information. Comparing the three weighted encoders with a single unweighted encoder would test the branch split. These comparisons address the supervisor's open methodological questions and remain future work.

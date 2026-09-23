@@ -1,462 +1,146 @@
 \section{Results}
 \label{sec:results}
 
-This section reports what was measured. Interpretation is deferred to
-Section~\ref{sec:discussion}. The wording is deliberately narrow: a difference is called
-\emph{separated} only when its bootstrap interval excludes zero, and an ordering of means is
-called an ordering of means.
+This section first summarises the evaluation protocol and compares the models. It then examines feedback ablations, the earlier prototype treatments and attention injection. Finally, it compares the re-trained baselines, examines individual classes and reports how the feedback settings were selected.
 
+\FloatBarrier
 \subsection{The protocol as it was run}
 \label{sec:res-protocol}
 
-Every rung is evaluated by pooled five-fold out-of-fold macro-F1. Each fold's held-out
-predictions are collected, the five folds are concatenated into one prediction vector covering
-every edge exactly once, and macro-F1 is computed on that vector. The metric covers all ten
-classes on NF-UNSW-NB15 and eight of ten on NF-ToN-IoT, where \texttt{dos} (4 edges) and
-\texttt{ransomware} (3 edges) remain in the graph for message passing but cannot survive a
-five-way split. Because the class counts differ, the two datasets' absolute levels are not
-comparable. Only the shape of the ladder is.
-Each rung was trained at three seeds, 42, 1 and 2, with the fold partition held fixed at the
-seed-42 stratified split. Only training stochasticity varies, so the pooled out-of-fold edge
-set is identical across seeds. That identity makes the seed-matched bootstrap a paired
-comparison. Reported standard deviations are training-seed variance at a fixed partition.
-Fold-partition variance was not measured, so every $\pm$ in this section is a lower bound on
-total uncertainty.
+All models were evaluated using pooled five-fold out-of-fold predictions at training seeds 42, 1 and 2, with the fold partition fixed at seed 42. We report macro-F1, accuracy and weighted F1. NF-UNSW-NB15 is scored over ten classes; NF-ToN-IoT is scored over eight, excluding \texttt{dos} and \texttt{ransomware} while retaining their edges for message passing. The semantic prototype model is deterministic for these folds and embeddings. All runs use \texttt{OMP\_NUM\_THREADS=1}; Appendix~\ref{app:repro} gives the reproduction details.
 
-Two bootstrap procedures are used, both at 2{,}000 iterations. The primary is two-level: it
-resamples edges and independently draws a training seed, so seed-to-seed variation enters the
-interval. The secondary is seed-matched, pairing seed 42 with seed 42 and so on, resampling
-edges only. The seed-matched intervals are narrower by construction. They are reported so the
-reader can see how much of an interval's width is seed variance. The decision rule was fixed
-before the runs: separated if the 95\% two-level interval excludes zero, not separated
-otherwise. Where the two procedures disagree, the two-level result decides and both are shown.
+Macro-F1 gives each evaluated class equal weight, so rare attacks remain visible even when benign traffic dominates. The reported standard deviations measure training variation at one fixed fold partition; they do not measure uncertainty from changing that partition. A difference is called \emph{separated} only when its 95\% two-level bootstrap interval excludes zero. This procedure resamples edges and independently draws a training seed for each model over 2{,}000 iterations. The seed-matched bootstrap is a secondary check, and the two-level result decides when they disagree. We compare model orderings across datasets, not their absolute scores, because the evaluated class sets differ. The graph-construction limitation in Section~\ref{sec:method-graph} applies to every result.
 
-The semantic model is deterministic given the folds and the frozen embeddings. Its standard
-deviation is exactly 0.0000 at three seeds, and it enters every comparison as a fixed side.
-All runs export \texttt{OMP\_NUM\_THREADS=1}. That pin is not cosmetic: unpinned runs drift by
-roughly 0.012 macro-F1 at a fixed seed, larger than several of the differences
-reported below. One earlier finding in this project was retracted for exactly that reason.
-Re-running the GNN and semantic models at seed 42 reproduces their committed values exactly.
-That has not always been true. A pre-v2 NF-ToN-IoT ladder failed to reproduce on two of four
-rungs in August 2026. Thread pinning became mandatory afterwards.
 
-Finally, one boundary carries through everything below. Edges are aggregated by source IP,
-destination IP and attack class, so the label participates in defining edge identity. These are
-controlled comparisons between representations and mechanisms, not deployment-valid detection
-estimates. The distance between a controlled comparison and an operational detector is the
-subject of \citet{sommer2010closedworld}, and nothing measured below closes it.
 
+\FloatBarrier
 \subsection{The model ladder}
 \label{sec:res-ladder}
 
-Table~\ref{tab:ladder} gives the four rungs on both datasets. The feedback model appears twice, because
-the identity of the consultant it queries is itself an experimental variable. The feedback model was first
-built around an embedding-only whitened prototype scorer, the same scorer that constitutes the
-semantic model. It was later rebuilt around a per-fold classification head trained on the same
-frozen semantic embeddings. Both versions are reported throughout, since the change between
-them is the largest single effect measured in this work.
+Table~\ref{tab:ladder} and Figure~\ref{fig:ladder} report the four-stage comparison. Table~\ref{tab:metrics} also shows the trained head alone, alongside both feedback configurations, on all three metrics; Figure~\ref{fig:metrics} plots the stage-level results. With the trained-head consultant, feedback reaches macro-F1 of $0.8341 \pm 0.0042$ on NF-UNSW-NB15 and $0.5044 \pm 0.0080$ on NF-ToN-IoT, compared with $0.7644 \pm 0.0045$ and $0.4521 \pm 0.0114$ with the prototype consultant. The head alone reaches $0.8374 \pm 0.0048$ and $0.5081 \pm 0.0073$. Feedback is separated above the GNN, semantic and fusion stages on both datasets, but not above the head alone. Fusion is not separated from the GNN on either dataset. Table~\ref{tab:comparisons} and Figure~\ref{fig:comparisons} give the stage comparisons. Several evaluated classes contain only 12--40 edges, so these aggregate results should be read alongside the small-class caution in Section~\ref{sec:res-perclass}.
+
+The trained head is therefore essential to interpreting the feedback result. It has the highest mean macro-F1 on both datasets, and adding feedback has not established an improvement over it. The feedback-minus-head intervals are $[-0.0228, +0.0128]$ on NF-UNSW-NB15 and $[-0.0342, +0.0299]$ on NF-ToN-IoT. Replacing the prototype consultant also changed the selected consultation percentile; the comparison cannot assign the gain to either change alone. The change between feedback configurations is separated on NF-UNSW-NB15, but not on NF-ToN-IoT under the primary bootstrap. Prototype feedback is not separated above either structural stage on either dataset; its only separated stage comparison is against the semantic model on NF-ToN-IoT. These findings justify examining the stronger consultant while testing the injection path separately in Section~\ref{sec:res-ablations}. Appendix~\ref{app:ladder-detail} gives the supporting intervals and explains why accuracy can hide weak rare-class performance.
 
 \input{tables/tab_ladder}
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_ladder}
-\caption{The four rungs on both datasets, with the feedback model drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic model is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant feedback model; the arrow between the two feedback model bars carries an interval, given in the text. The two panels have independent y-axes that do not start at zero, and their absolute heights are not comparable.}
+\caption[Four-stage model comparison under both consultants]{The four rungs on both datasets, with the feedback model drawn under each of its two consultants. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. The semantic model is deterministic and carries no spread. The hatched bar is the superseded prototype-consultant feedback model; the arrow between the two feedback model bars carries an interval, given in the text. The two panels have independent y-axes that do not start at zero, and their absolute heights are not comparable.}
 \label{fig:ladder}
 \end{figure}
-
-Figure~\ref{fig:ladder} draws the same numbers. The three fixed rungs behave differently on
-the two graphs. Ranked by mean macro-F1, highest first, NF-UNSW-NB15 gives the fusion model,
-the GNN model, the semantic model. NF-ToN-IoT gives the GNN model, the fusion model, the
-semantic model, so the fusion model falls below the rung it is meant to improve on. The semantic model is the weakest on both, and by
-a much wider margin under NF-ToN-IoT's imbalance, where the prototype scorer reaches 0.2785
-against the GNN model's 0.4336.
-
-Table~\ref{tab:metrics} adds accuracy and support-weighted F1 beside macro-F1 for the same
-rungs, scored on the same rows. The feedback model with its trained-head consultant is the
-highest rung on all three metrics on both datasets, which macro-F1 alone does not establish.
-The three metrics do not carry the same information, and NF-ToN-IoT shows why. Its benign class
-holds 82\% of the scored edges, so every graph rung reaches at least 0.83 accuracy there while
-their macro-F1 values run from 0.4102 to 0.5044. The feedback model stands above the GNN model
-on both, at 0.5044 against 0.4336 on macro-F1 and 0.9186 against 0.8739 on accuracy, so the gap
-that looks nearly closed is the one measured on a metric where the benign class casts four votes
-in five. Weighted F1 behaves the same way for the same reason. Macro-F1 is the headline metric throughout this report because it
-gives a 12-edge class and a 1{,}746-edge class the same weight, which is the comparison the
-research questions are about.
 
 \input{tables/tab_metrics}
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{fig_metrics}
-\caption{Macro-F1 and accuracy for the four rungs, both datasets. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. Every panel has its own y-axis and none starts at zero. The accuracy panels span a far narrower range than the macro-F1 panels, and on NF-ToN-IoT that is the benign majority showing through.}
+\caption[Macro-F1 and accuracy by model stage]{Macro-F1 and accuracy for the four rungs, both datasets. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition; fold-partition variance is not measured. Open circles are the three individual seeds. Every panel has its own y-axis and none starts at zero. The accuracy panels span a far narrower range than the macro-F1 panels, and on NF-ToN-IoT that is the benign majority showing through.}
 \label{fig:metrics}
 \end{figure}
-
-Figure~\ref{fig:metrics} draws both metrics side by side.
-
-The feedback model's position depends on its consultant. With the prototype scorer it is above the GNN model and the semantic model on both datasets, below the fusion model on NF-UNSW-NB15 by 0.0149, and above
-the fusion model on NF-ToN-IoT by 0.0419. With the trained head it is the highest rung on both. The change
-is $+0.0697$ on NF-UNSW-NB15 and $+0.0523$ on NF-ToN-IoT. Two things changed together and the
-report does not separate them: the consultant, and the selected entropy percentile, which moved
-from 31 to 29 and from 25 to 16.
-
-Both configurations stored their pooled out-of-fold predictions at all three seeds, so the
-change carries an interval computed the same way as every other difference here. It is
-$+0.0701$ [$+0.0353$, $+0.1057$] on NF-UNSW-NB15, separated, and $+0.0511$ [$-0.0082$,
-$+0.1110$] on NF-ToN-IoT, not separated. The seed-matched interval on NF-ToN-IoT does exclude
-zero, at $+0.0509$ [$+0.0022$, $+0.1013$]. That is the same pattern the fusion model against the GNN model shows below: a difference that survives resampling edges and stops surviving once
-training-seed variance is admitted. The
-interval measures the change as a whole. It does not attribute it to the consultant, because
-the entropy percentile moved with it.
-
-Because the consultant turned out to carry the change, it was also scored standing alone. The
-trained head reaches $0.8374 \pm 0.0048$ on NF-UNSW-NB15 and $0.5081 \pm 0.0073$ on NF-ToN-IoT.
-It is separated above the GNN model on both, at $+0.0946$ [$+0.0403$, $+0.1470$] and $+0.0725$
-[$+0.0127$, $+0.1313$]. The feedback model is \emph{not} separated from it: $-0.0032$
-[$-0.0228$, $+0.0128$] on NF-UNSW-NB15 and $-0.0032$ [$-0.0342$, $+0.0299$] on NF-ToN-IoT, the
-sign is unstable across the three seeds, and the head carries the higher mean on both. We report
-this because the consultant experiment is the central manipulation of this study and a reader
-cannot weigh it without knowing where the consultant sits on its own. It is not tabulated as a
-rung, because it is a component the feedback model contains rather than a parallel stage of the
-ladder, and Section~\ref{sec:disc-contribution} reads it against the isolation experiment.
-
-Table~\ref{tab:comparisons} answers RQ1 and RQ2 by turning those orderings into intervals.
 
 \input{tables/tab_comparisons}
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_comparisons}
-\caption{Every ladder comparison as an interval, under each consultant. A difference counts as separated only when the interval excludes zero, shown by a filled marker. The primary two-level procedure resamples edges and training seed; the seed-matched procedure resamples edges alone. Under the trained head every feedback model comparison clears zero on both datasets; under the prototype consultant only the comparison against the semantic model on NF-ToN-IoT does. Colours follow the rung the comparison is about, with the prototype group in a lighter tint.}
+\caption[Bootstrap intervals for the stage comparisons]{Every ladder comparison as an interval, under each consultant. A difference counts as separated only when the interval excludes zero, shown by a filled marker. The primary two-level procedure resamples edges and training seed; the seed-matched procedure resamples edges alone. With the trained head, feedback exceeds the GNN, semantic and fusion stages on both datasets; its comparison with the head alone is not separated (Table~\ref{tab:metrics}). Under the prototype consultant, only the comparison against the semantic model on NF-ToN-IoT excludes zero. Colours follow the rung the comparison is about, with the prototype group in a lighter tint.}
 \label{fig:comparisons}
 \end{figure}
 
-Figure~\ref{fig:comparisons} plots them. The table divides cleanly by consultant. Under the
-prototype scorer, no comparison between the feedback model and a structural rung is separated on
-either dataset. Every one of those intervals crosses zero, including the two where the feedback
-model carries the higher mean. The one prototype-consultant difference that is separated is the
-feedback model against the semantic model on NF-ToN-IoT, at $+0.1727$ [$+0.1326$, $+0.2174$],
-where the semantic model scores 0.2785 against the GNN model's 0.4336 and clearing it says
-nothing about the mechanism. On NF-UNSW-NB15 even that comparison crosses zero, at $+0.0287$
-[$-0.0061$, $+0.0631$]. In that configuration the answer to RQ3 is that the ladder is an
-ordering of means and no more.
-
-Under the trained head, every feedback model comparison is separated on both datasets: above the fusion model, above
-the GNN model and above the semantic model, with sign stable across all three seeds. These are
-the first separated ladder steps this project has measured, and they hold on two datasets with
-the same architecture, the same folds and the same seeds.
-
-One result is negative regardless of consultant. The fusion model is not separated from the GNN model:
-positive on NF-UNSW-NB15 and negative on NF-ToN-IoT, with an interval crossing zero either way.
-The seed-matched interval for NF-UNSW-NB15 does exclude zero, $+0.0356$ [$+0.0038$, $+0.0678$].
-That is the clearest illustration in this report of what the two-level procedure is for: once
-seed variance enters, the same difference stops being separated. Under the pre-registered rule,
-the fusion model versus the GNN model is not separated, and the answer to RQ2 is negative on both
-datasets.
-
-One caution belongs with the separated results above. They compare whole systems, and the feedback model
-differs from the fusion model in two ways at once: it re-injects semantic evidence into the edge
-representations, and it fuses semantic logits at the output. Section~\ref{sec:res-ablations}
-isolates the two and shows which one carries the difference. No statement of the feedback model's margin
-over the fusion model or the GNN model in this report appears without that isolation result beside it.
-
+\FloatBarrier
 \subsection{Feedback ablations and the mechanism in isolation}
 \label{sec:res-ablations}
 
-RQ3 asks whether the feedback stage adds anything beyond static fusion, and if so, through which
-path. Two experiments answer it, and they answer differently.
+Table~\ref{tab:ablations} compares real advice, feedback off and random advice at each training seed. Real advice scores above both alternatives at every seed on both datasets. Table~\ref{tab:mechanism} and Figure~\ref{fig:mechanism} then test injection with output fusion disabled. The oracle, which deliberately receives the true label, improves over control by $+0.0369$ on NF-UNSW-NB15 and $+0.1354$ on NF-ToN-IoT, with both intervals excluding zero. The prototype consultant has no separated improvement. The trained-head consultant has no separated improvement on NF-UNSW-NB15 and a separated loss of $-0.0378$ on NF-ToN-IoT. This diagnostic used consultation percentiles of 31 and 25, respectively, rather than the final configuration's 29 and 16; injection scales remained 2.0 and 20.0.
 
-The first is the ladder-level ablation, in which the full system runs with real advice, with the
-advice channel switched off, and with random advice. The feedback-off arm is called
-\texttt{head\_only} in the code because the classifier then sees only the graph model's own
-prediction head. Fusion at the output is active in all three arms, and the feedback model here is the
-canonical one, consulting the trained head. Table~\ref{tab:ablations} gives every seed.
+The first experiment measures access to semantic advice through the complete system, so it cannot identify injection as the source of the gain. The second shows that correct advice can help through the injection path, but neither realistic consultant produced a separated gain at the settings tested. The oracle is a diagnostic with deliberate label leakage, not a usable detector. Because the isolation settings differ from the final configuration, this experiment does not directly measure injection's contribution at the final settings. The separate head-alone comparison nevertheless shows no established advantage from the complete feedback model over its consultant. Here \texttt{head\_only} means the graph-only control, not the trained semantic head. Prediction changes between passes show that the edge channel is active; activity alone does not establish better predictions. Appendix~\ref{app:isolation-detail} records the headroom calculation, cross-fitting check and churn evidence.
 
 \input{tables/tab_ablations}
-
-Feedback on scores above feedback off at every seed on both datasets, with every interval
-excluding zero. Random advice costs at least 0.09 macro-F1 against real advice at every seed, so the arm is
-sensitive to what the advice says and not merely to the presence of an extra tensor. Random
-advice is not uniformly worse than none, however. On NF-ToN-IoT at seed 42 it reaches 0.4002
-against \texttt{head\_only}'s 0.3809, the one cell of six where that happens. The claims here
-are real advice against each of the other two arms, and both hold at every seed. This
-comparison cannot attribute the gain, because the real arm differs from
-\texttt{head\_only} in two ways at once: semantic evidence re-enters the edge representations,
-and semantic logits are fused at the output.
-
-The second experiment separates them. Output fusion is disabled in every arm, so advice can
-only reach the classifier through the injection path under test. Table~\ref{tab:mechanism}
-gives the result.
 
 \input{tables/tab_mechanism}
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_mechanism}
-\caption{The injection path measured with output fusion disabled in every arm, so advice can reach the classifier only through the path under test. Filled markers mark intervals that exclude zero. The shaded band is the documented run-to-run drift without thread pinning, $\pm 0.012$ macro-F1. Only the oracle converts the channel on both datasets; on NF-ToN-IoT the trained-head consultant is separated in the wrong direction.}
+\caption[Injection diagnostic with output fusion disabled]{The injection path measured with output fusion disabled in every arm, so advice can reach the classifier only through the path under test. Filled markers mark intervals that exclude zero. The shaded band is the documented run-to-run drift without thread pinning, $\pm 0.012$ macro-F1. The diagnostic uses consultation percentiles 31 and 25, not the final 29 and 16. Only the oracle improves through the edge channel on both datasets; on NF-ToN-IoT the trained-head consultant is separated in the wrong direction.}
 \label{fig:mechanism}
 \end{figure}
 
-Figure~\ref{fig:mechanism} draws the four arms.
-The oracle receives the true label at $\pm 4$ nats through the same projection every other arm
-uses. It is a deliberate leak, a diagnostic only and never a performance figure. It gains
-$+0.0369$ [$+0.0097$, $+0.0618$] on NF-UNSW-NB15 and $+0.1354$ [$+0.0919$, $+0.1797$] on
-NF-ToN-IoT, both separated. The channel therefore has measurable capacity on both graphs.
-The shares quoted below are taken against the headroom as a plain three-seed mean, $+0.0345$ on
-NF-UNSW-NB15 and $+0.1090$ on NF-ToN-IoT. Those two values differ slightly from the point
-estimates just given, which are bootstrap means over resampled edges and seeds.
-
-Neither realistic consultant uses it. The embedding-only prototype captures $-4.5\%$ of the
-NF-UNSW-NB15 headroom and $11.9\%$ of the NF-ToN-IoT headroom, neither separated from zero. The
-trained head, which lifts the full feedback model by $+0.0697$ and $+0.0523$ when it replaces the
-prototype, captures $12.5\%$ on NF-UNSW-NB15, again not separated, and $-38.0\%$ on NF-ToN-IoT,
-a separated regression. Its advantage in the full system does not survive the removal
-of output fusion.
-A cross-fitted variant of the same head, measured at seed 42 only, moves the arm from $-0.0230$
-to $-0.0654$ against control on NF-UNSW-NB15 and from $-0.0165$ to $+0.0070$ on NF-ToN-IoT, so
-matching the advice's train-time and test-time reliability does not rescue it either.
-
-The NF-UNSW-NB15 headroom comes with a caveat. At seed 42 alone the oracle arm scores
-0.7522 against a control of 0.7543, a headroom of $-0.0021$, so a captured share is not
-computable there. Because the $+0.0345$ is a mean over three seeds that do not agree in sign,
-single-seed shares on NF-UNSW-NB15 are not reported.
-
-Read together, the two experiments give RQ3 a split answer. Feedback plus fusion is separated
-from fusion alone at every seed on both datasets. The injection mechanism alone, driven by any
-consultant we can actually build, is not separated from doing nothing.
-
-That null is not an inert channel. Churn, the fraction of edges whose predicted class changes
-between consecutive passes, measured in the canonical feedback model over every edge in the graph,
-training edges included, is 0.1372 on NF-UNSW-NB15 and 0.1246 on NF-ToN-IoT as three-seed means,
-with per-seed values from 0.0938 to 0.1675 and from 0.1070 to 0.1402. The injection path is
-alive and moves predictions on every pass. What it does not do is move the pooled score away from
-control once output fusion is removed. The churn figures are in
-\texttt{results/feedback\_churn.json}, and Section~\ref{sec:res-attention} contrasts them with the
-attention variant, whose churn is exactly zero.
-
+\FloatBarrier
 \subsection{Five attempts on the embedding-only consultant}
 \label{sec:res-prototype}
 
-Before the consultant was changed, five treatments were run against the whitened-prototype
-scorer. Each attacked a different candidate explanation for why its advice does not convert.
-All five failed, and the pattern of failure is the evidence that the constraint is the
-consultant rather than the mechanism around it.
+Five changes were tested with the prototype consultant: supervising the uncertainty selector, calibrating the consultant's temperature, weighting advice by class reliability, changing the advice format, and cross-fitting the advice. None established the intended improvement. The first two were tested together over three seeds, with an additional condition that re-selected the feedback settings; none of these conditions separated feedback from fusion. The remaining treatments were single-seed diagnostics and do not support multi-seed conclusions. Table~\ref{tab:treatments} and Appendix~\ref{app:negative} give the settings and results. A separate seed-42 check on the uncertain edges found trained-head accuracy of 0.795 on NF-UNSW-NB15 and 0.648 on NF-ToN-IoT, compared with 0.647 and 0.284 for the prototype scorer (Appendix~\ref{app:complementarity}).
 
-Two of them were signal-quality fixes, measured at three seeds as conditions A, B and C.
-Condition A is the canonical configuration. Condition B trains the selector head whose entropy
-ranks edges, and calibrates the consultant's temperature per fold instead of pinning it. Condition
-C re-selects the knobs on top of B. The two defects were genuinely removed: on NF-UNSW-NB15 the
-selector head's macro-F1 moved from 0.019--0.036 to 0.646--0.684, mean disagreement fell from
-0.8975 to 0.524--0.548, and the consultant's maximum softmax probability rose from 0.102 to
-0.487, with the temperature falling from about 9.4 to 0.105. The feedback model then scored 0.7644 in A,
-0.7610 in B and 0.7809 in C on NF-UNSW-NB15, and 0.4521, 0.4147 and 0.4630 on NF-ToN-IoT.
-Fixing both signals made the feedback model worse on both datasets. Condition C recovers, but its
-selection curves are flat, NF-UNSW-NB15's argmax landed on the boundary of the swept range at
-$k = 35$, and the feedback model against the fusion model includes zero in all three
-conditions.
+These results motivated changing the consultant. The prototype assigns classes using average embeddings, whereas the trained head learns class boundaries from the same frozen embeddings and labelled training examples. Its stronger predictions on the consulted edges make it a better-supported choice for supplying semantic advice. The failed treatments explain why we investigated that choice; they do not prove that every possible prototype treatment would fail or that class imbalance caused the prototype's weakness. The resulting feedback configuration has higher mean scores, but its consultation percentile also changed, and it does not have a separated advantage over the trained head alone. We therefore retain both consultants in the results and treat the head-alone comparison as necessary evidence when assessing the feedback design.
 
-The same runs produced the clearest single diagnostic in the feedback work. The magnitude
-actually added to the 39-wide encoded edge vector, whose features have unit variance, was
-0.077 / 0.060 / 0.061 on NF-UNSW-NB15 and 0.023 / 0.021 / 0.023 on NF-ToN-IoT under condition A.
-Calibrating the temperature raised it to roughly 1.2 and 2.8 respectively, a factor of about 17
-and about 125. The canonical prototype feedback model was, in effect, injecting almost nothing.
 
-Table~\ref{tab:treatments} in Appendix~\ref{app:treatments} lists all five treatments and
-what each was worth. Appendix~\ref{app:negative} gives the conditions behind the first
-two in full.
-The advice-format arm produced a counter-intuitive measurement worth stating on its own. Handing
-the consultant the oracle's saturated format made the input magnitude larger and the injected
-magnitude smaller, from 0.0767 to 0.0183 on NF-UNSW-NB15 and from 0.0234 to 0.0202 on
-NF-ToN-IoT. The projection is learned, so it adapts to a larger and lower-variance input by
-injecting less. Whatever the oracle's advantage is, it is not the shape of the vector it presents.
 
-The cross-fitting arm tested the feedback model's trust directly. If in-fold optimism in the advice were
-what the feedback model was exploiting, honest advice should lower the scalar the feedback model learns for how hard
-to push. Across four settings the learned trust scalar moved by at most 0.0205, from 1.5722 to
-1.5664 and 1.5227 to 1.5022 on NF-UNSW-NB15 and from 1.4768 to 1.4652 and 1.4842 to 1.4899 on
-NF-ToN-IoT, moving the wrong way in the last of those. What did move was the injected magnitude,
-from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The model absorbs the change in the projection
-rather than in the parameter that is supposed to represent trust.
-
-Finally, the consultants differ in how well they complement the GNN model on the edges the
-feedback model actually consults. Appendix~\ref{app:complementarity} tabulates that. On the flagged set at
-seed 42 the GNN model is 0.547 accurate on NF-UNSW-NB15 and 0.343 on NF-ToN-IoT. The
-prototype scorer reaches 0.647 and 0.284 there, so on NF-ToN-IoT it is worse than the model it
-is meant to correct. The trained head reaches 0.795 and 0.648.
-
-The disagreements are where a consultant either earns its place or does not. Among flagged
-edges where the consultant and the GNN model disagree, the trained head is right 55 times
-against 22 on NF-UNSW-NB15 and 129 against 75 on NF-ToN-IoT. Inside the confidence-gated
-half those become 17 against 4 and 79 against 13. The prototype scorer is right 38 against 45
-on NF-UNSW-NB15 and 45 against 178 on NF-ToN-IoT. On the edges it is asked about, and in the
-cases where its answer would change something, that consultant is wrong roughly four times in
-five.
-
+\FloatBarrier
 \subsection{Attention injection}
 \label{sec:res-attention}
 
-Where the edge channel of Section~\ref{sec:res-ablations} changes roughly one prediction in eight
-between passes, the alternative injection design, which biases graph attention rather than the
-edge representation, produces churn of exactly 0.0000 in every configuration tested, including when handed the true
-label at $\pm 4$ nats. Not one prediction changes. Table~\ref{tab:mechanism} confirms it a third
-time under the current encoding: the oracle attention arm is $-0.0007$ [$-0.0211$, $+0.0180$] on
-NF-UNSW-NB15 and $+0.0114$ [$-0.0083$, $+0.0307$] on NF-ToN-IoT, neither separated from zero.
+Attention injection produced prediction churn of exactly 0.0000 in every tested configuration, including an oracle supplied with the true label at $\pm 4$ nats. Its bootstrap differences from control were $-0.0007$ $[-0.0211, +0.0180]$ on NF-UNSW-NB15 and $+0.0114$ $[-0.0083, +0.0307]$ on NF-ToN-IoT, neither separated from zero (Table~\ref{tab:mechanism}). Unlike edge injection, this variant did not change the predicted classes between passes.
 
-The cause is structural and holds independently of the encoding. Attention modifies node
-embeddings. On NF-UNSW-NB15, 58.7\% of edges share a source and destination pair with at least
-one other edge, so node-derived terms are identical for them and only the edge attributes
-distinguish them, and attention never touches those. On NF-ToN-IoT a different mechanism produces the
-same outcome: 62.8\% of edges have a destination of in-degree one, where a softmax over incoming
-edges is 1.0 whatever bias is applied. Two datasets, two independent reasons, the same null.
+The graph structure helps explain this negative result. Attention changes node embeddings but cannot give different endpoint-derived representations to parallel edges between the same hosts; 58.7\% of NF-UNSW-NB15 edges share an endpoint pair. On NF-ToN-IoT, 62.8\% of edges terminate at a destination with only one incoming edge. For those destinations, the attention softmax is always 1.0, regardless of the injected bias. These constraints explain why the location of injection matters. They do not establish how much the original GNN benefits from message passing; that requires the separate comparison described in Section~\ref{sec:disc-scope}.
 
+
+
+\FloatBarrier
 \subsection{Re-trained published baselines}
 \label{sec:res-baselines}
 
-RQ5 compares the system against two published graph-based intrusion detection architectures,
-E-GraphSAGE and TE-G-SAGE, re-trained on the same aggregated rows, folds, evaluation classes and
-metric. These are not comparisons against the papers' published numbers, which were obtained on
-per-flow graphs roughly 300 times larger. Table~\ref{tab:baselines} gives the point estimates.
+Tables~\ref{tab:baselines} and~\ref{tab:vsbaselines} compare E-GraphSAGE and TE-G-SAGE re-trained on our aggregated representation. With its published settings, E-GraphSAGE reaches macro-F1 of 0.1194 on NF-UNSW-NB15 and 0.4141 on NF-ToN-IoT; TE-G-SAGE reaches 0.3841 and 0.1931. The tables also report validation-selected settings and variants using our node features. Trained-head feedback is separated above every faithful re-trained baseline, although it is not separated above its own semantic head. Prototype feedback is not separated from E-GraphSAGE on NF-ToN-IoT. On that dataset, neither the GNN nor the fusion stage is separated from E-GraphSAGE with its published settings. These comparisons use our protocol and do not compare against scores reported in the original papers.
+
+Much of the baseline gap depends on representation and training choices. E-GraphSAGE classifies an edge from its endpoints alone, so it cannot distinguish parallel edges with different attributes. This affects 58.7\% of NF-UNSW-NB15 edges and 7.9\% of NF-ToN-IoT edges (Figure~\ref{fig:ceiling}). Table~\ref{tab:decomposition} and Figure~\ref{fig:decomposition} separate the NF-UNSW-NB15 point-estimate increments associated with validation selection, node features and the remaining model change; those increments have no confidence intervals. The NF-ToN-IoT baselines and fusion stage also allowed predictions of excluded classes in the reported runs. An optimistic correction bound remains below feedback except for one node-feature ablation at one seed, whose comparison was already not separated. Appendix~\ref{app:baseline-detail} gives this bound and the detailed comparisons. These qualifications prevent the results from being read as a general architectural advantage over the published detectors.
 
 \input{tables/tab_baselines}
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_ceiling}
-\caption{Why E-GraphSAGE collapses on one dataset and not the other. Its edge classifier reads only the concatenated endpoint embeddings, so parallel edges between one address pair are identical to it. The share of edges that are indistinguishable in this sense differs by roughly a factor of seven between the two graphs, and the scores invert with it. Both bars are grey because neither is one of our rungs.}
+\caption[Endpoint ambiguity and E-GraphSAGE performance]{Why E-GraphSAGE collapses on one dataset and not the other. Its edge classifier reads only the concatenated endpoint embeddings, so parallel edges between one address pair are identical to it. The share of edges that are indistinguishable in this sense differs by roughly a factor of seven between the two graphs, and the scores invert with it. Both bars are grey because neither is one of our rungs.}
 \label{fig:ceiling}
 \end{figure}
 
-
-The collapse of E-GraphSAGE on NF-UNSW-NB15 is a representation effect with a testable
-prediction attached, not evidence that the architecture is weak. Its edge classifier reads only the
-concatenation $[h_u \Vert h_v]$ of the two endpoint embeddings. An edge's own attributes never
-reach it, so parallel edges between one address pair cannot be told apart. That predicts a
-collapse
-proportional to how common parallel edges are. On NF-UNSW-NB15, 385 of 656 edges are
-indistinguishable by endpoints, that is 58.7\%, and the architecture scores 0.1194. On
-NF-ToN-IoT only 167 of 2{,}127 edges are, that is 7.9\%, and the same architecture scores
-0.4141. The prediction and the inversion agree. Figure~\ref{fig:ceiling} shows the mechanism
-beside the confirmation.
-The ceiling is also not a training-schedule artifact: trained to the authors' full 4{,}999
-epochs on fold 0, validation macro-F1 plateaus near 0.11 and peaks at 0.1384 at epoch 1{,}400.
-
-Table~\ref{tab:vsbaselines} gives the intervals for the two strongest rungs.
-
 \input{tables/tab_vsbaselines}
-
-With the trained-head consultant the feedback model is separated above every faithful re-trained baseline
-on both datasets. The only cells that are not separated involve \texttt{+ our node features},
-our own ablation and not a published architecture, and even those are separated under the
-seed-matched procedure. With the prototype consultant the picture is weaker in one place that
-matters: on NF-ToN-IoT the feedback model is not separated from E-GraphSAGE in any of its three
-configurations. The consultant change is what moves those three cells across the line.
-
-The lower rungs are weaker still. On NF-ToN-IoT neither the GNN model nor the fusion model is separated
-from E-GraphSAGE as published, at $+0.0203$ [$-0.0230$, $+0.0633$] and $-0.0061$ [$-0.0797$,
-$+0.0777$]. On NF-UNSW-NB15 neither the GNN model nor the semantic model is separated from
-TE-G-SAGE with our node features, at $+0.0249$ and $+0.0163$.
-
-The NF-ToN-IoT baselines were scored under a looser rule than the rungs they are compared
-against, and the margin has to be read against that. As Section~\ref{sec:method-protocol}
-states, these models and the fusion model could predict \texttt{dos} or \texttt{ransomware} for
-an edge the metric scores, losing it, while the GNN, semantic and feedback models could not.
-Across the three seeds that happened on 3, 374 and 6 edges for the fusion model, on 58, 63 and
-47 for E-GraphSAGE as published, on 66, 28 and 60 for E-GraphSAGE with our node features, and on
-between 29 and 206 for the three TE-G-SAGE configurations. Replacing every one of those
-predictions with the true label gives an upper bound on what the mask could have been worth, and
-that bound is more generous than any mask could be, because no mask redirects an edge to the
-right class. The bound stays below the feedback model at every seed for the fusion model and for
-five of the six baselines. The exception is E-GraphSAGE with our node features at seed 1, where
-it reaches 0.5206 against the feedback model's 0.5012. Table~\ref{tab:vsbaselines} already
-reports that comparison as not separated, at $+0.0667$ [$-0.0181$, $+0.1505$], so no claim in
-this report depends on the asymmetry. Every count and both macro-F1 values, per model and per
-seed, are in \texttt{results/ton\_iot\_dropped\_class\_bound.json}.
-
-Because most of the NF-UNSW-NB15 margin is not architectural, it repays decomposition.
-Table~\ref{tab:decomposition} walks from the strongest published configuration to our rungs.
-Every level is a three-seed mean, no step carries an interval, and no step is a separation claim.
 
 \input{tables/tab_decomposition}
 
 \begin{figure}[tbp]
 \centering
 \includegraphics[width=\textwidth]{fig_decomposition}
-\caption{The NF-UNSW-NB15 margin against TE-G-SAGE as published, decomposed. Roughly 45\% of the gap is our choice of how to tune, 30\% is our ten node centralities, and 25\% is the architecture. The tick on the final increment marks where the fusion model lands on the same scale. Every level is a three-seed mean; no step carries an interval and no step is a separation claim.}
+\caption[Point-estimate decomposition of the NF-UNSW-NB15 gap]{The NF-UNSW-NB15 margin against TE-G-SAGE as published, decomposed. Roughly 45\% of the gap is our choice of how to tune, 30\% is our ten node centralities, and 25\% is the architecture. The tick on the final increment marks where the fusion model lands on the same scale. Every level is a three-seed mean; no step carries an interval and no step is a separation claim.}
 \label{fig:decomposition}
 \end{figure}
 
-Figure~\ref{fig:decomposition} draws the walk. Roughly 45\% of the naive gap is our choice of
-how to tune, roughly 30\% is our node features,
-and roughly 25\% is the architecture. Measured to the fusion model instead of the feedback model, the architecture
-share is 15.1\%.
-
+\FloatBarrier
 \subsection{Per-class behaviour}
 \label{sec:res-perclass}
 
-Macro-F1 averages over classes of very different sizes, so it hides which classes a rung is
-good at. Figure~\ref{fig:perclasslevels} gives the levels: four rungs on every evaluated class,
-ordered by edge count. Table~\ref{tab:perclass} in Appendix~\ref{app:perclass} gives the same
-values with the counts beside them. Two patterns are visible before any difference is taken.
-Performance falls with support on both datasets, and it falls much faster on NF-ToN-IoT, where
-the four smallest classes hold 12 to 25 edges and no rung reaches 0.35 on three of them.
-Figure~\ref{fig:perclass} then gives the differences the Discussion argues about.
+Figures~\ref{fig:perclasslevels} and~\ref{fig:perclass}, with Table~\ref{tab:perclass}, show where the aggregate scores come from. Feedback exceeds fusion on eight of ten NF-UNSW-NB15 classes and seven of eight NF-ToN-IoT classes. Against the GNN, it is higher on nine of ten and six of eight, respectively. Its gains include $+0.2090$ for NF-UNSW-NB15 Backdoors and $+0.1594$ for DoS, and $+0.0903$ for NF-ToN-IoT \texttt{backdoor} and $+0.2242$ for \texttt{scanning}. Losses against the GNN include NF-ToN-IoT \texttt{mitm} and \texttt{xss}. Feedback also trails fusion on \texttt{password}, at 0.2134 against 0.2996. The trained head alone remains slightly higher in overall mean macro-F1, without a separated difference from feedback.
+
+The gains and losses occur in different classes, so a higher macro-F1 does not mean every attack is detected better. Several classes contain only 12--40 edges, and changing a small number of predictions can move their F1 substantially. None of the per-class differences has a confidence interval. The fusion stage illustrates the trade-off: on NF-ToN-IoT it raises \texttt{password} from the GNN's 0.0401 to 0.2996, while \texttt{mitm} falls from 0.8838 to 0.7082 and \texttt{xss} from 0.3728 to 0.0844. These observations identify where models differ; they do not establish why fusion loses overall or show that imbalance alone causes those losses. Appendix~\ref{app:perclass} retains the class counts and detailed scores.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{fig_perclass_levels}
-\caption{Per-class F1 for the four rungs, both datasets, with classes ordered by edge count and the count under each label. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition. No per-class value carries an interval, and on the smallest classes a single edge moves F1 substantially.}
+\caption[Per-class F1 by model stage]{Per-class F1 for the four rungs, both datasets, with classes ordered by edge count and the count under each label. The feedback model is the canonical one, consulting the trained head. Error bars are one standard deviation over three training seeds at a fixed fold partition. No per-class value carries an interval, and on the smallest classes a single edge moves F1 substantially.}
 \label{fig:perclasslevels}
 \end{figure}
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{fig_perclass}
-\caption{Per-class differences between the feedback model and the two rungs below it, three-seed means, with class sizes in brackets. The scale is centred at zero and a black outline marks a loss. No per-class difference carries an interval, and on classes of 12 to 40 edges a single edge moves F1 substantially.}
+\caption[Per-class feedback differences]{Per-class differences between the feedback model and the two rungs below it, three-seed means, with class sizes in brackets. The scale is centred at zero and a black outline marks a loss. No per-class difference carries an interval, and on classes of 12 to 40 edges a single edge moves F1 substantially.}
 \label{fig:perclass}
 \end{figure}
 
-
-The feedback model is above the fusion model on eight of ten NF-UNSW-NB15 classes. The two exceptions are
-Reconnaissance, 0.8731 against 0.8916, and Exploits, where the two are level to three decimals.
-On NF-ToN-IoT the feedback model is above the fusion model on seven of eight, losing only \texttt{password} at 0.2134
-against 0.2996. Against the GNN model the feedback model is above on nine of ten NF-UNSW-NB15 classes
-and six of eight NF-ToN-IoT classes, losing Reconnaissance on the first and \texttt{mitm} and
-\texttt{xss} on the second.
-
-The feedback model's gains are concentrated in the low-support classes, which is where a
-macro-average is decided. Against the GNN model it adds $+0.2090$ on NF-UNSW-NB15's Backdoors
-and $+0.1594$ on its DoS, both 40-edge classes, and $+0.0903$ on NF-ToN-IoT's \texttt{backdoor}
-at 16 edges and $+0.2242$ on \texttt{scanning} at 13. Its losses are in the same size range and
-go the other way: $-0.0273$ on \texttt{mitm}, $-0.1116$ on \texttt{xss} at 12 edges, and
-\texttt{password} at 0.2134 against the fusion model's 0.2996. On classes this small a single
-edge moves F1 by several points, so these are the differences least able to bear weight, and
-none of them carries an interval.
-
-RQ4 turns on two rare-class observations. The fusion model's NF-ToN-IoT collapse is concentrated in the
-classes where the GNN model is strong: \texttt{mitm} falls from 0.8838 to 0.7082 and
-\texttt{xss} from 0.3728 to 0.0844. Meanwhile the fusion model is the only rung that lifts \texttt{password}
-above 0.29 from the GNN model's 0.0401. On the smallest classes, single edges move F1 by
-large amounts, and none of these per-class differences carries an interval.
-
+\FloatBarrier
 \subsection{Knob selection}
 \label{sec:res-knobs}
 
-Two quantities are selected per consultant and per dataset on validation folds only, never on
-test: the entropy percentile that flags edges and the injection scale. For the trained-head
-consultant the selected values are $k = 29$ and scale 2.0 on NF-UNSW-NB15 and $k = 16$ and scale
-20.0 on NF-ToN-IoT. The prototype consultant's ladder ran at $k = 31$ and $k = 25$ at the same
-two scales. With the
-confidence gate keeping the top half of the flagged set, the effective consultation rate is
-14.5\% of edges on NF-UNSW-NB15 and 8.0\% on NF-ToN-IoT. In edges that is 190 of 656 flagged
-and 95 gated on NF-UNSW-NB15, and 341 of 2{,}127 flagged and 170 gated on NF-ToN-IoT.
+Validation-only selection chose consultation percentile $k = 29$ and injection scale 2.0 on NF-UNSW-NB15, and $k = 16$ and scale 20.0 on NF-ToN-IoT. The confidence gate retains half of the flagged edges, giving effective consultation rates of 14.5\% and 8.0\%. At these settings, 190 of 656 edges are flagged and 95 gated on NF-UNSW-NB15; 341 of 2{,}127 are flagged and 170 gated on NF-ToN-IoT. Across the 21 percentile candidates, mean validation macro-F1 ranges from 0.8238 to 0.8277 and from 0.5170 to 0.5232. The six scale candidates span 0.8252--0.8277 and 0.5196--0.5232. Appendix~\ref{app:knobs} reports the sweep summaries.
 
-Neither quantity is tuned, and the report does not describe them that way. Averaged over the
-three selection seeds, the 21 candidates for $k$ span 0.8238 to 0.8277 of validation macro-F1 on
-NF-UNSW-NB15 and 0.5170 to 0.5232 on NF-ToN-IoT. The six injection-scale candidates span 0.8252
-to 0.8277 and 0.5196 to 0.5232. Table~\ref{tab:knobcurves} in Appendix~\ref{app:knobs} gives
-every curve. Every one of those spans is smaller than the rungs' own
-seed-to-seed spread, so the argmax is not distinguishable from its neighbours and the selection
-is picking noise. NF-ToN-IoT's scale selected on the upper boundary of the swept range at 20.0,
-and the sweep therefore cannot say whether an optimum lies outside it. The contract records that
-boundary condition explicitly.
+Both curves are flat relative to the observed training-seed variation, so the selected maximum should not be described as a well-established optimum. NF-ToN-IoT's scale is at the upper boundary of the tested range, and these runs cannot determine whether a better value lies beyond it. We therefore call the settings \emph{selected}, not tuned. Settings were selected separately for each dataset and consultant. The prototype-feedback comparison used percentiles 31 and 25 at the same injection scales, which is why the change between feedback configurations cannot be attributed solely to replacing the consultant.

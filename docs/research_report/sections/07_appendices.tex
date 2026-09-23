@@ -3,10 +3,13 @@
 \section{Negative mechanism results}
 \label{app:negative}
 
+This appendix first records the prototype treatment conditions and injection magnitudes, then gives class reliability and treatment details, and finally documents the isolation diagnostics.
+
 This appendix holds the measurements behind Section~\ref{sec:res-prototype}. They are
 reported in full because the case for changing the feedback model's consultant rests on them, and
 because each one closes a line of investigation that would otherwise look open.
 
+\FloatBarrier
 \subsection{Conditions A, B and C}
 \label{app:abc}
 
@@ -18,7 +21,7 @@ Table~\ref{tab:abc}.
 
 \begin{table}[htbp]
 \centering
-\caption{Pooled out-of-fold macro-F1, mean over three seeds, by condition.}
+\caption[Pooled out-of-fold macro-F1, mean over three seeds, by condition]{Pooled out-of-fold macro-F1, mean over three seeds, by condition.}
 \label{tab:abc}
 \small
 \begin{tabular}{llccc}
@@ -57,6 +60,7 @@ to between 0.580 and 0.638, maximum probability rose from 0.101 to 0.500, and te
 fell from about 9.5 to 0.030. A better-calibrated consultant and a genuinely
 uncertainty-ranked selector made the feedback model worse on both datasets.
 
+\FloatBarrier
 \subsection{What the canonical feedback model was actually injecting}
 \label{app:magnitudes}
 
@@ -66,7 +70,7 @@ directly interpretable as a fraction of a standard deviation.
 
 \begin{table}[htbp]
 \centering
-\caption{Injected bias magnitude on flagged edges, per seed, by condition.}
+\caption[Injected bias magnitude on flagged edges, per seed, by condition]{Injected bias magnitude on flagged edges, per seed, by condition.}
 \label{tab:magnitudes}
 \small
 \begin{tabular}{lll}
@@ -87,6 +91,7 @@ over feedback-off was late fusion rather than feedback. The injection scale is a
 redundant with the learned bias strength, since condition C moved the scale from 2.0 to 5.0 and
 from 20.0 to 10.0 while the end-to-end magnitude barely moved.
 
+\FloatBarrier
 \subsection{Per-class reliability of the embedding-only consultant}
 \label{app:reliability}
 
@@ -97,7 +102,7 @@ from training labels alone. Table~\ref{tab:reliability} gives them.
 
 \begin{table}[htbp]
 \centering
-\caption{Mean per-class precision of the prototype consultant on training edges, over five
+\caption[Prototype precision on training edges]{Mean per-class precision of the prototype consultant on training edges, over five
 folds. Each dataset's classes are listed in its own label-mapping order.}
 \label{tab:reliability}
 \small
@@ -128,24 +133,72 @@ at 0.020, \texttt{dos} at 0.021, \texttt{backdoor} at 0.071, \texttt{xss} at 0.0
 at 0.226 itself. That is the same weakness the isolation experiment measures as the binding
 constraint, now quantified per class.
 
+\FloatBarrier
 \subsection{The five treatments}
 \label{app:treatments}
 
 \input{tables/tab_treatments}
 
+The advice-format arm produced a counter-intuitive measurement worth stating on its own. Handing
+the consultant the oracle's saturated format made the input magnitude larger and the injected
+magnitude smaller, from 0.0767 to 0.0183 on NF-UNSW-NB15 and from 0.0234 to 0.0202 on
+NF-ToN-IoT. The projection is learned, so it adapts to a larger and lower-variance input by
+injecting less. Whatever the oracle's advantage is, it is not the shape of the vector it presents.
+
+The cross-fitting arm tested the feedback model's trust directly. If in-fold optimism in the advice were
+what the feedback model was exploiting, honest advice should lower the scalar the feedback model learns for how hard
+to push. Across four settings the learned trust scalar moved by at most 0.0205, from 1.5722 to
+1.5664 and 1.5227 to 1.5022 on NF-UNSW-NB15 and from 1.4768 to 1.4652 and 1.4842 to 1.4899 on
+NF-ToN-IoT, moving the wrong way in the last of those. What did move was the injected magnitude,
+from 1.3430 to 1.1752 and from 1.3291 to 1.0745. The model absorbs the change in the projection
+rather than in the parameter that is supposed to represent trust.
+
+\FloatBarrier
+\subsection{Isolation diagnostics and prediction changes}
+\label{app:isolation-detail}
+
+The isolation measurements use the earlier consultation percentiles 31 on NF-UNSW-NB15 and 25 on NF-ToN-IoT, with output fusion disabled. They should not be read as a direct ablation of the final percentiles 29 and 16. The paired intervals resample (seed, fold) pairs and differ from the two-level edge bootstrap used for the model ladder.
+
+The oracle headroom, computed from the plain three-seed means, is $+0.0345$ on NF-UNSW-NB15 and $+0.1090$ on NF-ToN-IoT. The captured shares in Table~\ref{tab:mechanism} use these values, rather than the paired-bootstrap mean differences. The prototype captures $-4.5\%$ and $11.9\%$, neither separated from zero; the trained head captures $12.5\%$ and $-38.0\%$, with the latter a separated loss.
+
+The NF-UNSW-NB15 headroom comes with a caveat. At seed 42 alone the oracle arm scores
+0.7522 against a control of 0.7543, a headroom of $-0.0021$, so a captured share is not
+computable there. Because the $+0.0345$ is a mean over three seeds that do not agree in sign,
+single-seed shares on NF-UNSW-NB15 are not reported.
+
+A cross-fitted trained-head diagnostic at seed 42 moves the difference against control from $-0.0230$ to $-0.0654$ on NF-UNSW-NB15 and from $-0.0165$ to $+0.0070$ on NF-ToN-IoT. The single-seed result does not establish a reliable improvement.
+
+Churn, the fraction of edges whose predicted class changes
+between consecutive passes, measured in the canonical feedback model over every edge in the graph,
+training edges included, is 0.1372 on NF-UNSW-NB15 and 0.1246 on NF-ToN-IoT as three-seed means,
+with per-seed values from 0.0938 to 0.1675 and from 0.1070 to 0.1402. The injection path is
+alive and moves predictions on every pass. This measures prediction changes, not accuracy gains. The churn figures are in
+\texttt{results/feedback\_churn.json}, and Section~\ref{sec:res-attention} contrasts them with the
+attention variant, whose churn is exactly zero.
+
+The churn summary is saved in \texttt{results/feedback\_churn.json}, but its source traces are in the local, untracked \texttt{tmp/multiseed\_v2} directory. The summary is available; independent recalculation of these particular values requires those traces.
+
+\clearpage
 \section{Supporting tables}
 \label{app:tables}
 
+This appendix first provides the per-class and selection tables, then examines consultant complementarity, and finally gives detailed model comparisons and baseline qualifications.
+
+\FloatBarrier
 \subsection{Per-class F1}
 \label{app:perclass}
 
 \input{tables/tab_perclass}
 
+\FloatBarrier
 \subsection{Knob selection curves}
 \label{app:knobs}
 
+Table~\ref{tab:knobcurves} summarises the validation-only searches. The ranges show how little the score changes across the tested settings and identify the boundary-selected scale.
+
 \input{tables/tab_knobcurves}
 
+\FloatBarrier
 \subsection{Consultant complementarity on the flagged set}
 \label{app:complementarity}
 
@@ -155,7 +208,7 @@ Table~\ref{tab:complementarity} gives that, at seed 42.
 
 \begin{table}[htbp]
 \centering
-\caption{Accuracy on the entropy-flagged edge set at seed 42, for the GNN model, each
+\caption[Consultant accuracy on uncertain edges]{Accuracy on the entropy-flagged edge set at seed 42, for the GNN model, each
 consultant, and the resulting feedback model.}
 \label{tab:complementarity}
 \small
@@ -182,7 +235,7 @@ place a consultant can change an answer.
 
 \begin{table}[htbp]
 \centering
-\caption{Among entropy-flagged edges where the consultant and the GNN model disagree, how
+\caption[Consultant correctness on disagreements]{Among entropy-flagged edges where the consultant and the GNN model disagree, how
 often the consultant is right. Seed 42, at the canonical entropy percentile for each dataset.}
 \label{tab:disagreement}
 \small
@@ -217,8 +270,108 @@ writes its own artifact:
 \texttt{results/consultant\_complementarity.json}
 \end{quote}
 
+\FloatBarrier
+\subsection{Model comparisons and metric interpretation}
+\label{app:ladder-detail}
+
+Macro-F1 weights each evaluated class equally. Accuracy and weighted F1 give more influence to frequent classes, so on NF-ToN-IoT they are strongly influenced by benign traffic, which accounts for 82\% of scored edges. The component comparison in Table~\ref{tab:metrics} reports all three metrics, including the head alone. A high accuracy can therefore coexist with weak rare-class performance.
+
+The feedback model's position depends on its consultant. With the prototype scorer it is above the GNN model and the semantic model on both datasets, below the fusion model on NF-UNSW-NB15 by 0.0149, and above
+the fusion model on NF-ToN-IoT by 0.0419. With the trained head it is the highest of the four stages on both, but the head alone has a higher mean and its difference from feedback is not separated. The change
+is $+0.0697$ on NF-UNSW-NB15 and $+0.0523$ on NF-ToN-IoT. Two things changed together and the
+report does not separate them: the consultant, and the selected entropy percentile, which moved
+from 31 to 29 and from 25 to 16.
+
+Both configurations stored their pooled out-of-fold predictions at all three seeds, so the
+change carries an interval computed the same way as every other difference here. It is
+$+0.0701$ [$+0.0353$, $+0.1057$] on NF-UNSW-NB15, separated, and $+0.0511$ [$-0.0082$,
+$+0.1110$] on NF-ToN-IoT, not separated. The seed-matched interval on NF-ToN-IoT does exclude
+zero, at $+0.0509$ [$+0.0022$, $+0.1013$]. That is the same pattern the fusion model against the GNN model shows below: a difference that survives resampling edges and stops surviving once
+training-seed variance is admitted. The
+interval measures the change as a whole. It does not attribute it to the consultant, because
+the entropy percentile moved with it.
+
+The trained consultant was also scored standing alone. The
+trained head reaches $0.8374 \pm 0.0048$ on NF-UNSW-NB15 and $0.5081 \pm 0.0073$ on NF-ToN-IoT.
+It is separated above the GNN model on both, at $+0.0946$ [$+0.0403$, $+0.1470$] and $+0.0725$
+[$+0.0127$, $+0.1313$]. The feedback model is \emph{not} separated from it: $-0.0032$
+[$-0.0228$, $+0.0128$] on NF-UNSW-NB15 and $-0.0032$ [$-0.0342$, $+0.0299$] on NF-ToN-IoT, the
+sign is unstable across the three seeds, and the head carries the higher mean on both. We report
+this because the consultant experiment is the central manipulation of this study and a reader
+cannot weigh it without knowing where the consultant sits on its own. It is shown as a component in Table~\ref{tab:metrics}, rather than as a parallel stage of the ladder, and Section~\ref{sec:disc-contribution} reads it against the isolation experiment.
+
+Figure~\ref{fig:comparisons} and Table~\ref{tab:comparisons} report the stage comparisons for both consultants. Under the
+prototype scorer, no comparison between the feedback model and a structural rung is separated on
+either dataset. Every one of those intervals crosses zero, including the two where the feedback
+model carries the higher mean. The one prototype-consultant difference that is separated is the
+feedback model against the semantic model on NF-ToN-IoT, at $+0.1727$ [$+0.1326$, $+0.2174$],
+where the semantic model scores 0.2785 against the GNN model's 0.4336 and clearing it says
+nothing about the mechanism. On NF-UNSW-NB15 even that comparison crosses zero, at $+0.0287$
+[$-0.0061$, $+0.0631$]. In that configuration the answer to RQ3 is that the ladder is an
+ordering of means and no more.
+
+One result is negative regardless of consultant. The fusion model is not separated from the GNN model:
+positive on NF-UNSW-NB15 and negative on NF-ToN-IoT, with an interval crossing zero either way.
+The seed-matched interval for NF-UNSW-NB15 does exclude zero, $+0.0356$ [$+0.0038$, $+0.0678$].
+That is the clearest illustration in this report of what the two-level procedure is for: once
+seed variance enters, the same difference stops being separated. Under the pre-registered rule,
+the fusion model versus the GNN model is not separated, and the answer to RQ2 is negative on both
+datasets.
+
+\FloatBarrier
+\subsection{Baseline scoring asymmetry and comparison details}
+\label{app:baseline-detail}
+
+The feedback comparisons below remain subject to the component check: the trained head alone has a higher mean macro-F1 on both datasets, with no separated difference from feedback (Table~\ref{tab:metrics}).
+
+The collapse of E-GraphSAGE on NF-UNSW-NB15 is a representation effect with a testable
+prediction attached, not evidence that the architecture is weak. Its edge classifier reads only the
+concatenation $[h_u \Vert h_v]$ of the two endpoint embeddings. An edge's own attributes never
+reach it, so parallel edges between one address pair cannot be told apart. That predicts a
+collapse
+proportional to how common parallel edges are. On NF-UNSW-NB15, 385 of 656 edges are
+indistinguishable by endpoints, that is 58.7\%, and the architecture scores 0.1194. On
+NF-ToN-IoT only 167 of 2{,}127 edges are, that is 7.9\%, and the same architecture scores
+0.4141. The prediction and the inversion agree. Figure~\ref{fig:ceiling} shows the mechanism
+beside the confirmation.
+The ceiling is also not a training-schedule artifact: trained to the authors' full 4{,}999
+epochs on fold 0, validation macro-F1 plateaus near 0.11 and peaks at 0.1384 at epoch 1{,}400.
+
+The lower rungs are weaker still. On NF-ToN-IoT neither the GNN model nor the fusion model is separated
+from E-GraphSAGE as published, at $+0.0203$ [$-0.0230$, $+0.0633$] and $-0.0061$ [$-0.0797$,
+$+0.0777$]. On NF-UNSW-NB15 neither the GNN model nor the semantic model is separated from
+TE-G-SAGE with our node features, at $+0.0249$ and $+0.0163$.
+
+The NF-ToN-IoT baselines were scored under a looser rule than the rungs they are compared
+against, and the margin has to be read against that. As Section~\ref{sec:method-protocol}
+states, these models and the fusion model could predict \texttt{dos} or \texttt{ransomware} for
+an edge the metric scores, losing it, while the GNN, semantic and feedback models could not.
+Across the three seeds that happened on 3, 374 and 6 edges for the fusion model, on 58, 63 and
+47 for E-GraphSAGE as published, on 66, 28 and 60 for E-GraphSAGE with our node features, and on
+between 29 and 206 for the three TE-G-SAGE configurations. Replacing every one of those
+predictions with the true label gives an upper bound on what the mask could have been worth, and
+that bound is more generous than any mask could be, because no mask redirects an edge to the
+right class. The bound stays below the feedback model at every seed for the fusion model and for
+five of the six baselines. The exception is E-GraphSAGE with our node features at seed 1, where
+it reaches 0.5206 against the feedback model's 0.5012. Table~\ref{tab:vsbaselines} already
+reports that comparison as not separated, at $+0.0667$ [$-0.0181$, $+0.1505$], so no claim in
+this report depends on the asymmetry. Every count and both macro-F1 values, per model and per
+seed, are in \texttt{results/ton\_iot\_dropped\_class\_bound.json}.
+
+Because most of the NF-UNSW-NB15 margin is not architectural, it repays decomposition.
+Table~\ref{tab:decomposition} walks from the strongest published configuration to our rungs.
+Every level is a three-seed mean, no step carries an interval, and no step is a separation claim.
+
+Figure~\ref{fig:decomposition} draws the walk. Roughly 45\% of the naive gap is our choice of
+how to tune, roughly 30\% is our node features,
+and roughly 25\% is the architecture. Measured to the fusion model instead of the feedback model, the architecture
+share is 15.1\%.
+
+\clearpage
 \section{Reproducibility}
 \label{app:repro}
+
+This appendix first records the software environment and execution settings, then provides the reproduction commands, and finally identifies the supporting artifacts.
 
 \paragraph{Environment.} Python 3.14.3 in a virtual environment built from
 \texttt{requirements.txt}. Message passing, the fold masks and the graph containers come from
@@ -231,8 +384,7 @@ of it.
 
 \paragraph{Computational cost.} Everything in this report was produced on one Apple M1 Pro
 laptop with 8 cores, using the MPS backend for semantic encoding and CPU for everything else.
-The semantic branch is the only per-edge cost that would follow the system into deployment,
-since it runs one frozen forward pass for each edge: at batch size 32 and a 128-token limit it
+Semantic encoding is one measured per-edge inference cost, requiring a frozen forward pass for each edge: at batch size 32 and a 128-token limit it
 encodes 171.2 edges per second on NF-UNSW-NB15 and 160.2 on NF-ToN-IoT, so 5.841 and 6.241
 milliseconds per edge, and all 656 and 2{,}127 edges in 3.83 and 13.28 seconds. Loading the
 encoder costs a further 3.2 seconds once per process. Training is an offline cost paid once:
@@ -279,7 +431,7 @@ Table~\ref{tab:artifacts}.
 
 \begin{table}[htbp]
 \centering
-\caption{Committed artifacts behind the report's numbers.}
+\caption[Committed artifacts behind the report's numbers]{Committed artifacts behind the report's numbers.}
 \label{tab:artifacts}
 \footnotesize
 \begin{tabular}{@{}p{0.56\textwidth}p{0.40\textwidth}@{}}
@@ -303,15 +455,4 @@ Artifact & What it carries \\
 \end{tabular}
 \end{table}
 
-\paragraph{Checks.} The repository's test suite pins the contracts against each other and
-against the on-disk graphs, including a test asserting that both datasets declare the same
-architecture. It runs with \texttt{OMP\_NUM\_THREADS=1 python -m pytest tests/ -q} and reports
-174 passing tests with 359 passing subtests. Two further scripts guard the manuscript itself:
-\texttt{scripts/check\_report\_numbers.py} extracts every numeric token from the section
-sources and checks it against the contracts, the archive, the dataset statistics and an
-explicit allowlist. \texttt{scripts/prose\_stats.py} measures the writing against the
-standard used in the final editing pass. Both run from \texttt{docs/research\_report/build.sh}.
-
-\paragraph{What is not reproducible from this repository.} The raw NF-ToN-IoT and NF-UNSW-NB15
-CSV sources are not committed, being 532\,MB and comparable in size. The graphs built from them
-are, so every result here can be re-derived without re-downloading the sources.
+\paragraph{Checks and data access.} The recorded test run passed 174 tests and 359 subtests with \texttt{OMP\_NUM\_THREADS=1}. The build regenerates the tables and runs \texttt{scripts/check\_report\_numbers.py}; its exit status should also be checked directly because the build treats audit failures as warnings. Writing statistics are available separately through \texttt{scripts/prose\_stats.py}. Raw dataset CSVs are not included in the repository. Recalculating the churn diagnostic additionally requires the local traces identified in Appendix~\ref{app:isolation-detail}.

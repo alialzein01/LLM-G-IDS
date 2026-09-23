@@ -1,6 +1,8 @@
 \section{Related Work}
 \label{sec:related}
 
+This section first reviews graph-based intrusion detection and language models for security data. It then examines how structural and semantic representations are fused, reviews graph--language feedback mechanisms, and finally explains how this study relates to that work.
+
 \subsection{Graph-based network intrusion detection}
 
 Intrusion detection is conventionally divided by detection methodology. The guidance this
@@ -159,8 +161,7 @@ from the intrusion-detection examples alone.
 
 \subsection{Iterative GNN--LLM feedback}
 
-The broader GNN--LLM literature already contains the feedback mechanisms this report builds
-on. They are prior work and are not claimed here as contributions.
+The broader GNN--LLM literature provides four relevant feedback approaches.
 
 DAS is the closest prior work to the feedback mechanism used in this report. It implements
 an explicit closed feedback loop between a frozen GNN and an LLM: GNN predictions provide
@@ -172,8 +173,7 @@ repeatedly minimising an easier upper bound in place of a hard objective, under 
 refinement never increases the surrogate objective it defines for the task. Its setting is
 node-level, and it is evaluated on graphs that carry node text and on graphs that do not, where
 that structural sentence is what supplies the missing text. Its reported gains concentrate on
-the structure-dominated graphs. Closed graph--language feedback, and the conversion of structural
-statistics into natural-language descriptions, already exist in the literature.
+the structure-dominated graphs.
 
 LOGIN already couples uncertainty selection to language-model consultation. It uses
 MC-dropout variance, the spread of predictions obtained by running the network several times
@@ -184,7 +184,7 @@ together with a free-text explanation
 ground-truth label, the explanation is appended to the node text and the augmented text is
 re-embedded. If the label is wrong, edges in the node's one-hop neighbourhood are pruned.
 The LLM remains outside autograd and edits the learning inputs between training rounds.
-Selecting uncertain graph elements for semantic consultation is also established.
+
 
 GLANCE makes the decision to consult the language model itself learnable. A lightweight
 router decides per node whether querying is worthwhile from inexpensive node features, and
@@ -199,14 +199,7 @@ RoGRAD places iterative refinement, rather than static one-shot signal injection
 centre of its formulation \citep{wang2025rograd}. It studies that refinement under graph
 deficiencies including noise, sparsity, and label scarcity. Its abstract claims priority
 for moving language-model augmentation of graphs from static injection to an iterative
-refinement paradigm. Iterative semantic refinement is already an explicit
-contribution claim in the prior literature.
-
-These four anchors settle the component question plainly. Closed GNN--language feedback
-already exists. Iterative semantic refinement already exists. Structural statistics have
-already been expressed as natural-language input. Uncertainty and learned routing have
-already been used to decide which graph elements receive language-model consultation. Taken
-component by component, the feedback mechanism is not the contribution of this report.
+refinement paradigm.
 
 \subsection{Positioning}
 

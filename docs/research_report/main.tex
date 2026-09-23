@@ -7,6 +7,7 @@
 \usepackage[a4paper,margin=2.7cm]{geometry}
 \usepackage{setspace}
 \usepackage{graphicx}
+\usepackage{placeins}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
@@ -27,24 +28,38 @@
 \onehalfspacing
 \setlength{\parindent}{1.25em}
 \setlength{\parskip}{0.25em}
+\setlength{\emergencystretch}{2em}
 
 % The registered title, as given by the author on 2026-09-14.
 \newcommand{\reporttitle}{LLM-Enhanced Graph-Based Intrusion Detection}
 \newcommand{\reportsubtitle}{Structural--Semantic Fusion with Uncertainty-Guided Feedback}
 \newcommand{\reportauthor}{Ali Alzein}
 \newcommand{\reportsupervisor}{Dr.~Hussein Hazimeh}
+\newcommand{\reportsupervisortwo}{Dr.~Fouad Al Tfaily}
 \newcommand{\reviewerone}{Dr.~Hassan Harb}
 \newcommand{\reviewertwo}{Dr.~Ali Jaber}
 \newcommand{\reportinstitutions}{CESI LINEACT / Lebanese University}
 
 \begin{document}
 
+\hypersetup{pageanchor=false}
 \input{sections/00_titlepages}
+\hypersetup{pageanchor=true}
 
 \input{sections/00_abstract}
 \clearpage
 
+{\singlespacing
 \tableofcontents
+}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{List of Figures}
+\listoffigures
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{List of Tables}
+\listoftables
 \clearpage
 
 % Sections are added to the compiled report only after their review is complete.

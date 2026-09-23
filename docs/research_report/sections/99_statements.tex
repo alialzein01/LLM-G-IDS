@@ -1,8 +1,7 @@
 \section*{Acknowledgements}
 \addcontentsline{toc}{section}{Acknowledgements}
 
-I thank my supervisor, \reportsupervisor, for guidance throughout this work, and
-Dr.~Fouad Al Tfaily, who supervised the work day to day at CESI LINEACT on his behalf. I thank
+I thank my supervisors, \reportsupervisor\ and \reportsupervisortwo, for their guidance throughout this work. Dr.~Fouad Al Tfaily supervised the day-to-day work at CESI LINEACT. I thank
 CESI LINEACT and the Lebanese University for hosting it. The two datasets are used in the
 NetFlow-standardised forms released by their authors, and the two baseline architectures were
 re-implemented from their published descriptions and released code.
@@ -26,3 +25,8 @@ run by the author. Every number reported here comes from a committed artifact pr
 those runs, and no figure, table or quantitative claim was generated from a model's
 recollection. The interpretation of the results, the decisions about what to measure, what to
 retract and what to report as negative, and the final text are the author's own.
+
+\section*{Data and code availability}
+\addcontentsline{toc}{section}{Data and code availability}
+
+This study uses the NetFlow-standardised NF-UNSW-NB15 and NF-ToN-IoT datasets described by \citet{sarhan2021netflow}, derived from UNSW-NB15 \citep{moustafa2015unsw} and TON\_IoT \citep{moustafa2021toniot}. The cited dataset publications identify their sources. The project repository is \url{https://github.com/alialzein01/LLM-G-IDS}. Appendix~\ref{app:repro} lists the environment, reproduction commands and result artifacts; local trace files required to recalculate the churn diagnostic are identified in Appendix~\ref{app:isolation-detail}.

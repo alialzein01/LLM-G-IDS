@@ -3,6 +3,7 @@
 #   ./build.sh          compile once
 #   ./build.sh watch    recompile on every save
 set -euo pipefail
+export OMP_NUM_THREADS=1
 cd "$(dirname "$0")"
 export PATH=/opt/homebrew/bin:$PATH
 
@@ -42,4 +43,5 @@ if [ -n "$PYTHON" ]; then
 fi
 
 tectonic main.tex --outdir build
-echo "-> $(pwd)/build/main.pdf"
+cp build/main.pdf build/finalReport.pdf
+echo "-> $(pwd)/build/finalReport.pdf"
