@@ -1,0 +1,195 @@
+{
+  "dataset": "ton_iot",
+  "gnn_embeddings": "data/ton_iot/processed/step3_gnn/edge_embeddings_oof.pt",
+  "leak_free_gnn_embeddings": true,
+  "eval_classes": [
+    0,
+    1,
+    2,
+    4,
+    5,
+    6,
+    8,
+    9
+  ],
+  "metric_protocol": "pooled five-fold out-of-fold evaluation",
+  "variants": [
+    {
+      "variant": "agaf_baseline",
+      "overrides": {},
+      "pooled_accuracy": 0.8890456041372825,
+      "pooled_weighted_f1": 0.8790848494153707,
+      "cv_test_macro_f1_mean": 0.3763918243447121,
+      "cv_test_macro_f1_std": 0.07074365886172095,
+      "n_parameters": 207756,
+      "gate_min": 0.45287051796913147,
+      "gate_max": 0.49079787731170654,
+      "gate_spread": 0.03792735934257507,
+      "eval_class_macro_f1": 0.39487974839310047,
+      "all_class_macro_f1": 0.3144020331707796
+    },
+    {
+      "variant": "scalar_moorthy",
+      "overrides": {
+        "fusion_mode": "scalar",
+        "gate_entropy_lambda": 0.0
+      },
+      "pooled_accuracy": 0.5890926187118006,
+      "pooled_weighted_f1": 0.6872266848521682,
+      "cv_test_macro_f1_mean": 0.3604470675199991,
+      "cv_test_macro_f1_std": 0.07382391353094019,
+      "n_parameters": 146253,
+      "gate_min": 0.0004994822083972394,
+      "gate_max": 0.2189224362373352,
+      "gate_spread": 0.21842295402893797,
+      "eval_class_macro_f1": 0.36935265547500584,
+      "all_class_macro_f1": 0.29187165118653036
+    },
+    {
+      "variant": "agaf_small",
+      "overrides": {
+        "gate_entropy_lambda": 0.0,
+        "proj_dim": 32,
+        "hidden_dim": 32
+      },
+      "pooled_accuracy": 0.7287259050305595,
+      "pooled_weighted_f1": 0.7889582306718936,
+      "cv_test_macro_f1_mean": 0.3331739196388894,
+      "cv_test_macro_f1_std": 0.15271481145851237,
+      "n_parameters": 33516,
+      "gate_min": 0.22170311212539673,
+      "gate_max": 0.3877585530281067,
+      "gate_spread": 0.16605544090270996,
+      "eval_class_macro_f1": 0.3458018705947059,
+      "all_class_macro_f1": 0.2746225650323046
+    },
+    {
+      "variant": "selfattn_ragformer",
+      "overrides": {
+        "fusion_mode": "selfattn",
+        "gate_entropy_lambda": 0.0
+      },
+      "pooled_accuracy": 0.8236953455571228,
+      "pooled_weighted_f1": 0.843101559398998,
+      "cv_test_macro_f1_mean": 0.33659998942911223,
+      "cv_test_macro_f1_std": 0.04438314078042241,
+      "n_parameters": 208140,
+      "gate_min": 0.15442903339862823,
+      "gate_max": 0.41997599601745605,
+      "gate_spread": 0.2655469626188278,
+      "eval_class_macro_f1": 0.3412156550537548,
+      "all_class_macro_f1": 0.27110562991788767
+    },
+    {
+      "variant": "agaf_align",
+      "overrides": {
+        "gate_entropy_lambda": 0.0,
+        "align_lambda": 0.1
+      },
+      "pooled_accuracy": 0.5994358251057827,
+      "pooled_weighted_f1": 0.6856057002007547,
+      "cv_test_macro_f1_mean": 0.3112726661055928,
+      "cv_test_macro_f1_std": 0.07243876029159967,
+      "n_parameters": 207756,
+      "gate_min": 0.3332093358039856,
+      "gate_max": 0.40865153074264526,
+      "gate_spread": 0.07544219493865967,
+      "eval_class_macro_f1": 0.3278288442775742,
+      "all_class_macro_f1": 0.2594254507266157
+    },
+    {
+      "variant": "fixed_bertgcn",
+      "overrides": {
+        "fusion_mode": "fixed",
+        "gate_entropy_lambda": 0.0
+      },
+      "pooled_accuracy": 0.8772919605077574,
+      "pooled_weighted_f1": 0.8634938122053424,
+      "cv_test_macro_f1_mean": 0.31494308557269585,
+      "cv_test_macro_f1_std": 0.07500828862560689,
+      "n_parameters": 142092,
+      "gate_min": 0.5,
+      "gate_max": 0.5,
+      "gate_spread": 0.0,
+      "eval_class_macro_f1": 0.32558443264112513,
+      "all_class_macro_f1": 0.2586935474213778
+    },
+    {
+      "variant": "concat_gmlm",
+      "overrides": {
+        "fusion_mode": "concat",
+        "gate_entropy_lambda": 0.0
+      },
+      "pooled_accuracy": 0.7992477668077104,
+      "pooled_weighted_f1": 0.8281402616431935,
+      "cv_test_macro_f1_mean": 0.3063780538757866,
+      "cv_test_macro_f1_std": 0.04184553490829406,
+      "n_parameters": 174988,
+      "gate_min": 0.5,
+      "gate_max": 0.5,
+      "gate_spread": 0.0,
+      "eval_class_macro_f1": 0.3127568517666953,
+      "all_class_macro_f1": 0.248514327978346
+    },
+    {
+      "variant": "agaf_no_entropy_reg",
+      "overrides": {
+        "gate_entropy_lambda": 0.0
+      },
+      "pooled_accuracy": 0.5622943112364833,
+      "pooled_weighted_f1": 0.6742816487625454,
+      "cv_test_macro_f1_mean": 0.29961579757785106,
+      "cv_test_macro_f1_std": 0.1445149511320163,
+      "n_parameters": 207756,
+      "gate_min": 0.2984520494937897,
+      "gate_max": 0.3998209238052368,
+      "gate_spread": 0.10136887431144714,
+      "eval_class_macro_f1": 0.30080146093339233,
+      "all_class_macro_f1": 0.2394276961346998
+    },
+    {
+      "variant": "scalar_small",
+      "overrides": {
+        "fusion_mode": "scalar",
+        "gate_entropy_lambda": 0.0,
+        "proj_dim": 32,
+        "hidden_dim": 32
+      },
+      "pooled_accuracy": 0.5641748942172073,
+      "pooled_weighted_f1": 0.6575807821646783,
+      "cv_test_macro_f1_mean": 0.2775639385897758,
+      "cv_test_macro_f1_std": 0.18583627431267347,
+      "n_parameters": 29661,
+      "gate_min": 0.09301146864891052,
+      "gate_max": 0.6117501258850098,
+      "gate_spread": 0.5187386572360992,
+      "eval_class_macro_f1": 0.2635798323861124,
+      "all_class_macro_f1": 0.2084196981393422
+    },
+    {
+      "variant": "scalar_small_align",
+      "overrides": {
+        "fusion_mode": "scalar",
+        "gate_entropy_lambda": 0.0,
+        "proj_dim": 32,
+        "hidden_dim": 32,
+        "align_lambda": 0.1
+      },
+      "pooled_accuracy": 0.47531734837799716,
+      "pooled_weighted_f1": 0.5726717867243619,
+      "cv_test_macro_f1_mean": 0.18556738238618337,
+      "cv_test_macro_f1_std": 0.0954663200688147,
+      "n_parameters": 29661,
+      "gate_min": 0.3434635102748871,
+      "gate_max": 0.6764602661132812,
+      "gate_spread": 0.33299675583839417,
+      "eval_class_macro_f1": 0.1836499468166053,
+      "all_class_macro_f1": 0.14673406996745678
+    }
+  ],
+  "metric_note": "all_class_macro_f1 is macro-F1 over every class in the graph, as sweep_fusion_variants.py emits it. eval_class_macro_f1 restricts to eval_classes rows and is the metric the report's ladder uses; on unsw_nb15 the two coincide. Compare rungs only on eval_class_macro_f1.",
+  "seeds": [
+    42
+  ],
+  "seed_note": "Seed 42 only. Point estimates, no intervals, not a separation claim."
+}
