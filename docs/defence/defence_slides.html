@@ -53,6 +53,7 @@ h2.t small{display:block;font-size:2cqw;font-weight:500;color:var(--ink2);letter
 .legend{display:flex;gap:2.6cqw;font-size:1.7cqw;color:var(--ink2);align-items:center}
 .legend i{display:inline-block;width:1.5cqw;height:1.5cqw;border-radius:.3cqw;background:var(--accent2);margin-right:.7cqw;vertical-align:-.15cqw}
 .legend i.fb{background:var(--accent)}
+.legend i.comp{background:var(--accent);opacity:.38}
 .sentence{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:1.6cqw;line-height:1.55;background:var(--surface);border:1px solid var(--axis);border-radius:.8cqw;padding:1.4cqw 1.8cqw;color:var(--ink)}
 .sentence b{color:var(--accent);font-weight:600}
 .title-slide .inner{justify-content:center;gap:1.2cqw}
@@ -87,6 +88,7 @@ svg .grid{stroke:var(--hair);stroke-width:1}
 svg .base{stroke:var(--axis);stroke-width:1.5}
 svg .bar{fill:var(--accent2)}
 svg .bar.fb{fill:var(--accent)}
+svg .bar.comp{fill:var(--accent);opacity:.38}
 svg .val{font-size:15px;font-weight:600;fill:var(--ink);font-variant-numeric:tabular-nums}
 svg .ax{font-size:12.5px;fill:var(--muted);font-variant-numeric:tabular-nums}
 svg .cat{font-size:14px;fill:var(--ink2)}
@@ -138,7 +140,7 @@ body.present .counter{display:block}
 </defs></svg>
 
 <div class="toolbar">
-  <span class="name">LLM-Enhanced Graph-Based Intrusion Detection — M2 defence · 14 slides · 15 min</span>
+  <span class="name">LLM-Enhanced Graph-Based Intrusion Detection — M2 defence · 14 slides · ≈ 17 min</span>
   <button class="btn" id="btn-present">Present (P)</button>
   <button class="btn" id="btn-print">Print / PDF</button>
   <span class="hint">Rehearse view: slides with speaker notes underneath. Present: ← → move · N shows notes beside the slide · F fullscreen · Esc back. Yellow tags are placeholders to fill in.</span>
@@ -155,7 +157,8 @@ body.present .counter{display:block}
     <div class="who">Ali Alzein</div>
     <div class="aff">Lebanese University · Faculty of Sciences</div>
     <div class="aff">Work carried out at CESI LINEACT</div>
-    <div class="aff">Supervision: <span class="ph">[SUPERVISOR NAME(S)]</span> · <span class="ph">[DATE]</span></div>
+    <div class="aff">Supervisors: Dr.&nbsp;Hussein Hazimeh · Dr.&nbsp;Fouad Al Tfaily</div>
+    <div class="aff">Reviewers: Dr.&nbsp;Hassan Harb · Dr.&nbsp;Ali Jaber · <span class="ph">[DATE]</span></div>
     <div class="foot"><span>LLM-Enhanced Graph-Based Intrusion Detection</span><span>1 / 14</span></div>
   </div></div>
   <aside class="notes">
@@ -269,7 +272,7 @@ body.present .counter{display:block}
   <aside class="notes">
     <div class="nh"><span>Speaker notes · ≈ 1.5 min</span><button class="from-here">Present from here</button></div>
     <p>Here is the whole idea in one picture. Step one: we turn the traffic into a graph. Step two: we read every edge of that graph in two ways, a structural way and a semantic way. Step three: we combine the two readings into one answer per edge.</p>
-    <p>Step four is the contribution of this thesis. The graph model asks the semantic side for help on the edges it is least sure about, folds the answer back in, and runs again. This can happen up to three times.</p>
+    <p>Step four is the design this thesis sets out to test. The graph model asks the semantic side for help on the edges it is least sure about, folds the answer back in, and runs again. This can happen up to three times.</p>
     <p>I will now go through the four steps one at a time.</p>
   </aside>
 </section>
@@ -443,7 +446,7 @@ body.present .counter{display:block}
   </div></div>
   <aside class="notes">
     <div class="nh"><span>Speaker notes · ≈ 2 min</span><button class="from-here">Present from here</button></div>
-    <p>Step four is the contribution of this thesis: the feedback loop.</p>
+    <p>Step four is the design this thesis sets out to test: the feedback loop. Whether it earns its place is the question slide 11 answers.</p>
     <p>The graph model does not only predict. It also measures how uncertain it is about each edge. It takes the least-confident edges and sends them to the semantic side. The semantic side sends back a judgement for each of those edges. That judgement is folded back into the edge's representation, and the graph model runs again. This can repeat up to three rounds.</p>
     <p>How many edges are sent? The top 29 percent most uncertain on NF-UNSW-NB15, and the top 16 percent on NF-ToN-IoT. A confidence gate then keeps only the most confident half of those. So in practice, 14.5 percent of the edges are consulted on the first dataset, and 8 percent on the second.</p>
     <p>The model that comes out of this loop is the feedback model.</p>
@@ -483,7 +486,7 @@ body.present .counter{display:block}
 <section class="slide" id="s9">
   <div class="frame"><div class="inner">
     <div class="kicker">Results</div>
-    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:2cqw"><h2 class="t">Main results</h2><span class="legend"><span><i class="fb"></i>Feedback model (the contribution)</span><span><i></i>Other models</span></span></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:2cqw"><h2 class="t">Main results</h2><span class="legend"><span><i class="fb"></i>Feedback model</span><span><i class="comp"></i>Its advisor, alone</span><span><i></i>Other models</span></span></div>
     <div class="small" style="font-size:1.85cqw;margin-top:-.6cqw">Macro-F1, pooled out-of-fold, mean over 3 training seeds. Higher is better.</div>
     <div class="fig">
       <svg viewBox="0 0 900 290" role="img" aria-label="Macro-F1 of four models on two datasets">
@@ -500,21 +503,23 @@ body.present .counter{display:block}
         <text x="52" y="254" class="ax" text-anchor="end">0</text>
         <line x1="470" y1="8" x2="470" y2="280" class="grid"/>
         <!-- NF-UNSW-NB15 -->
-        <g><title>Semantic model, NF-UNSW-NB15: 0.7353</title><path class="bar" d="M91,250 V92.2 a4,4 0 0 1 4,-4 H115 a4,4 0 0 1 4,4 V250 Z"/><text x="105" y="80.2" class="val" text-anchor="middle">0.7353</text><text x="105" y="272" class="cat" text-anchor="middle">Semantic</text></g>
-        <g><title>GNN model, NF-UNSW-NB15: 0.7437</title><path class="bar" d="M181,250 V90.4 a4,4 0 0 1 4,-4 H205 a4,4 0 0 1 4,4 V250 Z"/><text x="195" y="78.4" class="val" text-anchor="middle">0.7437</text><text x="195" y="272" class="cat" text-anchor="middle">GNN</text></g>
-        <g><title>Fusion model, NF-UNSW-NB15: 0.7793</title><path class="bar" d="M271,250 V82.6 a4,4 0 0 1 4,-4 H295 a4,4 0 0 1 4,4 V250 Z"/><text x="285" y="70.6" class="val" text-anchor="middle">0.7793</text><text x="285" y="272" class="cat" text-anchor="middle">Fusion</text></g>
-        <g><title>Feedback model, NF-UNSW-NB15: 0.8341</title><path class="bar fb" d="M361,250 V70.5 a4,4 0 0 1 4,-4 H385 a4,4 0 0 1 4,4 V250 Z"/><text x="375" y="58.5" class="val" text-anchor="middle">0.8341</text><text x="375" y="272" class="cat" text-anchor="middle">Feedback</text></g>
+        <g><title>Semantic model, NF-UNSW-NB15: 0.7353</title><path class="bar" d="M82,250 V92.2 a4,4 0 0 1 4,-4 H106 a4,4 0 0 1 4,4 V250 Z"/><text x="96" y="80.2" class="val" text-anchor="middle">0.7353</text><text x="96" y="272" class="cat" text-anchor="middle">Semantic</text></g>
+        <g><title>GNN model, NF-UNSW-NB15: 0.7437</title><path class="bar" d="M154,250 V90.4 a4,4 0 0 1 4,-4 H178 a4,4 0 0 1 4,4 V250 Z"/><text x="168" y="78.4" class="val" text-anchor="middle">0.7437</text><text x="168" y="272" class="cat" text-anchor="middle">GNN</text></g>
+        <g><title>Fusion model, NF-UNSW-NB15: 0.7793</title><path class="bar" d="M226,250 V82.6 a4,4 0 0 1 4,-4 H250 a4,4 0 0 1 4,4 V250 Z"/><text x="240" y="70.6" class="val" text-anchor="middle">0.7793</text><text x="240" y="272" class="cat" text-anchor="middle">Fusion</text></g>
+        <g><title>Feedback model, NF-UNSW-NB15: 0.8341</title><path class="bar fb" d="M298,250 V70.5 a4,4 0 0 1 4,-4 H322 a4,4 0 0 1 4,4 V250 Z"/><text x="312" y="58.5" class="val" text-anchor="middle">0.8341</text><text x="312" y="272" class="cat" text-anchor="middle">Feedback</text></g>
+        <g><title>Trained head alone (the feedback model's own advisor), NF-UNSW-NB15: 0.8374</title><path class="bar comp" d="M370,250 V69.8 a4,4 0 0 1 4,-4 H394 a4,4 0 0 1 4,4 V250 Z"/><text x="384" y="57.8" class="val" text-anchor="middle">0.8374</text><text x="384" y="272" class="cat" text-anchor="middle">Advisor</text></g>
         <!-- NF-ToN-IoT -->
-        <g><title>Semantic model, NF-ToN-IoT: 0.2785</title><path class="bar" d="M551,250 V192.7 a4,4 0 0 1 4,-4 H575 a4,4 0 0 1 4,4 V250 Z"/><text x="565" y="180.7" class="val" text-anchor="middle">0.2785</text><text x="565" y="272" class="cat" text-anchor="middle">Semantic</text></g>
-        <g><title>GNN model, NF-ToN-IoT: 0.4336</title><path class="bar" d="M641,250 V158.6 a4,4 0 0 1 4,-4 H665 a4,4 0 0 1 4,4 V250 Z"/><text x="655" y="146.6" class="val" text-anchor="middle">0.4336</text><text x="655" y="272" class="cat" text-anchor="middle">GNN</text></g>
-        <g><title>Fusion model, NF-ToN-IoT: 0.4102</title><path class="bar" d="M731,250 V163.8 a4,4 0 0 1 4,-4 H755 a4,4 0 0 1 4,4 V250 Z"/><text x="745" y="151.8" class="val" text-anchor="middle">0.4102</text><text x="745" y="272" class="cat" text-anchor="middle">Fusion</text></g>
-        <g><title>Feedback model, NF-ToN-IoT: 0.5044</title><path class="bar fb" d="M821,250 V143 a4,4 0 0 1 4,-4 H845 a4,4 0 0 1 4,4 V250 Z"/><text x="835" y="131" class="val" text-anchor="middle">0.5044</text><text x="835" y="272" class="cat" text-anchor="middle">Feedback</text></g>
+        <g><title>Semantic model, NF-ToN-IoT: 0.2785</title><path class="bar" d="M542,250 V192.7 a4,4 0 0 1 4,-4 H566 a4,4 0 0 1 4,4 V250 Z"/><text x="556" y="180.7" class="val" text-anchor="middle">0.2785</text><text x="556" y="272" class="cat" text-anchor="middle">Semantic</text></g>
+        <g><title>GNN model, NF-ToN-IoT: 0.4336</title><path class="bar" d="M614,250 V158.6 a4,4 0 0 1 4,-4 H638 a4,4 0 0 1 4,4 V250 Z"/><text x="628" y="146.6" class="val" text-anchor="middle">0.4336</text><text x="628" y="272" class="cat" text-anchor="middle">GNN</text></g>
+        <g><title>Fusion model, NF-ToN-IoT: 0.4102</title><path class="bar" d="M686,250 V163.8 a4,4 0 0 1 4,-4 H710 a4,4 0 0 1 4,4 V250 Z"/><text x="700" y="151.8" class="val" text-anchor="middle">0.4102</text><text x="700" y="272" class="cat" text-anchor="middle">Fusion</text></g>
+        <g><title>Feedback model, NF-ToN-IoT: 0.5044</title><path class="bar fb" d="M758,250 V143 a4,4 0 0 1 4,-4 H782 a4,4 0 0 1 4,4 V250 Z"/><text x="772" y="131" class="val" text-anchor="middle">0.5044</text><text x="772" y="272" class="cat" text-anchor="middle">Feedback</text></g>
+        <g><title>Trained head alone (the feedback model's own advisor), NF-ToN-IoT: 0.5081</title><path class="bar comp" d="M830,250 V142.2 a4,4 0 0 1 4,-4 H854 a4,4 0 0 1 4,4 V250 Z"/><text x="844" y="130.2" class="val" text-anchor="middle">0.5081</text><text x="844" y="272" class="cat" text-anchor="middle">Advisor</text></g>
         <line x1="60" y1="250" x2="420" y2="250" class="base"/><line x1="520" y1="250" x2="880" y2="250" class="base"/>
       </svg>
     </div>
     <div class="cols" style="flex:0 0 auto;grid-template-columns:1fr 1.5fr">
-      <div class="small"><b>Why macro-F1:</b> a 12-edge attack class gets the same weight as the 1,746-edge benign class.</div>
-      <div class="small"><b>Accuracy</b> (GNN → feedback): 0.8105 → 0.8852 and 0.8739 → 0.9186. NF-ToN-IoT is 82% benign traffic, so accuracy is misleadingly high there for every model.</div>
+      <div class="small"><b>Why macro-F1:</b> a 12-edge attack class gets the same weight as the 1,746-edge benign class. Several scored classes hold only 12 to 40 edges.</div>
+      <div class="small"><b>The fifth bar is not a fifth model.</b> It is the advisor the feedback model consults, scored on its own. It is slightly <i>higher</i> than the full system on both datasets, and the difference is too small to call. That comparison is the subject of slide 11.</div>
     </div>
     <div class="foot"><span>LLM-Enhanced Graph-Based Intrusion Detection</span><span>9 / 14</span></div>
   </div></div>
@@ -522,8 +527,10 @@ body.present .counter{display:block}
     <div class="nh"><span>Speaker notes · ≈ 1.5 min</span><button class="from-here">Present from here</button></div>
     <p>Here are the main results. The metric is macro-F1, measured out of fold and averaged over three training seeds. Let me unpack that. F1 is a score per class that balances the attacks we catch against the false alarms we raise. Macro means we average that score over the classes, giving each class the same weight: a 12-edge attack class counts as much as the 1,746-edge benign class. Out of fold means every edge is scored by a model that never saw it during training. A seed is the random starting point of training; we ran three and took the mean.</p>
     <p>Now the numbers. On NF-UNSW-NB15: semantic 0.7353, GNN 0.7437, fusion 0.7793, feedback 0.8341. On NF-ToN-IoT: semantic 0.2785, GNN 0.4336, fusion 0.4102, feedback 0.5044.</p>
-    <p>The shape is the same on both datasets: the feedback model is the best. Notice also that on the second dataset, fusion is below the GNN. I will come back to that.</p>
+    <p>Of the four models, the feedback model is the best on both datasets. Notice also that on the second dataset, fusion is below the GNN. I will come back to that.</p>
+    <p>Now the fifth bar, and I want to be clear about it because it is the honest centre of this work. It is not a fifth model. It is the advisor that the feedback model consults, scored on its own: 0.8374 and 0.5081. That is slightly <em>higher</em> than the full system on both datasets. The difference is small, about three thousandths, the sign is not even the same at every seed, and our statistical rule says it is too small to call. So the correct reading is not that the loop is worse than its advisor. It is that we have not shown the loop to be better than its advisor. Slide 11 is where that matters.</p>
     <p>Why not report accuracy? Accuracy for the GNN is 0.8105 and 0.8739, and for the feedback model 0.8852 and 0.9186. But NF-ToN-IoT is 82 percent benign traffic, so accuracy is misleadingly high there for every model. Macro-F1 does not let a model hide behind the benign class.</p>
+    <p>One caution to keep in mind for every number on this slide: several of the scored classes hold only twelve to forty edges, so a single edge can move a class score by several points.</p>
   </aside>
 </section>
 
@@ -539,12 +546,14 @@ body.present .counter{display:block}
         <ul class="lines chk">
           <li>The feedback model beats the GNN, fusion and semantic models.</li>
           <li>It also beats every faithfully re-trained published baseline (E-GraphSAGE, TE-G-SAGE).</li>
+          <li>The advisor alone also beats the GNN model.</li>
         </ul>
       </div>
       <div class="card plain">
         <h3 style="color:var(--ink2)">Not solid</h3>
         <ul class="lines neg">
           <li>The fusion model does <b>not</b> beat the GNN model, on either dataset.</li>
+          <li>The feedback model is <b>not</b> shown to beat the advisor it consults: −0.0032 on both, interval crossing zero, sign changing between seeds.</li>
         </ul>
       </div>
     </div>
@@ -554,8 +563,8 @@ body.present .counter{display:block}
   <aside class="notes">
     <div class="nh"><span>Speaker notes · ≈ 1 min</span><button class="from-here">Present from here</button></div>
     <p>Which of these differences are real? Our rule: a difference counts only if a bootstrap interval excludes zero. Bootstrap means we resample the data many times and look at how much the difference moves. If that range never touches zero, the difference is solid.</p>
-    <p>Under that rule, the feedback model beats the GNN model, the fusion model and the semantic model, and every faithfully re-trained published baseline, on both datasets.</p>
-    <p>And one difference does not hold: the fusion model does not beat the GNN model, on either dataset. Combining the two views by itself is not enough.</p>
+    <p>Under that rule, the feedback model beats the GNN model, the fusion model and the semantic model, and every faithfully re-trained published baseline, on both datasets. The advisor on its own also beats the GNN model on both.</p>
+    <p>Two differences do not hold. First, the fusion model does not beat the GNN model, on either dataset. Combining the two views by itself is not enough. Second, and this is the one to remember, the feedback model is not shown to beat the advisor it consults. The gap is minus three thousandths on both datasets, the interval crosses zero, and the sign is not stable across the three seeds. We apply the same rule we applied everywhere else, including where it gives us the answer we would rather not have.</p>
     <p>A note on the baselines. E-GraphSAGE and TE-G-SAGE were re-trained on the same graph, the same folds and the same metric. These are not comparisons against their published numbers, which came from much larger per-flow graphs.</p>
   </aside>
 </section>
@@ -564,15 +573,16 @@ body.present .counter{display:block}
 <section class="slide" id="s11">
   <div class="frame"><div class="inner">
     <div class="kicker">The honest finding</div>
-    <h2 class="t">The advice is the bottleneck, not the mechanism</h2>
-    <ul class="lines" style="font-size:2.05cqw;gap:1.3cqw">
+    <h2 class="t">The advisor carries the result, not the loop</h2>
+    <ul class="lines" style="font-size:1.8cqw;gap:.85cqw">
       <li><b>Two advisors were tried.</b> With the weaker one, none of those wins hold.</li>
       <li><b>Swapping the advisor</b> moved the result by <b>+0.0697</b> and <b>+0.0523</b>: the largest single effect in the project.*</li>
       <li><b>The channel tested alone</b> (output combination off), with a perfect advisor that always knows the true label: a real gain, <b>+0.0345</b> and <b>+0.1090</b>.</li>
-      <li><b>With any advisor that could actually be built:</b> nothing distinguishable from zero.</li>
+      <li><b>With either advisor we could actually build:</b> no gain distinguishable from zero — and on NF-ToN-IoT the stronger advisor makes it <b>worse</b>, by <b>−0.0378</b>, a difference large enough to call.</li>
+      <li><b>And the advisor alone</b> already scores as high as the whole system (slide 9).</li>
     </ul>
-    <div class="callout" style="font-size:2.5cqw;font-weight:600;margin-top:.4cqw">The bottleneck is the quality of the advice, not the mechanism.</div>
-    <div class="small" style="font-size:1.45cqw;margin-top:auto">* An uncertainty threshold was re-selected at the same time, so the whole gain is not attributed to the advisor alone. A second design, injecting the advice into the attention weights, changed exactly 0 predictions in every configuration tested, even when handed the true label.</div>
+    <div class="callout" style="font-size:2.35cqw;font-weight:600;margin-top:.4cqw">What we can show is the value of the trained advisor. A benefit from feeding its advice back is unestablished.</div>
+    <div class="small" style="font-size:1.35cqw;margin-top:auto">* An uncertainty threshold was re-selected at the same time, so the gain is not attributed to the advisor alone. The isolation test ran at the earlier thresholds, 31% and 25%, not the final 29% and 16%. A second design, injecting into the attention weights, changed exactly 0 predictions in every configuration tested, even when handed the true label.</div>
     <div class="foot"><span>LLM-Enhanced Graph-Based Intrusion Detection</span><span>11 / 14</span></div>
   </div></div>
   <aside class="notes">
@@ -580,7 +590,10 @@ body.present .counter{display:block}
     <p>Now the finding I consider the most important, and it is a negative one.</p>
     <p>We tried two advisors, meaning two versions of the semantic side that answers the loop. The weaker one is the nearest-class-mean scorer from slide 5, the same thing that stands alone as the semantic model. The stronger one is a small classification head trained on the same embeddings. With the weaker advisor, none of the wins I just showed hold. Swapping the advisor moved the result by 0.0697 on the first dataset and 0.0523 on the second. That is the largest single effect in the whole project, larger than any change to the mechanism itself. One caution: an uncertainty threshold was re-selected at the same time, so the report does not attribute the whole gain to the advisor alone.</p>
     <p>So we tested the feedback channel on its own, with the output combination switched off, so that only the loop could act. First we gave it a perfect advisor, one that always knows the true label. Then the channel produces a real gain: 0.0345 and 0.1090. Then we gave it any advisor that could actually be built. The gain was nothing we could distinguish from zero.</p>
-    <p>The conclusion is simple. The bottleneck is the quality of the advice, not the mechanism. The channel can carry good advice. We do not yet have an advisor that gives it.</p>
+    <p>There is worse. On NF-ToN-IoT the stronger advisor does not merely fail to help through this channel. It makes things worse, by 0.0378, and that one is large enough to call. So the injection path, measured on its own, is not neutral there. It is harmful.</p>
+    <p>Put that beside slide 9 and the picture is consistent. The advisor alone already scores as high as the whole system. The loop built around it is not shown to add anything. Two independent measurements, pointing the same way.</p>
+    <p>So the conclusion I draw is this. What this work can show is the value of a trained classifier on frozen language embeddings. A benefit from feeding its advice back into the graph is unestablished. The channel can carry good advice, because the perfect advisor proves it can. We do not have an advisor that gives it.</p>
+    <p>Two honesty notes. The isolation test ran at the earlier uncertainty thresholds, 31 and 25 percent, not the final 29 and 16, so it does not measure the final configuration exactly. And when we swapped the advisor we also re-selected that threshold, so I do not attribute the whole gain to the advisor alone.</p>
     <p>One more design was tried: injecting the advice into the attention weights, which are the numbers the graph model uses to decide how much each neighbour matters. It changed exactly zero predictions, in every configuration we tested, even when it was handed the true label.</p>
   </aside>
 </section>
@@ -590,19 +603,24 @@ body.present .counter{display:block}
   <div class="frame"><div class="inner">
     <div class="kicker">Limitations</div>
     <h2 class="t">Limitations, stated plainly</h2>
-    <ul class="lines" style="gap:2.2cqw;margin-top:1cqw">
+    <ul class="lines" style="font-size:1.95cqw;gap:1.5cqw;margin-top:.6cqw">
       <li><b>The label helps define an edge.</b> Edges are grouped using the attack label. Every number is a controlled comparison between methods, not an estimate of real-world detection performance.</li>
       <li><b>The graphs are small:</b> 656 and 2,127 edges, with several attack classes holding between 12 and 40 edges.</li>
-      <li><b>Error bars cover training-seed variation only.</b></li>
+      <li><b>Error bars cover training-seed variation only.</b> One fold partition, and the advisor's advice is the same file at every seed.</li>
+      <li><b>The language encoder was never adapted.</b> It is frozen throughout, so we cannot separate "this modality is weak here" from "we never tuned it for these sentences".</li>
+      <li><b>The graph side has no control of its own.</b> No run disables message passing, and no flat classifier was fitted to the same features, so we have not shown separately what the graph structure contributes.</li>
     </ul>
     <div class="foot"><span>LLM-Enhanced Graph-Based Intrusion Detection</span><span>12 / 14</span></div>
   </div></div>
   <aside class="notes">
-    <div class="nh"><span>Speaker notes · ≈ 0.5 min</span><button class="from-here">Present from here</button></div>
-    <p>Three limitations, stated plainly.</p>
+    <div class="nh"><span>Speaker notes · ≈ 1 min</span><button class="from-here">Present from here</button></div>
+    <p>Five limitations, stated plainly.</p>
     <p>First, edges are grouped using the attack label, so the label helps define what an edge is. Every number I showed is therefore a controlled comparison between methods, not an estimate of real-world detection performance.</p>
     <p>Second, the graphs are small: 656 and 2,127 edges, and several attack classes hold between 12 and 40 edges.</p>
-    <p>Third, the error bars cover training-seed variation only.</p>
+    <p>Third, the error bars cover training-seed variation only. One fold partition throughout, and the advisor is the same saved file at every seed, so its own variability is not in those bars either.</p>
+    <p>Fourth, the language encoder is frozen throughout. It was never fine-tuned or adapted to the short templated sentences we ask it to read. So when the semantic model scores badly on the second dataset, I cannot separate "this modality carries less signal under heavy imbalance" from "we never adapted the encoder to this style of sentence".</p>
+    <p>Fifth, the graph side has no control of its own. We never disabled message passing, and we never fitted a plain classifier to the same edge and node features without the graph. So I can tell you the graph pipeline works; I cannot tell you separately how much of it is the graph.</p>
+    <p>The last two are open questions rather than defects, and each needs a new experiment rather than a rewrite. If you want to press on any of them, those are the two I would press on.</p>
   </aside>
 </section>
 
@@ -611,20 +629,22 @@ body.present .counter{display:block}
   <div class="frame"><div class="inner">
     <div class="kicker">Conclusion</div>
     <h2 class="t">What this thesis showed</h2>
-    <ul class="lines" style="gap:2cqw;margin-top:1cqw">
-      <li>Every edge is read two ways, structural and semantic, and a loop sends the uncertain edges for a second opinion.</li>
-      <li>The <b>feedback model is the best on both datasets</b>: 0.8341 and 0.5044 macro-F1, separated from every other model and baseline.</li>
-      <li>Fusion alone does not beat the GNN, and the loop's gain appears only with the stronger advisor.</li>
-      <li>A perfect advisor gives a real gain; a buildable one gives none. <b>The mechanism is not the limit. The advice is.</b></li>
+    <ul class="lines" style="font-size:1.9cqw;gap:1.15cqw;margin-top:.6cqw">
+      <li>Every edge is read two ways, structural and semantic, and a loop sends the uncertain edges for a second opinion. Built and measured on two datasets.</li>
+      <li><b>A trained classifier on frozen language embeddings carries the result.</b> As the whole system, 0.8341 and 0.5044, separated above every other model and baseline; alone, 0.8374 and 0.5081.</li>
+      <li><b>An added benefit from the loop is unestablished.</b> Not shown to beat its own advisor, and with output combination off the injection path gives no gain on one dataset and a real loss on the other.</li>
+      <li>Fusion alone does not beat the GNN either. A perfect advisor <i>does</i> convert the channel, so the capacity is there and the advice is what is missing.</li>
+      <li><b>The contribution is the instantiation and the measurement</b>, negative part included.</li>
     </ul>
     <div class="foot"><span>LLM-Enhanced Graph-Based Intrusion Detection</span><span>13 / 14</span></div>
   </div></div>
   <aside class="notes">
-    <div class="nh"><span>Speaker notes · ≈ 0.5 min</span><button class="from-here">Present from here</button></div>
-    <p>To conclude. We read every edge two ways, structural and semantic, and added a loop that sends the uncertain edges for a second opinion.</p>
-    <p>The feedback model is the best model on both datasets, 0.8341 and 0.5044 macro-F1, and that lead is statistically separated from every other model and baseline.</p>
-    <p>Fusion on its own does not beat the GNN, and the loop's gain appears only with the stronger advisor. With a perfect advisor the channel gives a real gain; with any advisor we could actually build, it gives none.</p>
-    <p>So the mechanism is not the limit. The advice is. If this work continues, that is where the effort should go.</p>
+    <div class="nh"><span>Speaker notes · ≈ 1.5 min</span><button class="from-here">Present from here</button></div>
+    <p>To conclude. We read every edge two ways, structural and semantic, and added a loop that sends the uncertain edges for a second opinion. That system was built, measured and reported on two datasets that differ in class imbalance by a factor of about 47.</p>
+    <p>What the evidence supports is the value of the trained classifier on frozen language embeddings. As the complete system it reaches 0.8341 and 0.5044 macro-F1, separated above every other model and every faithful baseline. Standing alone, that same classifier reaches 0.8374 and 0.5081.</p>
+    <p>What the evidence does not support is an added benefit from the feedback loop itself. The system is not shown to beat its own advisor, and with the output combination switched off the injection path gives no gain on one dataset and a real loss on the other. Fusion on its own does not beat the GNN either.</p>
+    <p>The channel is not the problem: a perfect advisor does convert it, on both datasets. The advice is the problem.</p>
+    <p>So I would state the contribution as instantiation plus measurement, including the negative part. A published result showing that this kind of refinement loop helps on text-rich graphs did not transfer to network flow graphs in our setting, and the thesis says why, with the isolation experiment that shows it. I think that is the more useful thing to be able to report, and it is the part I would want someone continuing this work to start from.</p>
   </aside>
 </section>
 
