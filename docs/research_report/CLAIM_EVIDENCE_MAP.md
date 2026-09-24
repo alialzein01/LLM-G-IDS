@@ -466,3 +466,8 @@ Still open:
    git by design and was not edited; the divergence is recorded here and in `HANDOFF.md`.
 10. Fold-partition variance is still unmeasured. It is stated as a limitation rather than
     resolved.
+
+
+## RQ2 completion (2026-09-24)
+
+Fusion versus the prototype semantic stage is separated on both datasets under both existing bootstrap procedures. Source: `results/rq2_fusion_semantic_interval.json`, reproduced by `scripts/close_rq2_interval.py` from saved predictions with score assertions against `multiseed_ladder_v2_head.json`. This does not alter fusion versus GNN (unseparated), does not compare fusion against the trained head, and does not replace any existing contract. Reported in Table tab:comparisons and §4.2/§5.1.

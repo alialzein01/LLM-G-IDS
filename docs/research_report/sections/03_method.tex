@@ -13,7 +13,7 @@ uncertainty threshold $k$ and the feedback injection scale. This restriction is 
 A cross-dataset comparison in which the two ladders use different components measures the
 components, not the datasets.
 
-The pipeline converts flow records into a graph, derives node and edge attributes, trains an
+GLASS converts flow records into a graph, derives node and edge attributes, trains an
 edge-level structural model, builds label-free semantic representations for the same edges,
 and combines the two modalities through adaptive fusion. Every classification decision is
 edge-level: a flow, or an aggregate of flows sharing a grouping key, is an edge, never a node.
@@ -23,7 +23,7 @@ scored.
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=\textwidth]{fig_architecture}
-\caption[Pipeline architecture and evaluated stages]{The pipeline, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback model. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
+\caption[Pipeline architecture and evaluated stages]{GLASS, from flow records to four scored rungs. Blue is the structural branch, orange the semantic branch, green the fusion stage and vermillion the feedback model. Every rung is an exit point from one shared graph and is scored by one protocol on one fold partition and one set of seeds. The marked aggregation step is the label-conditioned grouping key that bounds every claim in this report.}
 \label{fig:architecture}
 \end{figure}
 
@@ -33,9 +33,10 @@ scored.
 
 Flows are aggregated into a directed multigraph keyed on
 
-\[
+\begin{equation}
+\label{eq:aggregation-key}
 (\text{source IP},\ \text{destination IP},\ \text{attack type}).
-\]
+\end{equation}
 
 Parallel edges therefore exist between an ordered IP pair whenever those flows carry
 different attack types. Nodes are the distinct IP addresses. The resulting graphs are small:
@@ -144,7 +145,8 @@ Within a variant, the representation of a directed edge $e = (u,v)$ concatenates
 endpoint embeddings, their elementwise product, their elementwise absolute difference, and the
 variant's reweighted edge vector $\tilde{\mathbf{x}}_{e}$:
 
-\[
+\begin{equation}
+\label{eq:edge-representation}
 \mathbf{z}_{e}
 =
 \left[\,
@@ -155,9 +157,9 @@ variant's reweighted edge vector $\tilde{\mathbf{x}}_{e}$:
 \tilde{\mathbf{x}}_{e}
 \,\right]
 \in \mathbb{R}^{4\cdot 64 + 39} = \mathbb{R}^{295}.
-\]
+\end{equation}
 
-The product and absolute-difference terms matter here. Endpoint concatenation alone cannot
+Equation~\eqref{eq:edge-representation} retains both endpoint interactions and edge attributes. Endpoint concatenation alone cannot
 separate parallel edges, and 58.7\% of NF-UNSW-NB15 edges share an IP pair with at least one
 other edge. The elementwise terms are symmetric functions of the endpoints and do not fix
 this on their own, but $\tilde{\mathbf{x}}_{e}$ does, by carrying the edge's own features into
@@ -210,7 +212,7 @@ of it.
 \subsection{Adaptive Gated Attention Fusion}
 \label{sec:method-fusion}
 
-The fusion model projects each modality into a shared 128-dimensional space through a linear layer, batch
+The GLASS fusion model projects each modality into a shared 128-dimensional space through a linear layer, batch
 normalisation and ReLU, so 64 to 128 for the structural embedding $\mathbf{g}_{e}$ and 768 to 128
 for the semantic one $\mathbf{l}_{e}$. A gate then decides the balance between them, not as one
 weight per edge but as one weight per dimension. It reads both projections together with their
@@ -218,7 +220,8 @@ elementwise absolute difference and product, and emits a 128-dimensional vector
 of independent sigmoid weights $\boldsymbol{\gamma}_{e} \in (0,1)^{128}$ that combines the two
 views channel by channel:
 
-\[
+\begin{equation}
+\label{eq:adaptive-gate}
 \mathbf{f}_{e}
 = \boldsymbol{\gamma}_{e} \odot \mathbf{g}_{e}
 + \left(\mathbf{1} - \boldsymbol{\gamma}_{e}\right) \odot \mathbf{l}_{e},
@@ -227,9 +230,9 @@ views channel by channel:
 W\left[\,\mathbf{g}_{e},\; \mathbf{l}_{e},\;
 \left|\mathbf{g}_{e}-\mathbf{l}_{e}\right|,\;
 \mathbf{g}_{e}\odot\mathbf{l}_{e}\,\right]\right) .
-\]
+\end{equation}
 
-This is the gated multimodal unit's feature-wise form \citep{arevalo2017gmu} rather than a single
+Equation~\eqref{eq:adaptive-gate} is the gated multimodal unit's feature-wise form \citep{arevalo2017gmu} rather than a single
 scalar blend: the weights are per-edge \emph{and} per-dimension, so an edge can take some channels
 from structure and others from semantics instead of choosing one modality wholesale. Where this
 report quotes a gate value it is $\overline{\gamma}_{e}$, the mean over the 128 channels, read as
@@ -312,11 +315,12 @@ consumed by the next graph update. The consultant's class logits are projected l
 39-dimensional edge width, scaled by a learned strength, written into a full-graph bias tensor
 that is exactly zero on unflagged edges, and added to the reweighted edge vector:
 
-\[
+\begin{equation}
+\label{eq:feedback-injection}
 \tilde{\mathbf{x}}_{e} \leftarrow \tilde{\mathbf{x}}_{e} + s \cdot \mathbf{b}_{e},
 \qquad
 \mathbf{b}_{e} = \mathbf{0} \ \text{for unflagged } e ,
-\]
+\end{equation}
 
 with injection scale $s = 2.0$ on NF-UNSW-NB15 and $s = 20.0$ on NF-ToN-IoT, both selected on
 validation folds from $\{0.5, 1, 2, 5, 10, 20\}$ at three seeds. As with $k$, the curves are

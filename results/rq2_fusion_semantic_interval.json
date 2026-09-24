@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "metric": "pooled_oof_macro_f1",
+  "seeds": [
+    42,
+    1,
+    2
+  ],
+  "bootstrap_iters": 2000,
+  "bootstrap_seed": 42,
+  "protocol": "Fixed folds; primary resamples edges and independently selects each arm's training seed; secondary resamples edges and averages seed-matched differences. Prototype predictions are deterministic. No retraining.",
+  "source_artifacts": [
+    "results/multiseed_v2/head/<dataset>_seed<S>/metrics.json (or agaf_predictions.json)",
+    "data/<dataset>/processed/step4_feedback/prototypes.pt",
+    "graph, embeddings and folds from get_dataset_config",
+    "results/multiseed_ladder_v2_head.json"
+  ],
+  "unsw_nb15": {
+    "per_seed_macro_f1": {
+      "agaf": {
+        "42": 0.7679707333515186,
+        "1": 0.7912012871436847,
+        "2": 0.7788268431971715
+      },
+      "llm": {
+        "42": 0.7353188026257084,
+        "1": 0.7353188026257084,
+        "2": 0.7353188026257084
+      }
+    },
+    "comparisons": {
+      "agaf_vs_llm": {
+        "two_level": {
+          "mean_diff": 0.04430498039313953,
+          "ci_low": 0.006722295196124764,
+          "ci_high": 0.07947713803268489,
+          "prob_positive": 0.989,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
+        },
+        "seed_matched": {
+          "mean_diff": 0.04395182422148161,
+          "ci_low": 0.01943694823269834,
+          "ci_high": 0.06978032169196258,
+          "prob_positive": 0.9995,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        },
+        "point_difference": 0.04401415193841655,
+        "sign_stable_across_seeds": true
+      }
+    }
+  },
+  "ton_iot": {
+    "per_seed_macro_f1": {
+      "agaf": {
+        "42": 0.3974711630900891,
+        "1": 0.39098143906812927,
+        "2": 0.4422458548691029
+      },
+      "llm": {
+        "42": 0.27852446280044896,
+        "1": 0.27852446280044896,
+        "2": 0.27852446280044896
+      }
+    },
+    "comparisons": {
+      "agaf_vs_llm": {
+        "two_level": {
+          "mean_diff": 0.12990231122187532,
+          "ci_low": 0.07041373694890063,
+          "ci_high": 0.20535468455994657,
+          "prob_positive": 1.0,
+          "resampled": "edges_and_both_seeds_independently",
+          "n_seeds": 3,
+          "n_seed_pairs": 9
+        },
+        "seed_matched": {
+          "mean_diff": 0.12885494364082506,
+          "ci_low": 0.09284418832764124,
+          "ci_high": 0.16892514541689488,
+          "prob_positive": 1.0,
+          "resampled": "edges_only_seed_matched",
+          "n_seeds": 3
+        },
+        "point_difference": 0.13170835620865814,
+        "sign_stable_across_seeds": true
+      }
+    }
+  }
+}

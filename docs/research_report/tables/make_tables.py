@@ -118,6 +118,7 @@ def table_ladder() -> str:
 def table_comparisons() -> str:
     head = load("results/multiseed_ladder_v2_head.json")
     proto = load("results/multiseed_ladder_v2_legacy.json")
+    rq2 = load("results/rq2_fusion_semantic_interval.json")
     plan = {
         "unsw_nb15": [
             ("feedback $-$ fusion", proto, "loop_vs_agaf", "prototype"),
@@ -127,6 +128,7 @@ def table_comparisons() -> str:
             ("feedback $-$ semantic", proto, "loop_vs_llm", "prototype"),
             ("feedback $-$ semantic", head, "loop_vs_llm", "trained head"),
             ("fusion $-$ GNN", head, "agaf_vs_gnn", "either"),
+            ("fusion $-$ semantic", rq2, "agaf_vs_llm", "either"),
         ],
         "ton_iot": [
             ("feedback $-$ fusion", proto, "loop_vs_agaf", "prototype"),
@@ -136,6 +138,7 @@ def table_comparisons() -> str:
             ("feedback $-$ semantic", proto, "loop_vs_llm", "prototype"),
             ("feedback $-$ semantic", head, "loop_vs_llm", "trained head"),
             ("fusion $-$ GNN", head, "agaf_vs_gnn", "either"),
+            ("fusion $-$ semantic", rq2, "agaf_vs_llm", "either"),
         ],
     }
     lines = []

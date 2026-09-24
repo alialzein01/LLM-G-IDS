@@ -3,24 +3,17 @@
 
 This section first introduces the intrusion-detection problem and the scope of the study. It then explains why graph and language representations are combined, states the research questions and contributions, and finally outlines the report.
 
-Intrusion detection is an operational problem as well as a classification problem.
-Missed attacks can leave harmful activity unchallenged, while false alarms consume
-analyst attention and make genuine incidents harder to prioritise. Practical guidance
-therefore treats alert validation, false-positive identification, and threat
-prioritisation as central parts of intrusion monitoring~\citep{scarfone2007idps}.
+Internet of Things (IoT) networks connect sensors, cameras, appliances and industrial controllers. Their traffic must be monitored for attacks while legitimate services continue to operate. Missed attacks can leave harmful activity unchallenged, while false alarms consume analyst attention. Alert validation and threat prioritisation are therefore practical requirements of intrusion monitoring~\citep{scarfone2007idps}.
 
-Networks produce a continuous stream of connections whose meaning is rarely
-contained in a single record. A destination port, a packet count, or a flow duration can
-be informative, but the surrounding communication pattern often matters just as much.
-A distributed denial-of-service attack may appear as many sources converging on one
-destination, whereas a scan may appear as one source contacting many hosts or services.
-This relational character makes network traffic a natural candidate for graph-based
-analysis. Network events also carry semantic cues: protocol and port
-combinations, traffic magnitudes, and recurring behavioural descriptions can suggest
-what an interaction represents. An intrusion detection system that sees only one of
-these views is working with an incomplete account of the traffic.
+Conventional machine learning provides a way to classify traffic from measurements such as duration, byte count, protocol and destination port. When each connection is represented as an independent row, its surrounding communication pattern is not represented directly. Deep learning can learn richer feature representations, but a model operating on individual rows still needs an explicit way to use relationships between connections. This motivates moving from isolated traffic records to a graph representation.
 
-This report investigates whether structural and semantic evidence can be combined in a single edge-level intrusion detection framework. Each classified edge represents an aggregated group of flows between hosts. We evaluate the same pipeline on NF-UNSW-NB15 and NF-ToN-IoT. The scores are controlled comparisons under the graph-construction assumptions explained in Section~\ref{sec:method-graph}; they are not deployment estimates.
+Graph neural networks (GNNs) represent communicating devices as nodes and their connections as edges. They can combine a connection's attributes with information from neighbouring devices and links, as in graph-based intrusion detectors such as E-GraphSAGE~\citep{lo2022egraphsage}. This context is relevant when an attack is expressed across many connections: a scan may contact many hosts, while a distributed attack may converge on one destination. Graph structure supplies a view that an isolated flow record does not directly contain.
+
+Pretrained language models offer a complementary representation of an event described in text. Large language models (LLMs) can generate explanations, while encoder models such as BERT produce representations that can support classification~\citep{devlin2019bert}. This study uses CySecBERT, a cybersecurity-adapted BERT encoder, to represent short templated descriptions of traffic~\citep{bayer2024cysecbert}. It remains frozen and does not generate text. Its embeddings are another representation of the recorded flow attributes, not an independent source of observations.
+
+Previous work has combined graph and language models in several ways. Parallel encoders with attention-based fusion have been studied in misinformation detection~\citep{moorthy2025dualstream}. In intrusion detection, XG-NID uses a GNN for classification and a generative LLM for explanations and remedial guidance~\citep{farrukh2025xgnid}. DAS already uses iterative graph--language feedback for node-level learning~\citep{thapaliya2025das}. Thus, neither fusion nor iterative feedback is new by itself; their value in the present edge-level detection task must be established through comparison and diagnostic tests.
+
+This report develops GLASS (Graph-Language Adaptive Semantic-Structural fusion). GLASS represents aggregated flows as directed edges, learns their structural context through a graph attention network, encodes their text descriptions with frozen CySecBERT, and combines the embeddings using a gate that varies by edge and feature dimension. Its feedback stage consults a semantic classifier on uncertain edges and injects the advice before another graph update. We evaluate the structural, prototype semantic, fusion and feedback stages, compare prototype and trained-head consultants, and measure the trained head alone. Tests that disable output fusion examine whether injection itself helps. The same pipeline is evaluated on NF-UNSW-NB15 and NF-ToN-IoT under the graph-construction assumptions in Section~\ref{sec:method-graph}; the scores are controlled comparisons, not deployment estimates.
 
 NF-UNSW-NB15 derives from UNSW-NB15, whose original benchmark was created from a mixture
 of normal activity and contemporary attacks in the UNSW Canberra Cyber Range
@@ -103,24 +96,7 @@ re-enters the edge representations consumed by the next graph update. It is not
 bidirectional in content: the consultant's judgement depends on that edge's text alone,
 not on the graph model's current belief about the edge.
 
-This general dual-stream idea is not novel by itself. Parallel BERT and graph encoders
-with attention-based fusion have already been studied outside network security, for
-example in misinformation detection~\citep{moorthy2025dualstream}. Work in network
-intrusion detection has also combined GNNs and generative language models for a different
-role: XG-NID performs intrusion classification with a heterogeneous GNN and uses an LLM
-after classification to generate explanations and remedial guidance
-\citep{farrukh2025xgnid}. DAS is the closest prior work to the feedback mechanism
-considered here. It already implements a closed feedback loop between a frozen GNN and an
-LLM, returns the revised semantics to that same graph learner, and writes each node's
-structural statistics out as a sentence. Its setting is node-level, and it is evaluated on
-graphs with and without node text~\citep{thapaliya2025das}. The
-contribution here is therefore instantiation plus measurement: an edge-level
-network-intrusion-detection instantiation, together with a diagnostic question about
-whether a constrained semantic consultant exploits a feedback channel that has the
-capacity to influence the next graph update. Within the literature reviewed here, we are
-not aware of prior work combining bidirectional iterative coupling between a graph model
-and a semantic branch, sample-adaptive gated fusion for the final classification, and
-edge-level network intrusion detection.
+The distinction from the prior work introduced above is the edge-level intrusion-detection setting and its controlled evaluation. GLASS tests sample-adaptive fusion and uncertainty-guided consultation, then separates the performance of the complete configuration from that of its semantic consultant and injection path. Section~\ref{sec:related} develops the comparison with earlier systems.
 
 \subsection{Research problem and questions}
 
@@ -164,7 +140,7 @@ with the strongest relevant lower rung.
 
 \subsection{Objectives and contributions}
 
-The practical objective is to build one reproducible pipeline that transforms
+The practical objective of GLASS is to build one reproducible pipeline that transforms
 NF-UNSW-NB15 and NF-ToN-IoT NetFlow records into two aligned views and evaluates every
 stage under one consistent protocol. The work makes five contributions.
 
@@ -204,23 +180,4 @@ The mechanism tests make this distinction explicit. With output fusion disabled,
 
 \subsection{Report structure}
 
-The report is organised into six sections, followed by three appendices. This Introduction
-defines the problem, experimental scope, research questions, and contribution.
-Section~\ref{sec:related}
-reviews graph-based intrusion detection, cybersecurity language encoders,
-structural--semantic fusion, and iterative graph--language feedback, and positions the
-study against the closest prior mechanisms. Section~\ref{sec:method} describes the two
-datasets, graph and text construction, the structural and semantic branches, the fusion model,
-uncertainty-guided semantic feedback, the baseline protocol, and the shared evaluation
-procedure.
-
-Section~\ref{sec:results} reports the predefined model ladder, baseline comparisons,
-ablations, and mechanism-isolation measurements for both NF-UNSW-NB15 and NF-ToN-IoT, while
-keeping the different scored class sets explicit. Section~\ref{sec:discussion} interprets those
-measurements against the research questions, including the cross-dataset imbalance
-comparison and the distinction between a feedback channel having capacity and a
-constrained semantic consultant making use of that channel. It also returns to the
-controlled-protocol limitation and the work still required for deployment-valid
-intrusion detection. Section~\ref{sec:conclusion} states what the study established, what it
-did not, and what remains open. The appendices hold the negative mechanism results in full,
-the supporting per-class and knob tables, and the reproducibility record.
+The following sections review related detection and fusion methods (Section~\ref{sec:related}), describe GLASS and its evaluation protocol (Section~\ref{sec:method}), present model comparisons and diagnostic results (Section~\ref{sec:results}), interpret findings and discuss their limitations (Section~\ref{sec:discussion}), and conclude with findings and future directions (Section~\ref{sec:conclusion}); the appendices provide supporting measurements and reproducibility details.
